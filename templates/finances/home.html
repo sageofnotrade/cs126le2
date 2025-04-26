@@ -8,8 +8,12 @@
 {% endblock %}
 
 {% block content %}
-<!-- React will render the homepage here -->
-<div id="react-homepage" data-authenticated="{% if user.is_authenticated %}true{% else %}false{% endif %}"></div>
+<!-- React app will be mounted here -->
+<main id="react-homepage" 
+      data-authenticated="{% if user.is_authenticated %}true{% else %}false{% endif %}"
+      role="main"
+      aria-label="Budget Tracker homepage">
+</main>
 {% endblock %}
 
 {% block extra_js %}

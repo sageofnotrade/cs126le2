@@ -4,121 +4,139 @@
 {% block title %}Monthly Summary - Budget Tracker{% endblock %}
 
 {% block content %}
-<h2>Monthly Summary</h2>
-<p class="text-muted">View your financial summary for a specific period.</p>
+<header class="page-header mb-4">
+    <h1 class="h2">Monthly Summary</h1>
+    <p class="text-muted">View your financial summary for a specific period.</p>
+</header>
 
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">Select Date Range</h5>
+<section class="date-filter mb-4" aria-labelledby="date-filter-heading">
+    <div class="card border-0 shadow-sm">
+        <header class="card-header">
+            <h2 class="h5 mb-0" id="date-filter-heading">Select Date Range</h2>
+        </header>
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-5">
+                        {{ form.start_date|as_crispy_field }}
+                    </div>
+                    <div class="col-md-5">
+                        {{ form.end_date|as_crispy_field }}
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
-    <div class="card-body">
-        <form method="POST">
-            {% csrf_token %}
-            <div class="row">
-                <div class="col-md-5">
-                    {{ form.start_date|as_crispy_field }}
+</section>
+
+<section class="financial-summary mb-4" aria-labelledby="financial-summary-heading">
+    <h2 class="visually-hidden" id="financial-summary-heading">Financial Summary</h2>
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <article class="card border-0 shadow-sm h-100">
+                <header class="card-header">
+                    <h3 class="h5 mb-0">Income</h3>
+                </header>
+                <div class="card-body text-center">
+                    <p class="income-text h2 mb-0" aria-label="Total income">${{ income }}</p>
                 </div>
-                <div class="col-md-5">
-                    {{ form.end_date|as_crispy_field }}
+            </article>
+        </div>
+        <div class="col-md-4 mb-4">
+            <article class="card border-0 shadow-sm h-100">
+                <header class="card-header">
+                    <h3 class="h5 mb-0">Expenses</h3>
+                </header>
+                <div class="card-body text-center">
+                    <p class="expense-text h2 mb-0" aria-label="Total expenses">${{ expenses }}</p>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary btn-block">Filter</button>
+            </article>
+        </div>
+        <div class="col-md-4 mb-4">
+            <article class="card border-0 shadow-sm h-100">
+                <header class="card-header">
+                    <h3 class="h5 mb-0">Balance</h3>
+                </header>
+                <div class="card-body text-center">
+                    <p class="{% if balance >= 0 %}income-text{% else %}expense-text{% endif %} h2 mb-0" aria-label="Total balance">
+                        ${{ balance }}
+                    </p>
                 </div>
-            </div>
-        </form>
+            </article>
+        </div>
     </div>
-</div>
+</section>
 
 <div class="row">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Income</h5>
-            </div>
-            <div class="card-body text-center">
-                <h2 class="income-text">${{ income }}</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Expenses</h5>
-            </div>
-            <div class="card-body text-center">
-                <h2 class="expense-text">${{ expenses }}</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Balance</h5>
-            </div>
-            <div class="card-body text-center">
-                <h2 class="{% if balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                    ${{ balance }}
-                </h2>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Transactions ({{ start_date }} to {{ end_date }})</h5>
-            </div>
-            <div class="card-body p-0">
-                {% if transactions %}
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Title</th>
-                                <th>Category</th>
-                                <th>Amount</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for transaction in transactions %}
-                            <tr class="{% if transaction.type == 'income' %}bg-income{% else %}bg-expense{% endif %}">
-                                <td>{{ transaction.date }}</td>
-                                <td>{{ transaction.title }}</td>
-                                <td>{{ transaction.category.name|default:"Uncategorized" }}</td>
-                                <td class="{% if transaction.type == 'income' %}income-text{% else %}expense-text{% endif %}">
-                                    {% if transaction.type == 'income' %}+{% else %}-{% endif %}
-                                    ${{ transaction.amount }}
-                                </td>
-                                <td>
-                                    <a href="{% url 'edit_transaction' transaction.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
-                                    <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    <div class="col-md-7 mb-4">
+        <section class="transactions" aria-labelledby="transactions-heading">
+            <div class="card border-0 shadow-sm">
+                <header class="card-header">
+                    <h2 class="h5 mb-0" id="transactions-heading">Transactions ({{ start_date }} to {{ end_date }})</h2>
+                </header>
+                <div class="card-body p-0">
+                    {% if transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <caption class="visually-hidden">List of transactions between {{ start_date }} and {{ end_date }}</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col">Amount</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr class="{% if transaction.type == 'income' %}bg-income{% else %}bg-expense{% endif %}">
+                                    <td>{{ transaction.date }}</td>
+                                    <td>{{ transaction.title }}</td>
+                                    <td>{{ transaction.category.name|default:"Uncategorized" }}</td>
+                                    <td class="{% if transaction.type == 'income' %}income-text{% else %}expense-text{% endif %}">
+                                        {% if transaction.type == 'income' %}+{% else %}-{% endif %}
+                                        ${{ transaction.amount }}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group" aria-label="Actions for {{ transaction.title }}">
+                                            <a href="{% url 'edit_transaction' transaction.id %}" class="btn btn-outline-primary" aria-label="Edit transaction">
+                                                <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+                                            </a>
+                                            <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-outline-danger" aria-label="Delete transaction">
+                                                <i class="bi bi-trash" aria-hidden="true"></i> Delete
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center p-4">
+                        <p>No transactions found for this period.</p>
+                    </div>
+                    {% endif %}
                 </div>
-                {% else %}
-                <div class="text-center p-4">
-                    <p>No transactions found for this period.</p>
-                </div>
-                {% endif %}
             </div>
-        </div>
+        </section>
     </div>
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Expense Breakdown</h5>
+    <div class="col-md-5 mb-4">
+        <section class="expense-breakdown" aria-labelledby="expense-breakdown-heading">
+            <div class="card border-0 shadow-sm">
+                <header class="card-header">
+                    <h2 class="h5 mb-0" id="expense-breakdown-heading">Expense Breakdown</h2>
+                </header>
+                <div class="card-body">
+                    <canvas id="expenseChart" height="250" aria-label="Expense breakdown chart" role="img"></canvas>
+                </div>
             </div>
-            <div class="card-body">
-                <canvas id="expenseChart" height="250"></canvas>
-            </div>
-        </div>
+        </section>
     </div>
 </div>
 {% endblock %}
@@ -148,13 +166,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 plugins: {
                     legend: {
-                        position: 'bottom',
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var label = context.label || '';
+                                var value = context.raw || 0;
+                                var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                var percentage = Math.round(value / total * 100);
+                                return `${label}: $${value} (${percentage}%)`;
+                            }
+                        }
                     }
                 }
             }
         });
     } else {
-        document.getElementById('expenseChart').parentNode.innerHTML = '<div class="text-center p-5">' +
+        document.getElementById('expenseChart').parentNode.innerHTML = 
+            '<div class="text-center p-5">' +
             '<p class="text-muted">No expense data available for this period.</p>' +
             '</div>';
     }

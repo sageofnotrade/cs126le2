@@ -4,48 +4,55 @@
 {% block title %}{{ title }} - Budget Tracker{% endblock %}
 
 {% block content %}
+<header class="page-header mb-4">
+    <h1 class="h2">{{ title }}</h1>
+    <p class="text-muted">{% if form.instance.pk %}Edit existing transaction{% else %}Create a new transaction{% endif %}</p>
+</header>
+
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h4>{{ title }}</h4>
+        <section class="transaction-form" aria-labelledby="transaction-form-heading">
+            <div class="card border-0 shadow-sm">
+                <header class="card-header">
+                    <h2 class="h4 mb-0" id="transaction-form-heading">Transaction Details</h2>
+                </header>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.title|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.amount|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.date|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.type|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                {{ form.category|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                {{ form.notes|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-center gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Save Transaction</button>
+                            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="POST">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.title|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.amount|as_crispy_field }}
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ form.date|as_crispy_field }}
-                        </div>
-                        <div class="col-md-6">
-                            {{ form.type|as_crispy_field }}
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12">
-                            {{ form.category|as_crispy_field }}
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12">
-                            {{ form.notes|as_crispy_field }}
-                        </div>
-                    </div>
-                    <div class="form-group text-center mt-3">
-                        <button type="submit" class="btn btn-primary">Save Transaction</button>
-                        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
-                    </div>
-                </form>
-            </div>
-        </div>
+        </section>
     </div>
 </div>
 {% endblock %} 

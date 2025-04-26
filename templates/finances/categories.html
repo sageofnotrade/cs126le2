@@ -4,57 +4,72 @@
 {% block title %}Categories - Budget Tracker{% endblock %}
 
 {% block content %}
+<header class="page-header mb-4">
+    <h1 class="h2">Categories</h1>
+    <p class="text-muted">Manage your transaction categories</p>
+</header>
+
 <div class="row">
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">
-                <h4>Add Category</h4>
+    <div class="col-md-5 mb-4">
+        <section class="add-category" aria-labelledby="add-category-heading">
+            <div class="card border-0 shadow-sm">
+                <header class="card-header">
+                    <h2 class="h4 mb-0" id="add-category-heading">Add Category</h2>
+                </header>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <button type="submit" class="btn btn-primary w-100 mt-4">Save Category</button>
+                    </form>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="POST">
-                    {% csrf_token %}
-                    {{ form|crispy }}
-                    <button type="submit" class="btn btn-primary btn-block mt-4">Save Category</button>
-                </form>
-            </div>
-        </div>
+        </section>
     </div>
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">
-                <h4>Your Categories</h4>
-            </div>
-            <div class="card-body p-0">
-                {% if categories %}
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Count</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for category in categories %}
-                            <tr>
-                                <td>{{ category.name }}</td>
-                                <td>{{ category.transaction_set.count }}</td>
-                                <td>
-                                    <a href="#" class="btn btn-sm btn-outline-primary edit-category" data-id="{{ category.id }}" data-name="{{ category.name }}">Edit</a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    <div class="col-md-7 mb-4">
+        <section class="category-list" aria-labelledby="category-list-heading">
+            <div class="card border-0 shadow-sm">
+                <header class="card-header">
+                    <h2 class="h4 mb-0" id="category-list-heading">Your Categories</h2>
+                </header>
+                <div class="card-body p-0">
+                    {% if categories %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <caption class="visually-hidden">List of your transaction categories</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Count</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                <tr>
+                                    <td>{{ category.name }}</td>
+                                    <td>{{ category.transaction_set.count }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary edit-category" 
+                                                data-id="{{ category.id }}" 
+                                                data-name="{{ category.name }}"
+                                                aria-label="Edit {{ category.name }}">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center p-4">
+                        <p>You haven't created any categories yet.</p>
+                    </div>
+                    {% endif %}
                 </div>
-                {% else %}
-                <div class="text-center p-4">
-                    <p>You haven't created any categories yet.</p>
-                </div>
-                {% endif %}
             </div>
-        </div>
+        </section>
     </div>
 </div>
 
@@ -62,25 +77,23 @@
 <div class="modal fade" id="editCategoryModal" tabindex="-1" role="dialog" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editCategoryModalLabel">Edit Category</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
+            <header class="modal-header">
+                <h2 class="modal-title h5" id="editCategoryModalLabel">Edit Category</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </header>
             <form id="editCategoryForm" method="POST">
                 <div class="modal-body">
                     {% csrf_token %}
-                    <div class="form-group">
-                        <label for="editCategoryName">Category Name</label>
+                    <div class="mb-3">
+                        <label for="editCategoryName" class="form-label">Category Name</label>
                         <input type="text" class="form-control" id="editCategoryName" name="name" required>
                         <input type="hidden" id="editCategoryId" name="category_id">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <footer class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <button type="submit" class="btn btn-primary">Save changes</button>
-                </div>
+                </footer>
             </form>
         </div>
     </div>
@@ -102,7 +115,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editCategoryId').value = categoryId;
             document.getElementById('editCategoryName').value = categoryName;
             
-            $('#editCategoryModal').modal('show');
+            const modal = new bootstrap.Modal(document.getElementById('editCategoryModal'));
+            modal.show();
         });
     });
 });

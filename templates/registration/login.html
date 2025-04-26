@@ -6,12 +6,12 @@
 {% block content %}
 <div class="row justify-content-center mt-5">
     <div class="col-md-5 col-lg-4">
-        <div class="card shadow">
+        <article class="card shadow">
             <div class="card-body p-4">
-                <div class="text-center mb-4">
-                    <i class="bi bi-wallet2 fs-1 text-primary"></i>
-                    <h3 class="mt-2 mb-4">Welcome Back</h3>
-                </div>
+                <header class="text-center mb-4">
+                    <i class="bi bi-wallet2 fs-1 text-primary" aria-hidden="true"></i>
+                    <h1 class="h3 mt-2 mb-4">Welcome Back</h1>
+                </header>
                 
                 <form method="POST">
                     {% csrf_token %}
@@ -19,7 +19,7 @@
                     <div class="mb-3">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-envelope text-secondary"></i>
+                                <i class="bi bi-envelope text-secondary" aria-hidden="true"></i>
                             </span>
                             {{ form.username|as_crispy_field }}
                         </div>
@@ -28,7 +28,7 @@
                     <div class="mb-3">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-lock text-secondary"></i>
+                                <i class="bi bi-lock text-secondary" aria-hidden="true"></i>
                             </span>
                             {{ form.password|as_crispy_field }}
                         </div>
@@ -39,16 +39,18 @@
                     </div>
                 </form>
                 
-                <div class="text-center mt-4">
-                    <a href="#" class="text-decoration-none">Forgot password?</a>
-                </div>
-                
-                <div class="text-center mt-4">
-                    <span class="text-muted">Don't have an account?</span>
-                    <a href="{% url 'signup' %}" class="text-decoration-none ms-1">Sign Up</a>
-                </div>
+                <footer class="mt-4">
+                    <div class="text-center">
+                        <a href="#" class="text-decoration-none">Forgot password?</a>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <span class="text-muted">Don't have an account?</span>
+                        <a href="{% url 'signup' %}" class="text-decoration-none ms-1">Sign Up</a>
+                    </div>
+                </footer>
             </div>
-        </div>
+        </article>
     </div>
 </div>
 {% endblock %} 

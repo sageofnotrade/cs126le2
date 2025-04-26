@@ -4,30 +4,37 @@
 {% block title %}Export Data - Budget Tracker{% endblock %}
 
 {% block content %}
+<header class="page-header mb-4">
+    <h1 class="h2">Export Data</h1>
+    <p class="text-muted">Download your transaction data as a CSV file</p>
+</header>
+
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h4>Export Transactions to CSV</h4>
+        <section class="export-form" aria-labelledby="export-form-heading">
+            <div class="card border-0 shadow-sm">
+                <header class="card-header">
+                    <h2 class="h4 mb-0" id="export-form-heading">Export Transactions to CSV</h2>
+                </header>
+                <div class="card-body">
+                    <p class="mb-4">Select a date range to export your transaction data as a CSV file.</p>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-5">
+                                {{ form.start_date|as_crispy_field }}
+                            </div>
+                            <div class="col-md-5">
+                                {{ form.end_date|as_crispy_field }}
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Export</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="card-body">
-                <p class="mb-4">Select a date range to export your transaction data as a CSV file.</p>
-                <form method="POST">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-5">
-                            {{ form.start_date|as_crispy_field }}
-                        </div>
-                        <div class="col-md-5">
-                            {{ form.end_date|as_crispy_field }}
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary btn-block">Export</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
+        </section>
     </div>
 </div>
 {% endblock %} 

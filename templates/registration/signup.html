@@ -6,12 +6,12 @@
 {% block content %}
 <div class="row justify-content-center mt-5">
     <div class="col-md-6 col-lg-5">
-        <div class="card shadow">
+        <article class="card shadow">
             <div class="card-body p-4">
-                <div class="text-center mb-4">
-                    <i class="bi bi-person-plus fs-1 text-primary"></i>
-                    <h3 class="mt-2 mb-4">Create Your Account</h3>
-                </div>
+                <header class="text-center mb-4">
+                    <i class="bi bi-person-plus fs-1 text-primary" aria-hidden="true"></i>
+                    <h1 class="h3 mt-2 mb-4">Create Your Account</h1>
+                </header>
                 
                 <form method="POST">
                     {% csrf_token %}
@@ -19,7 +19,7 @@
                     <div class="mb-3">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-person text-secondary"></i>
+                                <i class="bi bi-person text-secondary" aria-hidden="true"></i>
                             </span>
                             {{ form.username|as_crispy_field }}
                         </div>
@@ -28,7 +28,7 @@
                     <div class="mb-3">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-envelope text-secondary"></i>
+                                <i class="bi bi-envelope text-secondary" aria-hidden="true"></i>
                             </span>
                             {{ form.email|as_crispy_field }}
                         </div>
@@ -37,7 +37,7 @@
                     <div class="mb-3">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-lock text-secondary"></i>
+                                <i class="bi bi-lock text-secondary" aria-hidden="true"></i>
                             </span>
                             {{ form.password1|as_crispy_field }}
                         </div>
@@ -46,7 +46,7 @@
                     <div class="mb-3">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-lock-fill text-secondary"></i>
+                                <i class="bi bi-lock-fill text-secondary" aria-hidden="true"></i>
                             </span>
                             {{ form.password2|as_crispy_field }}
                         </div>
@@ -57,18 +57,20 @@
                     </div>
                 </form>
                 
-                <div class="text-center mt-4">
-                    <span class="text-muted">Already have an account?</span>
-                    <a href="{% url 'login' %}" class="text-decoration-none ms-1">Sign In</a>
-                </div>
-                
-                <div class="text-center mt-3">
-                    <small class="text-muted">
-                        By signing up, you agree to our <a href="#" class="text-decoration-none">Terms of Service</a> and <a href="#" class="text-decoration-none">Privacy Policy</a>
-                    </small>
-                </div>
+                <footer class="mt-4">
+                    <div class="text-center">
+                        <span class="text-muted">Already have an account?</span>
+                        <a href="{% url 'login' %}" class="text-decoration-none ms-1">Sign In</a>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            By signing up, you agree to our <a href="#" class="text-decoration-none">Terms of Service</a> and <a href="#" class="text-decoration-none">Privacy Policy</a>
+                        </small>
+                    </div>
+                </footer>
             </div>
-        </div>
+        </article>
     </div>
 </div>
 {% endblock %} 
