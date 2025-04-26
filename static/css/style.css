@@ -1,0 +1,110 @@
+/* 
+ * Budget Tracker Custom Styles
+ */
+
+body {
+    padding-top: 56px;
+    background-color: #f8f9fa;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.card {
+    box-shadow: 0 4px 6px rgba(0,0,0,.1);
+    border: none;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(0,0,0,.1);
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.bg-income {
+    background-color: #d1e7dd;
+}
+
+.bg-expense {
+    background-color: #f8d7da;
+}
+
+.income-text {
+    color: #0f5132;
+}
+
+.expense-text {
+    color: #842029;
+}
+
+.budget-warning {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.sidebar {
+    min-height: calc(100vh - 56px);
+    box-shadow: inset -1px 0 0 rgba(0,0,0,.1);
+    background-color: #fff;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #333;
+}
+
+.sidebar .nav-link:hover {
+    color: #007bff;
+}
+
+.sidebar .nav-link.active {
+    color: #007bff;
+}
+
+/* Dashboard stats */
+.stats-card {
+    transition: transform 0.3s;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Progress bars */
+.progress {
+    height: 20px;
+    border-radius: 5px;
+}
+
+/* Form styling */
+.form-group label {
+    font-weight: 500;
+}
+
+/* Custom buttons */
+.btn-action {
+    border-radius: 50px;
+    padding: 8px 20px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    h1, h2 {
+        font-size: 1.8rem;
+    }
+} 

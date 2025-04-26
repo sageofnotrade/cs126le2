@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Login - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-wallet2 fs-1 text-primary"></i>
+                    <h3 class="mt-2 mb-4">Welcome Back</h3>
+                </div>
+                
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="bi bi-envelope text-secondary"></i>
+                            </span>
+                            {{ form.username|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="bi bi-lock text-secondary"></i>
+                            </span>
+                            {{ form.password|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary py-2">Sign In</button>
+                    </div>
+                </form>
+                
+                <div class="text-center mt-4">
+                    <a href="#" class="text-decoration-none">Forgot password?</a>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <span class="text-muted">Don't have an account?</span>
+                    <a href="{% url 'signup' %}" class="text-decoration-none ms-1">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

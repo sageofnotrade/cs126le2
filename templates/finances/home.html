@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home - Budget Tracker{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/homepage.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- React will render the homepage here -->
+<div id="react-homepage" data-authenticated="{% if user.is_authenticated %}true{% else %}false{% endif %}"></div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- React compiled JavaScript -->
+<script src="{% static 'frontend/main.js' %}"></script>
+{% endblock %} 

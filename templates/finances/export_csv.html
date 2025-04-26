@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Export Data - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4>Export Transactions to CSV</h4>
+            </div>
+            <div class="card-body">
+                <p class="mb-4">Select a date range to export your transaction data as a CSV file.</p>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-5">
+                            {{ form.start_date|as_crispy_field }}
+                        </div>
+                        <div class="col-md-5">
+                            {{ form.end_date|as_crispy_field }}
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-block">Export</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
