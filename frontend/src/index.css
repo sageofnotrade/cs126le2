@@ -1,0 +1,59 @@
+:root {
+  /* Light theme (default) */
+  --bg-primary: #f9fafb;
+  --bg-secondary: #ffffff;
+  --text-primary: #333333;
+  --text-secondary: #6b7280;
+  --border-color: #eaeaea;
+  --nav-active-bg: #e8eaf6;
+  --nav-active-color: #3f51b5;
+  --nav-hover-bg: #f7f7f7;
+  --accent-color: #3f51b5;
+  --shadow-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode {
+  /* Dark theme */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #f1f1f1;
+  --text-secondary: #a0a0a0;
+  --border-color: #444444;
+  --nav-active-bg: #3f51b5;
+  --nav-active-color: #ffffff;
+  --nav-hover-bg: #3a3a3a;
+  --accent-color: #7986cb;
+  --shadow-color: rgba(0, 0, 0, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+} 
