@@ -1,0 +1,295 @@
+.dashboard {
+  width: 100%;
+  padding: 20px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.dashboard-header h1 {
+  font-size: 24px;
+  margin: 0;
+  color: #3f51b5;
+}
+
+.welcome-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-greeting {
+  font-size: 16px;
+  color: #666;
+}
+
+.add-transaction-btn {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-transaction-btn:hover {
+  background-color: #43a047;
+}
+
+.section-title {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #424242;
+  font-weight: 500;
+}
+
+/* Quick Stats Section */
+.quick-stats {
+  margin-bottom: 30px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-card.income {
+  border-top: 4px solid #4caf50;
+}
+
+.stat-card.expenses {
+  border-top: 4px solid #f44336;
+}
+
+.stat-card.balance {
+  border-top: 4px solid #3f51b5;
+}
+
+.stat-title {
+  font-size: 16px;
+  margin: 0 0 10px 0;
+  font-weight: 500;
+  color: #616161;
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+  font-size: 24px;
+}
+
+.income .stat-icon {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.expenses .stat-icon {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+.balance .stat-icon {
+  background-color: rgba(63, 81, 181, 0.1);
+  color: #3f51b5;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.income .stat-value {
+  color: #4caf50;
+}
+
+.expenses .stat-value {
+  color: #f44336;
+}
+
+.balance .stat-value {
+  color: #3f51b5;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #9e9e9e;
+  margin: 5px 0 0 0;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 6fr 4fr;
+  gap: 20px;
+}
+
+@media (max-width: 992px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Transaction Section */
+.transactions-section, .budget-section {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h2 {
+  font-size: 18px;
+  margin: 0;
+  color: #424242;
+}
+
+.view-all-link {
+  color: #3f51b5;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.transactions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.transactions-table th,
+.transactions-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.transactions-table th {
+  font-weight: 500;
+  color: #616161;
+  font-size: 14px;
+}
+
+.transactions-table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.income {
+  color: #4caf50;
+}
+
+.expense {
+  color: #f44336;
+}
+
+/* Budget Section */
+.budget-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.chart-placeholder {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.pie-chart {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #3f51b5 0% 35%, 
+    #4caf50 35% 60%, 
+    #ffc107 60% 75%, 
+    #2196f3 75% 85%, 
+    #9c27b0 85% 100%
+  );
+  position: relative;
+}
+
+.pie-chart::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: white;
+}
+
+.budget-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.legend-color.housing {
+  background-color: #3f51b5;
+}
+
+.legend-color.food {
+  background-color: #4caf50;
+}
+
+.legend-color.transportation {
+  background-color: #ffc107;
+}
+
+.legend-color.utilities {
+  background-color: #2196f3;
+}
+
+.legend-color.other {
+  background-color: #9c27b0;
+} 

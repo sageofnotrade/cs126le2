@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Fast Budget{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        padding-top: 0;
+        overflow: hidden;
+    }
+    
+    .navbar {
+        display: none;
+    }
+    
+    .container {
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="react-app" data-authenticated="{{ user.is_authenticated|lower }}"></div>
+{% endblock %}
+
+{% load static %}
+
+{% block extra_js %}
+<script src="{% static 'frontend/main.js' %}"></script>
+{% endblock %} 
