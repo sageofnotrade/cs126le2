@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Transaction, Budget, Account, CreditAccount, DebitAccount, Wallet
+from .models import Category, Transaction, Budget, Account, CreditAccount, DebitAccount, Wallet, Debt
 
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ('title', 'amount', 'type', 'category', 'date', 'user')
@@ -32,6 +32,11 @@ class DebitAccountAdmin(admin.ModelAdmin):
 class WalletAdmin(admin.ModelAdmin):
     list_display = ('name', 'balance', 'user')
     list_filter = ('user',)
+    
+class DebtAdmin(admin.ModelAdmin):
+    list_display = ('person', 'amount', 'paid', 'date_issued', 'date_payback', 'residual_amount', 'account', 'notes', 'user')
+    list_filter = ('date_issued', 'date_payback', 'person', 'account', 'user')
+    search_fields = ('person', 'notes')
 
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Transaction, TransactionAdmin)
@@ -40,3 +45,4 @@ admin.site.register(Account, AccountAdmin)
 admin.site.register(CreditAccount, CreditAccountAdmin)
 admin.site.register(DebitAccount, DebitAccountAdmin)
 admin.site.register(Wallet, WalletAdmin)
+admin.site.register(Debt, DebtAdmin)

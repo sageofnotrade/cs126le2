@@ -514,9 +514,9 @@
             <i class="bi bi-bank sidebar-icon"></i>
             <span class="sidebar-text">Accounts</span>
         </a>
-        <a href="#" class="sidebar-item">
+        <a href="{% url 'debts_list' %}" class="sidebar-item {% if request.path == '/debts/' %}active{% endif %}">
             <i class="bi bi-credit-card sidebar-icon"></i>
-            <span class="sidebar-text">Credit cards</span>
+            <span class="sidebar-text">Debts</span>
         </a>
         <a href="{% url 'manage_budget' %}" class="sidebar-item {% if '/manage_budget/' in request.path %}active{% endif %}">
             <i class="bi bi-pie-chart sidebar-icon"></i>

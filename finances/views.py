@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Sum
+from django.db.models import Sum, Q, F, ExpressionWrapper, DecimalField
 from django.http import HttpResponse
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
@@ -10,8 +10,8 @@ from datetime import timedelta
 import calendar
 import csv
 import json
-from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet
-from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm
+from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, Debt
+from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, DebtForm
 from django import forms
 from django.contrib.auth.models import User
 
@@ -43,6 +43,70 @@ def signup(request):
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
+
+@login_required
+def debts_list(request):
+    debts = Debt.objects.filter(user=request.user)
+
+    debt_type = request.GET.get('type', '')
+    account_id = request.GET.get('account', '')
+    search = request.GET.get('search', '')
+    sort_by = request.GET.get('sort_by', 'date_issued')
+    order = request.GET.get('order', 'asc')
+
+    if debt_type:
+        debts = debts.filter(debt_type=debt_type)
+
+    if account_id:
+        debts = debts.filter(account_id=account_id)
+    
+    if search:
+        debts = debts.filter(
+            Q(person__icontains=search) |
+            Q(amount__icontains=search) |
+            Q(notes__icontains=search)
+        )
+    
+    if sort_by == 'residual_amount':
+        debts = debts.annotate(
+            residual = ExpressionWrapper(
+                F('amount') - F('paid'),
+                output_field=DecimalField()
+            )
+        ).order_by('residual' if order == 'asc' else '-residual')
+    else:
+        if sort_by:
+            debts = debts.order_by(sort_by)
+            if order == 'desc':
+                debts = debts.reverse()
+
+    accounts = Account.objects.filter(user=request.user)
+    
+    context = {
+        'debts': debts,
+        'accounts': accounts,
+    }
+
+    return render(request, 'finances/debts.html', context)
+
+@login_required
+def add_debt(request):
+    if request.method == 'POST':
+        form = DebtForm(request.POST)
+
+        if form.is_valid():
+            new_debt = form.save(commit=False)
+            new_debt.user = request.user
+            new_debt.save()
+
+            messages.success(request, 'Debt Entry created successfully!')
+            return redirect('debts_list')
+        else:
+            messages.error(request, 'There was an error with your input.')
+    else:
+        form = DebtForm()
+        
+    return render(request, 'finances/add_debt.html', {'form': form})
 
 @login_required
 def accounts_list(request):

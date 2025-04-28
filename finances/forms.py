@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet
+from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, Debt
 from django.utils import timezone
 import datetime
 
@@ -16,6 +16,22 @@ class TransactionForm(forms.ModelForm):
         super(TransactionForm, self).__init__(*args, **kwargs)
         if user:
             self.fields['category'].queryset = Category.objects.filter(user=user)
+
+class DebtForm(forms.ModelForm):
+    class Meta:
+        model = Debt
+        fields = ['person', 'amount', 'date_issued', 'date_payback', 'account', 'notes', 'debt_type']
+        widgets = {
+            'date_issued': forms.DateInput(attrs={'type': 'date'}),
+            'date_payback': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super(DebtForm, self).__init__(*args, **kwargs)
+        self.fields['debt_type'].choices = [
+            ('debt', 'Debt'),
+            ('credit', 'Credit')
+        ]
 
 class AccountForm(forms.ModelForm):
     class Meta:

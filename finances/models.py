@@ -2,6 +2,29 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+class Debt(models.Model):
+    DEBT_TYPES = (
+        ('debt', 'Debt'),
+        ('credit', 'Credit'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    person = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    date_issued = models.DateField(default=timezone.now)
+    date_payback = models.DateField()
+    account = models.ForeignKey('Account', on_delete=models.CASCADE)
+    notes = models.TextField(blank=True)
+    debt_type = models.CharField(max_length=10, choices=DEBT_TYPES)  # 'debt' or 'credit'
+
+    def __str__(self):
+        return f"{self.debt_type.capitalize()}: {self.person} owes you {self.amount}"
+
+    @property
+    def residual_amount(self):
+        return self.amount - self.paid
+
 class Account(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)

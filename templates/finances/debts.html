@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Debts{% endblock %}
+{% block navbar_title %}Debts{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mt-4">Your Debts and Credits</h2>
+
+    <!-- Search/Filter Button -->
+    <button class="btn btn-secondary my-3" id="toggleFilterBtn">
+        <i class="bi bi-filter"></i> Filter & Search
+    </button>
+
+    <!-- Filter/Search Form -->
+    <div id="filterForm" style="display:none;">
+        <form method="GET" id="filterFormContent">
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Type</label>
+                    <select class="form-control" name="type">
+                        <option value="">All</option>
+                        <option value="debt" {% if request.GET.type == 'debt' %}selected{% endif %}>Debt</option>
+                        <option value="credit" {% if request.GET.type == 'credit' %}selected{% endif %}>Credit</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Account</label>
+                    <select class="form-control" name="account">
+                        <option value="">All</option>
+                        {% for account in accounts %}
+                            <option value="{{ account.id }}" {% if request.GET.account == account.id %}selected{% endif %}>{{ account.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Search</label>
+                    <input type="text" class="form-control" name="search" value="{{ request.GET.search }}" placeholder="Search by person, amount, or notes">
+                </div>
+                <div class="col-md-3">
+                    <label>Sort By</label>
+                    <select class="form-control" name="sort_by">
+                        <option value="date_issued" {% if request.GET.sort_by == 'date_issued' %}selected{% endif %}>Date Issued</option>
+                        <option value="date_payback" {% if request.GET.sort_by == 'date_payback' %}selected{% endif %}>Date Payback</option>
+                        <option value="residual_amount" {% if request.GET.sort_by == 'residual_amount' %}selected{% endif %}>Residual Amount</option>
+                        <option value="amount" {% if request.GET.sort_by == 'amount' %}selected{% endif %}>Amount</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Order</label>
+                    <select class="form-control" name="order">
+                        <option value="asc" {% if request.GET.order == 'asc' %}selected{% endif %}>Ascending</option>
+                        <option value="desc" {% if request.GET.order == 'desc' %}selected{% endif %}>Descending</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-2">Apply Filter</button>
+        </form>
+    </div>
+
+    <!-- Add Debt/Credit Button -->
+    <button class="btn btn-primary my-3" data-bs-toggle="modal" data-bs-target="#addDebtModal">
+        <i class="bi bi-plus"></i> Add Debt/Credit
+    </button>
+
+    <div class="row">
+        {% for debt in debts %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong>{{ debt.debt_type|capfirst }}: {{ debt.person }}</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">
+                            Amount: USD {{ debt.amount }}<br>
+                            Paid: USD {{ debt.paid }}<br>
+                            Residual: USD {{ debt.residual_amount }}<br>
+                            Date Issued: {{ debt.date_issued }}<br>
+                            Payback Date: {{ debt.date_payback }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+        <p class="text-muted">No debts found.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal for adding debts -->
+<div class="modal fade" id="addDebtModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Debt/Credit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label>Person:</label>
+                        <input type="text" class="form-control" name="person" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Amount:</label>
+                        <input type="number" step="0.01" class="form-control" name="amount" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Date Issued:</label>
+                        <input type="date" class="form-control" name="date_issued" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Payback Date:</label>
+                        <input type="date" class="form-control" name="date_payback" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Account:</label>
+                        <select class="form-control" name="account">
+                            {% for account in accounts %}
+                                <option value="{{ account.id }}">{{ account.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Notes:</label>
+                        <textarea class="form-control" name="notes"></textarea>
+                    </div>
+
+                    <!-- Toggle between Debt and Credit -->
+                    <label> Type</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="debt_type" id="debtType" value="debt" checked>
+                        <label class="form-check-label" for="debtType">
+                            Debt
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="debt_type" id="creditType" value="credit">
+                        <label class="form-check-label" for="creditType">
+                            Credit
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle the filter form visibility
+    document.getElementById("toggleFilterBtn").addEventListener("click", function() {
+        const filterForm = document.getElementById("filterForm");
+        if (filterForm.style.display === "none" || filterForm.style.display === "") {
+            filterForm.style.display = "block";
+        } else {
+            filterForm.style.display = "none";
+        }
+    });
+</script>
+
+{% endblock %}
