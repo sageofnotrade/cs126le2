@@ -539,9 +539,9 @@
             <i class="bi bi-box-arrow-down sidebar-icon"></i>
             <span class="sidebar-text">Import/Export</span>
         </a>
-        <a href="#" class="sidebar-item">
+        <a href="{% url 'categories' %}" class="sidebar-item {% if '/categories/' in request.path %}active{% endif %}">
             <i class="bi bi-gear sidebar-icon"></i>
-            <span class="sidebar-text">Preferences</span>
+            <span class="sidebar-text">Categories</span>
         </a>
         <a href="#" class="sidebar-item">
             <i class="bi bi-sliders sidebar-icon"></i>

@@ -9,6 +9,8 @@ urlpatterns = [
     path('accounts/delete/<int:account_id>/', views.delete_account, name='delete_account'),
     path('summary/', views.monthly_summary, name='monthly_summary'),
     path('categories/', views.categories, name='categories'),
+    path('api/categories/', views.api_categories, name='api_categories'),
+    path('api/categories/add/', views.api_add_category, name='api_add_category'),
     path('export/', views.export_csv, name='export_csv'),
     path('budget/', views.manage_budget, name='manage_budget'),
 ] 

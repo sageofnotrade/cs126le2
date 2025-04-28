@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login, logout
@@ -309,20 +309,8 @@ def monthly_summary(request):
 
 @login_required
 def categories(request):
-    if request.method == 'POST':
-        form = CategoryForm(request.POST)
-        if form.is_valid():
-            category = form.save(commit=False)
-            category.user = request.user
-            category.save()
-            messages.success(request, 'Category added successfully.')
-            return redirect('categories')
-    else:
-        form = CategoryForm()
-    
-    categories = Category.objects.filter(user=request.user)
-    
-    return render(request, 'finances/categories.html', {'form': form, 'categories': categories})
+    # We'll handle the category management through the React component
+    return render(request, 'finances/categories.html')
 
 @login_required
 def export_csv(request):
@@ -427,3 +415,100 @@ def custom_logout(request):
     logout(request)
     messages.success(request, 'You have been successfully logged out.')
     return redirect('home')
+
+@login_required
+def api_categories(request):
+    """API endpoint to get categories for the logged-in user"""
+    categories = Category.objects.filter(user=request.user)
+    
+    # Separate categories by type
+    income_categories = []
+    expense_categories = []
+    
+    for category in categories:
+        # Check if this category has been used in any transaction to determine type
+        # If it's been used in both types, include it in both lists
+        income_used = Transaction.objects.filter(user=request.user, category=category, type='income').exists()
+        expense_used = Transaction.objects.filter(user=request.user, category=category, type='expense').exists()
+        
+        category_data = {
+            'id': category.id,
+            'name': category.name,
+            # Use a default icon based on category name, this could be improved
+            'icon': get_icon_for_category(category.name)
+        }
+        
+        if income_used or not expense_used:
+            income_categories.append(category_data)
+        
+        if expense_used or not income_used:
+            expense_categories.append(category_data)
+    
+    return JsonResponse({
+        'income': income_categories,
+        'expenses': expense_categories
+    })
+
+@login_required
+def api_add_category(request):
+    """API endpoint to add a new category"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            name = data.get('name')
+            category_type = data.get('type', 'both')  # Default to both if not specified
+            
+            if not name:
+                return JsonResponse({'error': 'Category name is required'}, status=400)
+            
+            # Create the new category
+            category = Category(name=name, user=request.user)
+            category.save()
+            
+            return JsonResponse({
+                'success': True,
+                'category': {
+                    'id': category.id,
+                    'name': category.name,
+                    'icon': get_icon_for_category(category.name)
+                }
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    
+    return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
+
+def get_icon_for_category(category_name):
+    """Helper function to determine an icon for a category based on its name"""
+    # Map common category names to Bootstrap icons
+    category_icons = {
+        'salary': 'bi-cash-coin',
+        'income': 'bi-cash-coin',
+        'investments': 'bi-graph-up-arrow',
+        'gifts': 'bi-gift',
+        'food': 'bi-cart',
+        'groceries': 'bi-cart',
+        'dining': 'bi-cup-hot',
+        'shopping': 'bi-bag',
+        'transportation': 'bi-truck',
+        'entertainment': 'bi-music-note-beamed',
+        'home': 'bi-house',
+        'rent': 'bi-house',
+        'mortgage': 'bi-house',
+        'family': 'bi-people',
+        'health': 'bi-heart-pulse',
+        'medical': 'bi-heart-pulse',
+        'sport': 'bi-heart-pulse',
+        'pets': 'bi-emoji-smile',
+        'travel': 'bi-airplane',
+        'education': 'bi-book',
+        'utilities': 'bi-lightning',
+    }
+    
+    # Check for partial matches in the category name
+    for key, icon in category_icons.items():
+        if key.lower() in category_name.lower():
+            return icon
+    
+    # Default icon
+    return 'bi-tag'

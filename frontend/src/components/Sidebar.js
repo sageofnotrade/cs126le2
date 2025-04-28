@@ -57,6 +57,12 @@ const Sidebar = () => {
             </a>
           </li>
           <li>
+            <a href="/finances/categories/" className="nav-item">
+              <i className="bi bi-tag" aria-hidden="true"></i>
+              <span className="text">Categories</span>
+            </a>
+          </li>
+          <li>
             <a href="#debts" className="nav-item">
               <i className="bi bi-cash-stack" aria-hidden="true"></i>
               <span className="text">Debts</span>
