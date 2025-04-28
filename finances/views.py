@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login, logout
@@ -374,12 +374,13 @@ def manage_budget(request):
             budget = form.save(commit=False)
             budget.user = request.user
             
-            # Handle the case where a budget for this category and month already exists
+            # Handle the case where a budget for this category and start_date already exists
             existing_budget = Budget.objects.filter(
                 user=request.user,
                 category=budget.category,
-                month__year=budget.month.year,
-                month__month=budget.month.month
+                start_date__year=budget.start_date.year,  # Corrected to use start_date
+                start_date__month=budget.start_date.month,  # Corrected to use start_date
+                account=budget.account  # Ensure account is also considered
             ).first()
             
             if existing_budget:
@@ -397,31 +398,74 @@ def manage_budget(request):
     today = timezone.now().date()
     budgets = Budget.objects.filter(
         user=request.user,
-        month__year=today.year,
-        month__month=today.month
+        start_date__year=today.year,
+        start_date__month=today.month  # Corrected to use start_date
     )
     
     budget_data = []
     for budget in budgets:
+        # Calculate the amount spent in this category for the current month
         spent = Transaction.objects.filter(
             user=request.user,
             type='expense',
             category=budget.category,
             date__year=today.year,
-            date__month=today.month
+            date__month=today.month,
+            account=budget.account  # Ensure the spending comes from the correct account
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         
+        # Calculate the remaining budget and the percentage used
+        remaining = budget.amount - spent
         percentage = round((spent / budget.amount) * 100) if budget.amount > 0 else 0
         
+        # Prepare the budget data to display
         budget_data.append({
             'category': budget.category.name,
             'budget': budget.amount,
             'spent': spent,
-            'remaining': budget.amount - spent,
-            'percentage': percentage
+            'remaining': remaining,
+            'percentage': percentage,
+            'start_date': budget.start_date,  # Include the start date for display
+            'end_date': budget.end_date,  # Include the end date for display
         })
-    
     return render(request, 'finances/manage_budget.html', {'form': form, 'budgets': budget_data})
+
+@login_required
+def update_budget(request):
+    if request.method == 'POST':
+        budget_id = request.POST['budget_id']  # Get the budget ID from the form
+        budget = get_object_or_404(Budget, id=budget_id)
+
+        # Get form data
+        category = Category.objects.get(id=request.POST['category'])
+        amount = request.POST['amount']
+        start_date = request.POST['start_date']
+        end_date = request.POST['end_date']
+        duration = request.POST['duration']
+
+        # Update the budget with new values
+        budget.category = category
+        budget.amount = amount
+        budget.start_date = start_date
+        budget.end_date = end_date
+        budget.duration = duration
+
+        budget.save()
+
+        # Return the updated budget data as JSON
+        updated_budget = {
+            'id': budget.id,
+            'category': budget.category.name,
+            'amount': budget.amount,
+            'spent': budget.spent,
+            'remaining': budget.remaining,
+            'percentage_used': budget.percentage_used,
+            'start_date': budget.start_date.strftime('%Y-%m-%d'),
+            'end_date': budget.end_date.strftime('%Y-%m-%d')
+        }
+        return JsonResponse({'success': True, 'updatedBudget': updated_budget})
+
+    return JsonResponse({'success': False})
 
 def custom_logout(request):
     logout(request)

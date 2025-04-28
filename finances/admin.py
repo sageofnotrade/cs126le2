@@ -13,8 +13,8 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 class BudgetAdmin(admin.ModelAdmin):
-    list_display = ('category', 'amount', 'month', 'user')
-    list_filter = ('category', 'month', 'user')
+    list_display = ('category', 'amount', 'start_date', 'end_date', 'user')  # Show start_date and end_date
+    list_filter = ('category', 'user', 'start_date', 'end_date')  # Filter by start_date and end_date
 
 class AccountAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'user')

@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
+{% load static %}
 
 {% block title %}Manage Budget - Budget Tracker{% endblock %}
 
 {% block content %}
 <header class="page-header mb-4">
     <h1 class="h2">Manage Budget</h1>
-    <p class="text-muted">Set and track your monthly spending limits by category</p>
+    <p class="text-muted">Set and track your spending limits by category</p>
 </header>
 
 <div class="row">
@@ -26,17 +27,18 @@
             </div>
         </section>
     </div>
+
     <div class="col-md-7 mb-4">
         <section class="current-budgets" aria-labelledby="current-budgets-heading">
             <div class="card border-0 shadow-sm">
                 <header class="card-header">
-                    <h2 class="h4 mb-0" id="current-budgets-heading">Current Month's Budgets</h2>
+                    <h2 class="h4 mb-0" id="current-budgets-heading">Current Budgets</h2>
                 </header>
                 <div class="card-body">
                     {% if budgets %}
                     <div class="table-responsive">
                         <table class="table table-striped">
-                            <caption class="visually-hidden">List of current month budgets and spending</caption>
+                            <caption class="visually-hidden">List of current budgets and spending</caption>
                             <thead>
                                 <tr>
                                     <th scope="col">Category</th>
@@ -44,26 +46,42 @@
                                     <th scope="col">Spent</th>
                                     <th scope="col">Remaining</th>
                                     <th scope="col">Progress</th>
+                                    <th scope="col">Start Date</th>
+                                    <th scope="col">End Date</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for budget in budgets %}
-                                <tr>
-                                    <td>{{ budget.category }}</td>
-                                    <td>${{ budget.budget }}</td>
-                                    <td>${{ budget.spent }}</td>
-                                    <td>${{ budget.remaining }}</td>
-                                    <td style="width: 30%;">
+                                <tr id="budget-row-{{ budget.id }}">
+                                    <td class="category">{{ budget.category }}</td>
+                                    <td class="amount">${{ budget.amount|floatformat:2 }}</td>
+                                    <td class="spent">${{ budget.spent|floatformat:2 }}</td>
+                                    <td class="remaining">${{ budget.remaining|floatformat:2 }}</td>
+                                    <td style="width: 30%;" class="progress-cell">
                                         <div class="progress" style="height: 20px;" aria-label="Budget progress for {{ budget.category }}">
-                                            <div class="progress-bar {% if budget.percentage > 80 %}bg-danger{% elif budget.percentage > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                                            <div class="progress-bar {% if budget.percentage_used > 80 %}bg-danger{% elif budget.percentage_used > 60 %}bg-warning{% else %}bg-success{% endif %}" 
                                                  role="progressbar" 
-                                                 style="width: {{ budget.percentage }}%;" 
-                                                 aria-valuenow="{{ budget.percentage }}" 
+                                                 style="width: {{ budget.percentage_used }}%;" 
+                                                 aria-valuenow="{{ budget.percentage_used }}" 
                                                  aria-valuemin="0" 
                                                  aria-valuemax="100">
-                                                {{ budget.percentage }}%
+                                                {{ budget.percentage_used }}%
                                             </div>
                                         </div>
+                                    </td>
+                                    <td class="start_date">{{ budget.start_date|date:"F j, Y" }}</td>
+                                    <td class="end_date">{{ budget.end_date|date:"F j, Y" }}</td>
+                                    <td>
+                                        <!-- Trigger Modal to Edit Budget -->
+                                        <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editBudgetModal" 
+                                                data-id="{{ budget.id }}" 
+                                                data-category="{{ budget.category.id }}" 
+                                                data-amount="{{ budget.amount }}" 
+                                                data-start_date="{{ budget.start_date|date:"Y-m-d" }}" 
+                                                data-end_date="{{ budget.end_date|date:"Y-m-d" }}">
+                                            <i class="fas fa-pencil-alt"></i> Edit
+                                        </button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -72,7 +90,7 @@
                     </div>
                     {% else %}
                     <div class="text-center p-4">
-                        <p>You haven't set any budgets for this month yet.</p>
+                        <p>You haven't set any budgets yet.</p>
                     </div>
                     {% endif %}
                 </div>
@@ -80,4 +98,57 @@
         </section>
     </div>
 </div>
-{% endblock %} 
+
+<!-- Modal for Editing Budget -->
+<div class="modal fade" id="editBudgetModal" tabindex="-1" role="dialog" aria-labelledby="editBudgetModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editBudgetModalLabel">Edit Budget</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editBudgetForm" method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select class="form-control" id="category" name="category">
+                            {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">Amount</label>
+                        <input type="number" class="form-control" id="amount" name="amount" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="start_date">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="end_date">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="duration">Duration</label>
+                        <select class="form-control" id="duration" name="duration">
+                            <option value="1 week">1 Week</option>
+                            <option value="1 month">1 Month</option>
+                        </select>
+                    </div>
+                    <input type="hidden" id="budget_id" name="budget_id">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/budget_modal.js' %}"></script>
+{% endblock %}
