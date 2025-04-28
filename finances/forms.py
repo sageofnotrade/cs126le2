@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction, Category, Budget
+from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet
 from django.utils import timezone
 import datetime
 
@@ -16,6 +16,34 @@ class TransactionForm(forms.ModelForm):
         super(TransactionForm, self).__init__(*args, **kwargs)
         if user:
             self.fields['category'].queryset = Category.objects.filter(user=user)
+
+class AccountForm(forms.ModelForm):
+    class Meta:
+        model = Account
+        fields = ['name', 'description']
+
+class DebitAccountForm(AccountForm):
+    balance = forms.DecimalField(max_digits=10, decimal_places=2)
+    maintaining_balance = forms.DecimalField(max_digits=10, decimal_places=2, required=False)
+
+    class Meta(AccountForm.Meta):
+        model = DebitAccount
+        fields = AccountForm.Meta.fields + ['balance', 'maintaining_balance']
+
+class CreditAccountForm(AccountForm):
+    current_usage = forms.DecimalField(max_digits=10, decimal_places=2, initial=0)
+    credit_limit = forms.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta(AccountForm.Meta):
+        model = CreditAccount
+        fields = AccountForm.Meta.fields + ['current_usage', 'credit_limit']
+
+class WalletForm(AccountForm):
+    balance = forms.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta(AccountForm.Meta):
+        model = Wallet
+        fields = AccountForm.Meta.fields + ['balance']
 
 class CategoryForm(forms.ModelForm):
     class Meta:

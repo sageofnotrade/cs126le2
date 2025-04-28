@@ -10,8 +10,8 @@ from datetime import timedelta
 import calendar
 import csv
 import json
-from .models import Transaction, Category, Budget
-from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm
+from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet
+from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm
 from django import forms
 from django.contrib.auth.models import User
 
@@ -43,6 +43,76 @@ def signup(request):
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
+
+@login_required
+def accounts_list(request):
+    account_types = ['Debit', 'Credit', 'Wallet']
+
+    debit_accounts = DebitAccount.objects.filter(user=request.user)
+    credit_accounts = CreditAccount.objects.filter(user=request.user)
+    wallet_accounts = Wallet.objects.filter(user=request.user)
+
+    accounts = {
+        'Debit': debit_accounts,
+        'Credit': credit_accounts,
+        'Wallet': wallet_accounts,
+    }
+
+    if request.method == 'POST':
+        account_type = request.POST.get('account_type')
+
+        form_classes = {
+            'Debit': DebitAccountForm,
+            'Credit': CreditAccountForm,
+            'Wallet': WalletForm,
+        }
+
+        form_class = form_classes.get(account_type)
+        form = form_class(request.POST)
+
+        if form.is_valid():
+            new_account = form.save(commit=False)
+            new_account.user = request.user
+
+            # Validation logic for Debit accounts
+            if account_type == 'Debit':
+                balance = form.cleaned_data.get('balance')
+                maintaining_balance = form.cleaned_data.get('maintaining_balance')
+
+                if maintaining_balance and balance < maintaining_balance:
+                    messages.error(request, "Balance must be greater than or equal to the maintaining balance.")
+                    return redirect('accounts_list')
+
+            # Validation logic for Credit accounts
+            if account_type == 'Credit':
+                current_usage = form.cleaned_data.get('current_usage')
+                credit_limit = form.cleaned_data.get('credit_limit')
+
+                if current_usage > credit_limit:
+                    messages.error(request, "Current usage cannot exceed the credit limit.")
+                    return redirect('accounts_list')
+
+            new_account.save()
+            messages.success(request, f'{account_type} account created successfully!')
+            return redirect('accounts_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = DebitAccountForm()
+
+    context = {
+        'accounts': accounts,
+        'account_types': account_types,
+        'form': form,
+    }
+
+    return render(request, 'finances/accounts.html', context)
+
+@login_required
+def delete_account(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+    account.delete()
+    return redirect('accounts_list')
 
 @login_required
 def dashboard(request):
@@ -162,6 +232,10 @@ def delete_transaction(request, pk):
     
     return render(request, 'finances/transaction_confirm_delete.html', {'transaction': transaction})
 
+@login_required
+def reports_view(request):
+    return render(request, 'reports.html')
+    
 @login_required
 def monthly_summary(request):
     if request.method == 'POST':

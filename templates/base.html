@@ -510,7 +510,7 @@
             <i class="bi bi-calendar-event sidebar-icon"></i>
             <span class="sidebar-text">Scheduled transactions</span>
         </a>
-        <a href="#" class="sidebar-item">
+        <a href="{% url 'accounts_list' %}" class="sidebar-item {% if request.path == '/accounts/' %}active{% endif %}">
             <i class="bi bi-bank sidebar-icon"></i>
             <span class="sidebar-text">Accounts</span>
         </a>
