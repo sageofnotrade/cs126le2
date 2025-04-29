@@ -515,16 +515,12 @@
             <span class="sidebar-text">Accounts</span>
         </a>
         <a href="{% url 'debts_list' %}" class="sidebar-item {% if request.path == '/debts/' %}active{% endif %}">
-            <i class="bi bi-credit-card sidebar-icon"></i>
+            <i class="bi bi-cash-coin sidebar-icon"></i>
             <span class="sidebar-text">Debts</span>
         </a>
         <a href="{% url 'manage_budget' %}" class="sidebar-item {% if '/manage_budget/' in request.path %}active{% endif %}">
             <i class="bi bi-pie-chart sidebar-icon"></i>
             <span class="sidebar-text">Budgets</span>
-        </a>
-        <a href="#" class="sidebar-item">
-            <i class="bi bi-cash-coin sidebar-icon"></i>
-            <span class="sidebar-text">Debts</span>
         </a>
         <a href="#" class="sidebar-item">
             <i class="bi bi-graph-up sidebar-icon"></i>
