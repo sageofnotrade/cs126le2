@@ -8,8 +8,8 @@ class TransactionAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'
 
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'icon')
-    list_filter = ('user',)
+    list_display = ('name', 'user', 'icon', 'type')
+    list_filter = ('user', 'type')
     search_fields = ('name',)
 
 class SubCategoryAdmin(admin.ModelAdmin):

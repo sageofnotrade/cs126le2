@@ -11,9 +11,9 @@
 
 <!-- Hidden Django form for interaction with React -->
 <form id="django-category-form" method="POST" style="display: none;">
-    {% csrf_token %}
-    {{ form|crispy }}
-</form>
+                        {% csrf_token %}
+                        {{ form|crispy }}
+            </form>
 {% endblock %}
 
 {% block extra_js %}

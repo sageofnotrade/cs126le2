@@ -501,14 +501,17 @@ def api_categories(request):
                 'id': category.id,
                 'name': category.name,
                 'icon': category.icon,
+                'type': category.type,  # Include type in the response
                 'subcategories': subcategories
             }
             
-            # Simple classification based on icon for now
-            if 'cash' in category.icon or 'graph' in category.icon:
+            # Classify based on the type field
+            if category.type == 'income':
                 income_categories.append(category_data)
             else:
                 expense_categories.append(category_data)
+                
+            logger.info(f"Categorized {category.name} as {category.type}")
         except Exception as e:
             # Log the error but continue with other categories
             logger.error(f"Error processing category {category.name}: {str(e)}")
@@ -539,11 +542,34 @@ def api_add_category(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST request required'}, status=400)
     
+    # Debug output to see what's being received
+    print(f"Adding category with POST data: {request.POST}")
+    print(f"Type field value: {request.POST.get('type', 'not provided')}")
+    
     form = CategoryForm(request.POST)
     if form.is_valid():
         category = form.save(commit=False)
         category.user = request.user
+        
+        # Explicitly set the type based on the POST data
+        if 'type' in request.POST:
+            category_type = request.POST['type']
+            if category_type == 'income':
+                category.type = 'income'
+                print("Setting category type to income")
+            elif category_type == 'expense':
+                category.type = 'expense'
+                print("Setting category type to expense")
+            else:
+                print(f"Unrecognized type value: {category_type}, defaulting to expense")
+                category.type = 'expense'
+        else:
+            print("No type provided, defaulting to expense")
+            category.type = 'expense'
+            
         category.save()
+        
+        print(f"Category saved with type: {category.type}")
         
         return JsonResponse({
             'success': True,
@@ -551,12 +577,14 @@ def api_add_category(request):
                 'id': category.id,
                 'name': category.name,
                 'icon': category.icon,
+                'type': category.type,  # Include type in response
                 'subcategories': []
             }
         })
     else:
+        print(f"Form validation errors: {form.errors}")
         return JsonResponse({'error': 'Invalid form data', 'errors': form.errors}, status=400)
-
+    
 # API endpoint for getting subcategories of a specific category
 def api_subcategories(request, category_id):
     """API endpoint to get subcategories for a specific category"""

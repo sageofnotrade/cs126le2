@@ -22,9 +22,15 @@ class Wallet(Account):
     balance = models.DecimalField(max_digits=10, decimal_places=2)
 
 class Category(models.Model):
+    CATEGORY_TYPES = (
+        ('income', 'Income'),
+        ('expense', 'Expense'),
+    )
+    
     name = models.CharField(max_length=100)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     icon = models.CharField(max_length=50, default='bi-tag')
+    type = models.CharField(max_length=7, choices=CATEGORY_TYPES, default='expense')
     
     def __str__(self):
         return self.name

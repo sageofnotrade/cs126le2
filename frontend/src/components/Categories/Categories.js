@@ -26,6 +26,8 @@ const Categories = () => {
   const [deleteItemType, setDeleteItemType] = useState('');
   const [deleteItemId, setDeleteItemId] = useState(null);
   const [deleteItemName, setDeleteItemName] = useState('');
+  // Track the current category type separately
+  const [categoryType, setCategoryType] = useState('income'); 
   
   // Initialize data from Django
   useEffect(() => {
@@ -47,6 +49,12 @@ const Categories = () => {
       return () => clearTimeout(timer);
     }
   }, [notification.show]);
+
+  // Update category type when activeTab changes
+  useEffect(() => {
+    // Convert activeTab to proper category type
+    setCategoryType(activeTab === 'expenses' ? 'expense' : 'income');
+  }, [activeTab]);
   
   const showNotification = (message, type = 'success') => {
     setNotification({
@@ -134,32 +142,28 @@ const Categories = () => {
     }
     
     try {
-      // Get the Django form
-      const form = document.getElementById('django-category-form');
-      if (!form) {
-        throw new Error('Django form not found');
-      }
+      // Log current state for debugging
+      console.log('Current activeTab when adding category:', activeTab);
       
-      // Set values in the form
-      const nameInput = form.querySelector('[name="name"]');
-      const iconInput = form.querySelector('[name="icon"]');
+      // Create form data directly
+      const formData = new FormData();
+      formData.append('name', newCategoryName);
+      formData.append('icon', selectedIcon);
       
-      if (nameInput && iconInput) {
-        nameInput.value = newCategoryName;
-        iconInput.value = selectedIcon;
-      } else {
-        throw new Error('Form inputs not found');
-      }
+      // Critical fix: Always use 'income' or 'expense' (not 'expenses')
+      // This was the source of the bug - activeTab can be 'expenses' but backend expects 'expense'
+      const type = activeTab === 'income' ? 'income' : 'expense';
+      formData.append('type', type);
+      formData.append('csrfmiddlewaretoken', window.csrfToken);
       
-      // Create form data to submit
-      const formData = new FormData(form);
+      console.log('Adding category with type:', type);
       
-      // Submit the form via AJAX
-      const response = await fetch(form.action || '/finances/categories/', {
+      // Submit the form via AJAX directly to the API endpoint
+      const response = await fetch('/finances/api/categories/add/', {
         method: 'POST',
         headers: {
-          'X-Requested-With': 'XMLHttpRequest', // This indicates an AJAX request
-          'X-CSRFToken': window.csrfToken || form.querySelector('[name="csrfmiddlewaretoken"]').value,
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': window.csrfToken,
         },
         body: formData
       });
@@ -183,7 +187,7 @@ const Categories = () => {
       showNotification('Failed to add category. Please try again.', 'danger');
     }
   };
-
+  
   const confirmDeleteCategory = (categoryId, e) => {
     if (e) {
       e.stopPropagation();
@@ -210,9 +214,8 @@ const Categories = () => {
       const category = [...categories.income, ...categories.expenses].find(c => c.id === categoryId);
       const categoryName = category ? category.name : 'Category';
       
-      // Determine the list type
-      const isIncome = category && (category.icon.includes('cash') || category.icon.includes('graph'));
-      const listType = isIncome ? 'income' : 'expenses';
+      // Determine the list type directly from where we found the category
+      const listType = categories.income.some(c => c.id === categoryId) ? 'income' : 'expenses';
       
       // Immediately update UI to remove the category
       setCategories(prevCategories => ({
@@ -312,9 +315,9 @@ const Categories = () => {
         
         // Update the selected category with fresh data
         if (selectedCategory) {
-          // Get updated category data
-          const listType = selectedCategory.icon.includes('cash') || 
-                          selectedCategory.icon.includes('graph') ? 'income' : 'expenses';
+          // Find the selected category in our refreshed state
+          // First determine which list the category belongs to
+          const listType = categories.income.some(c => c.id === selectedCategory.id) ? 'income' : 'expenses';
           
           // Find the updated category in our refreshed state
           const updatedCategories = await new Promise(resolve => {
@@ -450,9 +453,8 @@ const Categories = () => {
         
         // Update the selected category with fresh data
         if (selectedCategory) {
-          // Get updated category data
-          const listType = selectedCategory.icon.includes('cash') || 
-                          selectedCategory.icon.includes('graph') ? 'income' : 'expenses';
+          // Determine which list the category belongs to
+          const listType = categories.income.some(c => c.id === selectedCategory.id) ? 'income' : 'expenses';
           
           // Find the updated category in our refreshed state
           const updatedCategories = await new Promise(resolve => {
@@ -489,6 +491,7 @@ const Categories = () => {
     setNewCategoryName('');
     setSelectedIcon('bi-tag');
     setShowAddModal(true);
+    console.log('Opening add modal with activeTab:', activeTab);
   };
 
   const openEditModal = (category, e) => {
@@ -627,23 +630,23 @@ const Categories = () => {
               </button>
             </div>
             <div className="card-body">
-              <ul className="nav nav-tabs mb-4" role="tablist">
-                <li className="nav-item" role="presentation">
-                  <button 
-                    className={`nav-link ${activeTab === 'income' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('income')}
-                    role="tab"
-                    aria-selected={activeTab === 'income'}
-                  >
-                    Income
-                  </button>
-                </li>
-                <li className="nav-item" role="presentation">
-                  <button 
-                    className={`nav-link ${activeTab === 'expenses' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('expenses')}
-                    role="tab"
-                    aria-selected={activeTab === 'expenses'}
+            <ul className="nav nav-tabs mb-4" role="tablist">
+  <li className="nav-item" role="presentation">
+    <button 
+      className={`nav-link ${activeTab === 'income' ? 'active' : ''}`}
+      onClick={() => setActiveTab('income')}
+      role="tab"
+      aria-selected={activeTab === 'income'}
+    >
+      Income
+    </button>
+  </li>
+  <li className="nav-item" role="presentation">
+    <button 
+      className={`nav-link ${activeTab === 'expenses' ? 'active' : ''}`}
+      onClick={() => setActiveTab('expenses')}
+      role="tab"
+      aria-selected={activeTab === 'expenses'}  
                   >
                     Expenses
                   </button>
@@ -730,7 +733,10 @@ const Categories = () => {
                       name="categoryType" 
                       id="incomeType" 
                       checked={activeTab === 'income'}
-                      onChange={() => setActiveTab('income')}
+                      onChange={() => {
+                        console.log('Setting category type to income');
+                        setActiveTab('income');
+                      }}
                     />
                     <label className="form-check-label" htmlFor="incomeType">
                       Income
@@ -743,7 +749,10 @@ const Categories = () => {
                       name="categoryType" 
                       id="expenseType" 
                       checked={activeTab === 'expenses'}
-                      onChange={() => setActiveTab('expenses')}
+                      onChange={() => {
+                        console.log('Setting category type to expense');
+                        setActiveTab('expenses');
+                      }}
                     />
                     <label className="form-check-label" htmlFor="expenseType">
                       Expense
@@ -764,6 +773,14 @@ const Categories = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+                
+                {/* Hidden form for Django compatibility */}
+                <div id="django-category-form" style={{ display: 'none' }}>
+                  {/* This will be filled programmatically */}
+                  <input type="hidden" name="name" />
+                  <input type="hidden" name="icon" />
+                  <input type="hidden" name="type" />
                 </div>
               </form>
             </div>
@@ -1013,4 +1030,4 @@ const Categories = () => {
   );
 };
 
-export default Categories; 
+export default Categories;

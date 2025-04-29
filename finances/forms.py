@@ -59,10 +59,32 @@ class WalletForm(AccountForm):
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
-        fields = ['name', 'icon']
+        fields = ['name', 'icon', 'type']
         widgets = {
-            'icon': forms.HiddenInput()  # This will be set by JavaScript
+            'icon': forms.HiddenInput(),  # This will be set by JavaScript
+            'type': forms.HiddenInput()  # This will be set by JavaScript too
         }
+    
+    def clean_type(self):
+        """
+        Ensure the type field is properly formatted
+        """
+        type_value = self.cleaned_data.get('type')
+        print(f"Cleaning type value: {type_value}")
+        
+        # If type is 'expenses', convert to 'expense'
+        if type_value == 'expenses':
+            type_value = 'expense'
+            print(f"Converted 'expenses' to 'expense'")
+        
+        # Ensure it's one of the valid choices
+        valid_types = dict(Category.CATEGORY_TYPES).keys()
+        if type_value not in valid_types:
+            print(f"Invalid type '{type_value}', defaulting to 'expense'")
+            return 'expense'  # Default to expense if invalid
+            
+        print(f"Final type value: {type_value}")
+        return type_value
 
 class SubCategoryForm(forms.ModelForm):
     class Meta:
