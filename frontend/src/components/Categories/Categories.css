@@ -105,12 +105,14 @@
 
 /* Category item styling */
 .category-item {
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+  cursor: grab;
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  border-left: 3px solid transparent;
 }
 
 .category-item:hover {
-  background-color: #f8f9fa;
+  background-color: #f0f7ff;
+  border-left: 3px solid #2196f3;
 }
 
 .category-name {
@@ -237,4 +239,63 @@
 .icon-preview i {
   font-size: 1.1rem;
   color: #2196f3;
+}
+
+/* Wrapper for dragging item */
+.dragging-wrapper {
+  pointer-events: auto !important;
+}
+
+/* Drag and drop styling */
+.category-item.dragging {
+  box-shadow: 0 8px 24px rgba(33, 150, 243, 0.3), 0 3px 8px rgba(33, 150, 243, 0.2) !important;
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3 !important;
+  border-radius: 6px !important;
+  border-left: 3px solid #2196f3 !important;
+  opacity: 0.95;
+  z-index: 9999 !important;
+  transform: scale(1.02) !important;
+  cursor: grabbing;
+  position: relative;
+  transition: none !important;
+  height: auto !important;
+}
+
+.category-item.dragging .category-icon {
+  background-color: #bbdefb;
+}
+
+.category-item.dragging .category-icon i {
+  color: #0d6efd;
+}
+
+/* During drag animation */
+.list-group.dragging {
+  background-color: #f8f9fa;
+}
+
+/* When dragging over the list */
+.list-group.dragging-over {
+  background-color: #f0f7ff;
+  border-radius: 4px;
+  padding: 4px 0;
+  transition: background-color 0.2s ease;
+}
+
+/* CSS to ensure the placeholder works correctly */
+.react-beautiful-dnd-placeholder {
+  opacity: 0.3;
+  background: #e3f2fd;
+  border: 1px dashed #2196f3 !important;
+  border-left: 3px solid #2196f3 !important;
+  margin: 4px 0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+/* Fix for the document body during drag to prevent unwanted scrolling */
+body.dnd-dragging {
+  overflow: hidden;
+  user-select: none;
 } 

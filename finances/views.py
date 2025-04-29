@@ -484,8 +484,8 @@ def api_categories(request):
     
     logger = logging.getLogger(__name__)
     
-    # Get all categories for the user
-    categories = Category.objects.filter(user=request.user)
+    # Get all categories for the user, ordered by the order field
+    categories = Category.objects.filter(user=request.user).order_by('order', 'name')
     logger.info(f"User {request.user.username} has {categories.count()} categories")
     
     income_categories = []
@@ -502,6 +502,7 @@ def api_categories(request):
                 'name': category.name,
                 'icon': category.icon,
                 'type': category.type,  # Include type in the response
+                'order': category.order,  # Include order in the response
                 'subcategories': subcategories
             }
             
@@ -754,3 +755,46 @@ def get_available_icons():
         { 'icon': 'bi-book', 'name': 'Education' },
         { 'icon': 'bi-lightning', 'name': 'Utilities' }
     ]
+
+@login_required
+def api_reorder_categories(request):
+    """API endpoint to update the order of categories"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        # Parse JSON data
+        data = json.loads(request.body)
+        category_type = data.get('category_type')
+        category_ids = data.get('category_ids', [])
+        
+        # Validate data
+        if not category_type or not category_ids:
+            return JsonResponse({'error': 'Missing required data'}, status=400)
+        
+        if category_type not in ['income', 'expense']:
+            return JsonResponse({'error': 'Invalid category type'}, status=400)
+        
+        # Check if all category ids belong to the user
+        categories = Category.objects.filter(
+            user=request.user, 
+            id__in=category_ids,
+            type=category_type
+        )
+        
+        # Check if we found all the categories
+        if categories.count() != len(category_ids):
+            return JsonResponse({'error': 'One or more categories not found'}, status=404)
+        
+        # Update the order for each category
+        for index, category_id in enumerate(category_ids):
+            category = categories.get(id=category_id)
+            category.order = index
+            category.save()
+        
+        return JsonResponse({'success': True})
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
