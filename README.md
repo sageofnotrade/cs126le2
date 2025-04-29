@@ -80,10 +80,18 @@ This application allows users to:
 - `frontend/src/components/Features.js` - Features section of landing page 
 - `frontend/src/components/Testimonial.js` - Testimonials section
 - `frontend/src/components/CallToAction.js` - CTA section
+- `frontend/src/components/Dashboard.js` - Main dashboard component
+- `frontend/src/components/Sidebar.js` - Sidebar navigation component
+- `frontend/src/components/Categories/Categories.js` - Category management component
+- `frontend/src/components/Categories/Categories.css` - Styling for category management
+
+### CSS Files
+- `static/css/homepage.css` - CSS for the landing page
+- `frontend/src/components/Dashboard.css` - Styling for dashboard
+- `frontend/src/components/Sidebar.css` - Styling for sidebar navigation
+- `frontend/src/components/Categories/Categories.css` - Styling for category management
 
 ### Static Files
-
-- `static/css/homepage.css` - CSS for the landing page
 - `static/img/` - Images used in the app
 - `frontend/static/` - Compiled frontend assets
 
@@ -115,6 +123,10 @@ Central hub showing financial overview with:
 
 ### Category Management
 - Create and manage categories (`/finances/categories/`)
+- Categories are properly typed as 'income' or 'expense' through a dedicated field
+- Categories can use any icon regardless of their type (income/expense)
+- Support for subcategories within each main category
+- Interactive UI with real-time feedback
 
 ### Budget Management
 - Set and monitor budgets (`/finances/budget/`)
@@ -142,8 +154,43 @@ Central hub showing financial overview with:
 1. Global styles are in `templates/base.html`
 2. Page-specific styles are in respective template files
 3. Homepage styles are in `static/css/homepage.css`
+4. Component-specific styles are in their respective CSS files
 
 ### Frontend React Components
 1. Frontend source files are in `frontend/src/`
 2. After changes, run `npm run dev` in the frontend directory
 3. Compiled output goes to `frontend/static/`
+
+## Recent Changes
+
+### Category System Enhancement (2023-07)
+- Added proper `type` field to the Category model with choices 'income' and 'expense'
+- Replaced icon-based classification with explicit type-based classification in API responses
+- Updated frontend to use the type field from the Category model
+- Categories can now use any icon regardless of their income/expense classification
+- Added support for subcategories with full CRUD operations
+- Implemented expandable category listing for better organization
+- Added icon selection UI for both categories and subcategories
+
+### React Components Added (2023-07)
+- Created a dedicated Categories component with modular architecture
+- Added Dashboard component for the main user interface
+- Implemented Sidebar navigation component
+- Added CSS modules for component-specific styling
+
+### Backend API Enhancements (2023-07)
+- Created RESTful endpoints for category and subcategory operations
+- Added proper error handling and validation
+- Implemented efficient database queries for category management
+
+### Key files changed or added:
+- `finances/models.py` - Added `type` field to Category model and SubCategory model
+- `finances/forms.py` - Updated CategoryForm to include the type field
+- `finances/views.py` - Added API endpoints and modified classification logic
+- `finances/urls.py` - Added new API routes
+- `frontend/src/components/Categories/Categories.js` - New component for category management
+- `frontend/src/components/Categories/Categories.css` - Styling for category component
+- `frontend/src/components/Dashboard.js` - Main dashboard UI component
+- `frontend/src/components/Sidebar.js` - Navigation sidebar component
+- `frontend/src/components/Dashboard.css` - Dashboard styling
+- `frontend/src/components/Sidebar.css` - Sidebar styling
