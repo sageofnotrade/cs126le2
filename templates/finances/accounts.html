@@ -7,6 +7,19 @@
 <div class="container-fluid">
     <h2 class="mt-4">Your Accounts</h2>
 
+    <div class="d-flex">
+        <div>
+            <!-- Total Balance by Account Type Pie Chart -->
+            <h5>Total Balance by Account Type</h5>
+            <canvas id="balancePieChart"></canvas>
+        </div>
+        <div>
+            <!-- Individual Account Balances Pie Chart -->
+            <h5>Total Balance by Individual Accounts</h5>
+            <canvas id="accountPieChart"></canvas>
+        </div>
+    </div>
+
     <button class="btn btn-primary my-3" data-bs-toggle="modal" data-bs-target="#addAccountModal">
         <i class="bi bi-plus"></i> Add Account
     </button>
@@ -155,7 +168,6 @@
             });
         }
     
-        // Initialize correct tab state on page load
         updateTabState('debit');
     
         tabs.forEach(tab => {
@@ -164,7 +176,74 @@
                 updateTabState(selectedTab);
             });
         });
-    });    
+
+        let data = JSON.parse("{{ chartdata | escapejs }}");
+        const totalBalanceByType = data.total_balance_by_type;
+        const accountTypeLabels = ['Debit', 'Credit', 'Wallet'];
+
+        const balancePieCtx = document.getElementById('balancePieChart').getContext('2d');
+        const balancePieChart = new Chart(balancePieCtx, {
+            type: 'pie',
+            data: {
+                labels: accountTypeLabels,
+                datasets: [{
+                    label: 'Account Balance Distribution',
+                    data: totalBalanceByType,
+                    backgroundColor: ['rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(75, 192, 192, 0.6)'],
+                    borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return tooltipItem.label + ': USD ' + tooltipItem.raw.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const accountNames = data.account_names;
+        const accountBalances = data.account_balances;
+        
+        const accountChartCtx = document.getElementById('accountPieChart').getContext('2d');
+        const accountPieChart = new Chart(accountChartCtx, {
+            type: 'pie',
+            data: {
+                labels: accountNames,
+                datasets: [{
+                    label: 'Individual Account Balance Distribution',
+                    data: accountBalances,
+                    backgroundColor: ['rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(75, 192, 192, 0.6)'],
+                    borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return tooltipItem.label + ': USD ' + tooltipItem.raw.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
 </script>
 
 {% endblock %}

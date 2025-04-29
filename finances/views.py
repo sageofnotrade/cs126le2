@@ -47,17 +47,42 @@ def signup(request):
 
 @login_required
 def accounts_list(request):
-    account_types = ['Debit', 'Credit', 'Wallet']
-
     debit_accounts = DebitAccount.objects.filter(user=request.user)
     credit_accounts = CreditAccount.objects.filter(user=request.user)
     wallet_accounts = Wallet.objects.filter(user=request.user)
 
-    accounts = {
-        'Debit': debit_accounts,
-        'Credit': credit_accounts,
-        'Wallet': wallet_accounts,
+    total_debit_balance = sum(account.balance for account in debit_accounts)
+    total_credit_balance = sum(account.credit_limit - account.current_usage for account in credit_accounts)
+    total_wallet_balance = sum(account.balance for account in wallet_accounts)
+    total_balance = total_debit_balance + total_credit_balance + total_wallet_balance
+    
+    account_types = ['Debit', 'Credit', 'Wallet']
+    account_names = []
+    account_balances = []
+    
+    for account in debit_accounts:
+        account_names.append(account.name)
+        account_balances.append(account.balance)
+
+    for account in credit_accounts:
+        account_names.append(account.name)
+        account_balances.append(account.credit_limit - account.current_usage)
+
+    for account in wallet_accounts:
+        account_names.append(account.name)
+        account_balances.append(account.balance)
+    
+    total_account_type_balance = {
+        'Debit': total_debit_balance,
+        'Credit': total_credit_balance,
+        'Wallet': total_wallet_balance,
     }
+
+    total_balance_by_type = [
+        total_debit_balance,
+        total_credit_balance,
+        total_wallet_balance,
+    ]
 
     if request.method == 'POST':
         account_type = request.POST.get('account_type')
@@ -100,10 +125,22 @@ def accounts_list(request):
             messages.error(request, 'Please correct the errors below.')
     else:
         form = DebitAccountForm()
+    
+    chartdata = json.dumps({
+        'total_balance': float(total_balance),
+        'total_balance_by_type': [float(balance) for balance in total_balance_by_type],
+        'account_names': account_names,
+        'account_balances': [float(balance) for balance in account_balances],
+    })
 
     context = {
-        'accounts': accounts,
         'account_types': account_types,
+        'accounts': {
+            'Debit': debit_accounts,
+            'Credit': credit_accounts,
+            'Wallet': wallet_accounts,
+        },
+        'chartdata': chartdata,
         'form': form,
     }
 
