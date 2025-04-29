@@ -1,133 +1,50 @@
 {% extends 'base.html' %}
-{% load crispy_forms_tags %}
 {% load static %}
+{% load crispy_forms_tags %}
 
 {% block title %}Categories - Budget Tracker{% endblock %}
 
+{% block navbar_title %}Categories{% endblock %}
+
 {% block content %}
-<header class="page-header mb-4">
-    <h1 class="h2">Categories</h1>
-    <p class="text-muted">Manage your transaction categories</p>
-</header>
-
-<div class="row">
-    <div class="col-md-5 mb-4">
-        <section class="add-category" aria-labelledby="add-category-heading">
-            <div class="card border-0 shadow-sm">
-                <header class="card-header">
-                    <h2 class="h4 mb-0" id="add-category-heading">Add Category</h2>
-                </header>
-                <div class="card-body">
-                    <form method="POST">
-                        {% csrf_token %}
-                        {{ form|crispy }}
-                        <button type="submit" class="btn btn-primary w-100 mt-4">Save Category</button>
-                    </form>
-                </div>
-            </div>
-        </section>
-    </div>
-    <div class="col-md-7 mb-4">
-        <section class="category-list" aria-labelledby="category-list-heading">
-            <div class="card border-0 shadow-sm">
-                <header class="card-header">
-                    <h2 class="h4 mb-0" id="category-list-heading">Your Categories</h2>
-                </header>
-                <div class="card-body p-0">
-                    {% if categories %}
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <caption class="visually-hidden">List of your transaction categories</caption>
-                            <thead>
-                                <tr>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">Count</th>
-                                    <th scope="col">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for category in categories %}
-                                <tr>
-                                    <td>{{ category.name }}</td>
-                                    <td>{{ category.transaction_set.count }}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary edit-category" 
-                                                data-id="{{ category.id }}" 
-                                                data-name="{{ category.name }}"
-                                                aria-label="Edit {{ category.name }}">
-                                            <i class="bi bi-pencil" aria-hidden="true"></i> Edit
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center p-4">
-                        <p>You haven't created any categories yet.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </section>
-    </div>
-</div>
-
-<!-- Edit Category Modal -->
-<div class="modal fade" id="editCategoryModal" tabindex="-1" role="dialog" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <header class="modal-header">
-                <h2 class="modal-title h5" id="editCategoryModalLabel">Edit Category</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </header>
-            <form id="editCategoryForm" method="POST">
-                <div class="modal-body">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="editCategoryName" class="form-label">Category Name</label>
-                        <input type="text" class="form-control" id="editCategoryName" name="name" required>
-                        <input type="hidden" id="editCategoryId" name="category_id">
-                    </div>
-                </div>
-                <footer class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save changes</button>
-                </footer>
-            </form>
-        </div>
-    </div>
-</div>
-
 <div id="react-categories"></div>
+
+<!-- Hidden Django form for interaction with React -->
+<form id="django-category-form" method="POST" style="display: none;">
+    {% csrf_token %}
+    {{ form|crispy }}
+</form>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'frontend/main.js' %}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Edit Category Modal
-    const editButtons = document.querySelectorAll('.edit-category');
+<script type="text/javascript">
+    // Make the available icons and CSRF token available to React
+    window.availableIcons = {{ available_icons|safe }};
     
-    editButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const categoryId = this.getAttribute('data-id');
-            const categoryName = this.getAttribute('data-name');
-            
-            document.getElementById('editCategoryId').value = categoryId;
-            document.getElementById('editCategoryName').value = categoryName;
-            
-            const modal = new bootstrap.Modal(document.getElementById('editCategoryModal'));
-            modal.show();
-        });
-    });
-
-    const categoriesContainer = document.getElementById('react-categories');
-    if (categoriesContainer) {
-      // The React component will be mounted here by the main.js script
-    }
-});
+    // Create array of category data with subcategories
+    window.djangoCategories = {
+        items: [
+        {% for category in categories %}
+            {
+                "id": {{ category.id }},
+                "name": "{{ category.name|escapejs }}",
+                "icon": "{{ category.icon|escapejs }}",
+                "subcategories": [
+                {% for subcategory in category.subcategory_set.all %}
+                    {
+                        "id": {{ subcategory.id }},
+                        "name": "{{ subcategory.name|escapejs }}",
+                        "icon": "{{ subcategory.icon|escapejs }}"
+                    }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+                ]
+            }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+        ]
+    };
+    
+    // Get CSRF token
+    window.csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 </script>
 {% endblock %} 

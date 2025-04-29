@@ -1,21 +1,32 @@
 from django import forms
-from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet
+from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory
 from django.utils import timezone
 import datetime
 
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['title', 'amount', 'date', 'type', 'category', 'notes']
+        fields = ['title', 'amount', 'date', 'type', 'category', 'subcategory', 'notes']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
-            'notes': forms.Textarea(attrs={'rows': 3}),
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         }
     
-    def __init__(self, *args, user=None, **kwargs):
-        super(TransactionForm, self).__init__(*args, **kwargs)
-        if user:
-            self.fields['category'].queryset = Category.objects.filter(user=user)
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Customize the queryset for the category field
+        if self.user:
+            self.fields['category'].queryset = Category.objects.filter(user=self.user)
+            
+            # Disable subcategory field initially - it will be populated via JavaScript
+            self.fields['subcategory'].queryset = SubCategory.objects.none()
+            
+            # If we're editing and have a category selected, populate subcategories
+            if 'instance' in kwargs and kwargs['instance'] and kwargs['instance'].category:
+                category = kwargs['instance'].category
+                self.fields['subcategory'].queryset = SubCategory.objects.filter(parent_category=category)
 
 class AccountForm(forms.ModelForm):
     class Meta:
@@ -48,7 +59,31 @@ class WalletForm(AccountForm):
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
-        fields = ['name']
+        fields = ['name', 'icon']
+        widgets = {
+            'icon': forms.HiddenInput()  # This will be set by JavaScript
+        }
+
+class SubCategoryForm(forms.ModelForm):
+    class Meta:
+        model = SubCategory
+        fields = ['name', 'icon', 'parent_category']
+        widgets = {
+            'parent_category': forms.HiddenInput(),
+        }
+        
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        category_id = kwargs.pop('category_id', None)
+        super().__init__(*args, **kwargs)
+        
+        if user and category_id:
+            # Set the initial value for parent_category
+            self.fields['parent_category'].initial = category_id
+            
+            # Validate that the category belongs to the user
+            if not Category.objects.filter(id=category_id, user=user).exists():
+                raise forms.ValidationError("Invalid category selection")
 
 class BudgetForm(forms.ModelForm):
     month = forms.DateField(

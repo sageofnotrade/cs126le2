@@ -11,6 +11,11 @@ urlpatterns = [
     path('categories/', views.categories, name='categories'),
     path('api/categories/', views.api_categories, name='api_categories'),
     path('api/categories/add/', views.api_add_category, name='api_add_category'),
+    path('api/categories/<int:category_id>/delete/', views.api_delete_category, name='api_delete_category'),
+    path('api/categories/<int:category_id>/subcategories/', views.api_subcategories, name='api_subcategories'),
+    path('api/categories/<int:category_id>/subcategories/add/', views.api_add_subcategory, name='api_add_subcategory'),
+    path('api/subcategories/<int:subcategory_id>/delete/', views.api_delete_subcategory, name='api_delete_subcategory'),
+    path('api/subcategories/<int:subcategory_id>/update/', views.api_update_subcategory, name='api_update_subcategory'),
     path('export/', views.export_csv, name='export_csv'),
     path('budget/', views.manage_budget, name='manage_budget'),
 ] 

@@ -24,12 +24,24 @@ class Wallet(Account):
 class Category(models.Model):
     name = models.CharField(max_length=100)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    icon = models.CharField(max_length=50, default='bi-tag')
     
     def __str__(self):
         return self.name
     
     class Meta:
         verbose_name_plural = "Categories"
+
+class SubCategory(models.Model):
+    name = models.CharField(max_length=100)
+    parent_category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories')
+    icon = models.CharField(max_length=50, default='bi-tag-fill')
+    
+    def __str__(self):
+        return f"{self.parent_category.name} - {self.name}"
+    
+    class Meta:
+        verbose_name_plural = "SubCategories"
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = (
@@ -42,6 +54,7 @@ class Transaction(models.Model):
     date = models.DateField(default=timezone.now)
     type = models.CharField(max_length=7, choices=TRANSACTION_TYPES)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     notes = models.TextField(blank=True, null=True)
     

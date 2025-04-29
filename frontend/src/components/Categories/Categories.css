@@ -1,119 +1,46 @@
-.categories-container {
-  padding: 1rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.categories-header {
-  background-color: #2196f3;
-  color: white;
-  padding: 1rem;
-  border-radius: 4px 4px 0 0;
-  display: flex;
-  align-items: center;
-}
-
-.categories-header h1 {
-  font-size: 1.5rem;
-  margin: 0;
-}
-
-.categories-tabs {
-  margin-top: 1rem;
-}
-
-.nav-tabs .nav-link {
-  color: #495057;
-  cursor: pointer;
-}
-
-.nav-tabs .nav-link.active {
-  color: #2196f3;
-  font-weight: 500;
-}
-
-.categories-content {
-  margin-top: 1rem;
-  border: 1px solid #dee2e6;
-  border-radius: 0 0 4px 4px;
-  padding: 1rem;
-  background-color: #fff;
-}
-
-.categories-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.category-item {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.category-item:last-child {
-  border-bottom: none;
-}
-
 .category-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   background-color: #f1f8fe;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 1rem;
 }
 
 .category-icon i {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   color: #2196f3;
 }
 
-.category-name {
-  flex: 1;
+.subcategory-icon {
+  width: 30px;
+  height: 30px;
+  background-color: #f8f9fa;
 }
 
-.category-actions {
-  display: flex;
-  align-items: center;
+.card {
+  transition: all 0.3s ease;
 }
 
-.expand-button {
-  background: none;
-  border: none;
+.nav-tabs .nav-link {
+  color: #495057;
   cursor: pointer;
-  font-size: 1.25rem;
-  color: #6c757d;
+  border-bottom-width: 2px;
 }
 
-.expand-button:hover {
+.nav-tabs .nav-link.active {
   color: #2196f3;
+  font-weight: 500;
+  border-bottom-color: #2196f3;
 }
 
-.add-category {
-  margin-top: 1.5rem;
+.page-header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.tab-content {
   padding-top: 1rem;
-  border-top: 1px solid #dee2e6;
-}
-
-.input-group .btn-primary {
-  background-color: #2196f3;
-  border-color: #2196f3;
-}
-
-.input-group .btn-primary:hover:not(:disabled) {
-  background-color: #0d8af0;
-  border-color: #0d8af0;
-}
-
-.input-group .btn-primary:disabled {
-  background-color: #6c757d;
-  border-color: #6c757d;
-  cursor: not-allowed;
 }
 
 .tab-content > .tab-pane {
@@ -134,4 +61,180 @@
 
 .fade.show {
   opacity: 1;
+}
+
+/* Notification toast styling */
+.notification-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  min-width: 250px;
+  max-width: 350px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  animation: slideIn 0.3s ease-out forwards;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.list-group-item {
+  border-left: none;
+  border-right: none;
+  border-radius: 0 !important;
+}
+
+.list-group-item:first-child {
+  border-top: none;
+}
+
+.list-group-item:last-child {
+  border-bottom: none;
+}
+
+/* Category item styling */
+.category-item {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.category-item:hover {
+  background-color: #f8f9fa;
+}
+
+.category-name {
+  display: flex;
+  align-items: center;
+}
+
+/* Subcategory styling */
+.subcategories-container {
+  padding-left: 2.5rem;
+  background-color: #f8f9fa;
+  border-top: none;
+}
+
+.subcategories-container .list-group {
+  margin-bottom: 0;
+}
+
+.subcategory-item {
+  padding-left: 0;
+  padding-right: 0;
+  background-color: transparent;
+  border-color: #eee;
+}
+
+.subcategory-item:last-child {
+  border-bottom: none;
+}
+
+/* Modal styling */
+.modal-backdrop.show {
+  opacity: 0.5;
+}
+
+.modal.show {
+  display: block;
+  padding-right: 17px;
+}
+
+.modal-content {
+  border: none;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.modal-footer {
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+/* Icon selection styling */
+.icon-selection {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.icon-option {
+  width: 36px;
+  height: 36px;
+  background-color: #f1f8fe;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.icon-option:hover {
+  background-color: #e3f2fd;
+  transform: scale(1.1);
+}
+
+.icon-option.selected {
+  border-color: #2196f3;
+  background-color: #e3f2fd;
+  transform: scale(1.1);
+}
+
+.icon-option i {
+  font-size: 1.1rem;
+  color: #2196f3;
+}
+
+/* Smaller icon options for subcategories */
+.icon-option.small {
+  width: 30px;
+  height: 30px;
+}
+
+.icon-option.small i {
+  font-size: 0.9rem;
+}
+
+/* Make the subcategory icon grid more compact */
+.icon-selection .small {
+  gap: 5px;
+}
+
+.selected-icon-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-preview {
+  width: 36px;
+  height: 36px;
+  background-color: #e3f2fd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #2196f3;
+}
+
+.icon-preview i {
+  font-size: 1.1rem;
+  color: #2196f3;
 } 
