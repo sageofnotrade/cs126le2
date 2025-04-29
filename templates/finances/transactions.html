@@ -176,27 +176,67 @@
                         <input type="text" class="form-control" id="transaction-title" name="title" required>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="transaction-amount" class="form-label">Amount</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="transaction-amount" name="amount" step="0.01" min="0.01" required>
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="transaction-amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text" id="currency-symbol">₱</span>
+                                <input type="number" class="form-control" id="transaction-amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="transaction-currency" class="form-label">Currency</label>
+                            <select class="form-select" id="transaction-currency" name="currency">
+                                <option value="PHP" selected>₱ PHP</option>
+                                <option value="USD">$ USD</option>
+                                <option value="EUR">€ EUR</option>
+                                <option value="GBP">£ GBP</option>
+                                <option value="JPY">¥ JPY</option>
+                                <option value="CNY">¥ CNY</option>
+                                <option value="KRW">₩ KRW</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="transaction-date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="transaction-date" name="date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="transaction-time" class="form-label">Time</label>
+                            <input type="time" class="form-control" id="transaction-time" name="time" required>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="transaction-date" class="form-label">Date</label>
-                        <input type="date" class="form-control" id="transaction-date" name="date" required>
+                        <label for="transaction-account" class="form-label">Account</label>
+                        <div class="input-group">
+                            <select class="form-select" id="transaction-account" name="transaction_account">
+                                <option value="">-- Select Account --</option>
+                                {% for account in accounts %}
+                                <option value="{{ account.id }}">{{ account.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="mb-3">
                         <label for="transaction-category" class="form-label">Category</label>
-                        <select class="form-select" id="transaction-category" name="category">
-                            <option value="">-- Select Category --</option>
-                            {% for category in categories %}
-                            <option value="{{ category.id }}">{{ category.name }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="input-group">
+                            <select class="form-select" id="transaction-category" name="category">
+                                <option value="">-- Select Category --</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <a href="{% url 'categories' %}" class="btn btn-outline-secondary" target="_blank" title="Add new category">
+                                <i class="bi bi-plus-lg"></i>
+                            </a>
+                        </div>
+                        <div class="mt-2">
+                            <input type="text" class="form-control form-control-sm" id="category-search" placeholder="Search categories...">
+                        </div>
                     </div>
                     
                     <div class="mb-3">
@@ -207,8 +247,13 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="transaction-notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="transaction-notes" name="notes" rows="3"></textarea>
+                        <label for="transaction-notes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="transaction-notes" name="notes" rows="2" placeholder="Add notes about this transaction"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="transaction-photo" class="form-label">Photo (Optional)</label>
+                        <input type="file" class="form-control" id="transaction-photo" name="photo" accept="image/*">
                     </div>
                 </form>
             </div>
@@ -304,6 +349,39 @@
         
         addExpenseBtn.addEventListener('click', () => {
             openTransactionModal('expense');
+        });
+        
+        // Currency change event to update the currency symbol
+        document.getElementById('transaction-currency').addEventListener('change', function() {
+            const currencySymbol = document.getElementById('currency-symbol');
+            switch(this.value) {
+                case 'PHP': currencySymbol.textContent = '₱'; break;
+                case 'USD': currencySymbol.textContent = '$'; break;
+                case 'EUR': currencySymbol.textContent = '€'; break;
+                case 'GBP': currencySymbol.textContent = '£'; break;
+                case 'JPY': currencySymbol.textContent = '¥'; break;
+                case 'CNY': currencySymbol.textContent = '¥'; break;
+                case 'KRW': currencySymbol.textContent = '₩'; break;
+                default: currencySymbol.textContent = '₱';
+            }
+        });
+        
+        // Search categories
+        document.getElementById('category-search').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const categorySelect = document.getElementById('transaction-category');
+            const options = categorySelect.querySelectorAll('option');
+            
+            options.forEach(option => {
+                if (option.value === '') return; // Skip the default option
+                
+                const text = option.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    option.style.display = '';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
         });
         
         // Save transaction
@@ -468,9 +546,14 @@
             document.getElementById('transaction-id').value = '';
             document.getElementById('transaction-type').value = type;
             
-            // Set default date to today
-            const today = new Date();
-            document.getElementById('transaction-date').value = formatDateForInput(today);
+            // Set default date and time to now
+            const now = new Date();
+            document.getElementById('transaction-date').value = formatDateForInput(now);
+            document.getElementById('transaction-time').value = formatTimeForInput(now);
+            
+            // Set currency to PHP by default
+            document.getElementById('transaction-currency').value = 'PHP';
+            document.getElementById('currency-symbol').textContent = '₱';
             
             // Update modal title based on transaction type
             const modalTitle = type === 'income' ? 'Add Income' : 'Add Expense';
@@ -490,9 +573,39 @@
                     document.getElementById('transaction-title').value = transaction.title;
                     document.getElementById('transaction-amount').value = transaction.amount;
                     document.getElementById('transaction-date').value = formatDateForInput(new Date(transaction.date));
+                    
+                    // Set time if available
+                    if (transaction.time) {
+                        document.getElementById('transaction-time').value = transaction.time.substring(0, 5); // HH:MM format
+                    } else {
+                        document.getElementById('transaction-time').value = formatTimeForInput(new Date());
+                    }
+                    
+                    // Set currency and update symbol
+                    if (transaction.currency) {
+                        document.getElementById('transaction-currency').value = transaction.currency;
+                        // Update the currency symbol
+                        const currencySymbol = document.getElementById('currency-symbol');
+                        switch(transaction.currency) {
+                            case 'PHP': currencySymbol.textContent = '₱'; break;
+                            case 'USD': currencySymbol.textContent = '$'; break;
+                            case 'EUR': currencySymbol.textContent = '€'; break;
+                            case 'GBP': currencySymbol.textContent = '£'; break;
+                            case 'JPY': currencySymbol.textContent = '¥'; break;
+                            case 'CNY': currencySymbol.textContent = '¥'; break;
+                            case 'KRW': currencySymbol.textContent = '₩'; break;
+                            default: currencySymbol.textContent = '₱';
+                        }
+                    }
+                    
                     document.getElementById('transaction-type').value = transaction.type;
                     document.getElementById('transaction-category').value = transaction.category || '';
                     document.getElementById('transaction-notes').value = transaction.notes || '';
+                    
+                    // Set account if available
+                    if (transaction.transaction_account) {
+                        document.getElementById('transaction-account').value = transaction.transaction_account;
+                    }
                     
                     // Load subcategories if category is selected
                     if (transaction.category) {
@@ -556,9 +669,13 @@
                 id: transactionId,
                 title: formData.get('title'),
                 amount: formData.get('amount'),
+                currency: formData.get('currency'),
                 date: formData.get('date'),
+                time: formData.get('time'),
                 type: formData.get('type'),
                 category: formData.get('category'),
+                subcategory: formData.get('subcategory'),
+                transaction_account: formData.get('transaction_account'),
                 notes: formData.get('notes')
             });
             
@@ -644,6 +761,12 @@
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+        
+        function formatTimeForInput(date) {
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
         }
     });
 </script>

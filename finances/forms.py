@@ -6,10 +6,13 @@ import datetime
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['title', 'amount', 'date', 'type', 'category', 'subcategory', 'notes']
+        fields = ['title', 'amount', 'currency', 'date', 'time', 'type', 'category', 'subcategory', 'transaction_account', 'notes', 'photo']
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Optional notes'}),
+            'currency': forms.Select(attrs={'class': 'form-select'}),
+            'photo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -27,6 +30,17 @@ class TransactionForm(forms.ModelForm):
             if 'instance' in kwargs and kwargs['instance'] and kwargs['instance'].category:
                 category = kwargs['instance'].category
                 self.fields['subcategory'].queryset = SubCategory.objects.filter(parent_category=category)
+            
+            # Set up the accounts field
+            self.fields['transaction_account'].queryset = Account.objects.filter(user=self.user)
+            
+            # Add some helpful labels and placeholders
+            self.fields['title'].label = "Title"
+            self.fields['amount'].label = "Amount"
+            self.fields['amount'].widget.attrs.update({'placeholder': '0.00', 'step': '0.01'})
+            self.fields['category'].label = "Category"
+            self.fields['subcategory'].label = "Subcategory"
+            self.fields['transaction_account'].label = "Account"
 
 class DebtForm(forms.ModelForm):
     class Meta:

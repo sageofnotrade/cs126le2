@@ -1044,6 +1044,9 @@ def transactions(request):
     # Get all categories for filter and forms
     categories = Category.objects.filter(user=request.user).order_by('order', 'name')
     
+    # Get all accounts
+    accounts = Account.objects.filter(user=request.user)
+    
     # Format month name
     month_names = ['January', 'February', 'March', 'April', 'May', 'June', 
                 'July', 'August', 'September', 'October', 'November', 'December']
@@ -1052,6 +1055,7 @@ def transactions(request):
     context = {
         'transactions': transactions,
         'categories': categories,
+        'accounts': accounts,  # Add accounts to context
         'current_month': current_month,
         'current_year': current_year,
         'current_month_name': current_month_name,
