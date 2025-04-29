@@ -21,6 +21,15 @@ urlpatterns = [
     path('api/categories/<int:category_id>/subcategories/add/', views.api_add_subcategory, name='api_add_subcategory'),
     path('api/subcategories/<int:subcategory_id>/delete/', views.api_delete_subcategory, name='api_delete_subcategory'),
     path('api/subcategories/<int:subcategory_id>/update/', views.api_update_subcategory, name='api_update_subcategory'),
+    path('api/categories/reorder/', views.api_reorder_categories, name='api_reorder_categories'),
     path('export/', views.export_csv, name='export_csv'),
     path('budget/', views.manage_budget, name='manage_budget'),
+    
+    # New transaction routes
+    path('transactions/', views.transactions, name='transactions'),
+    path('transactions/api/', views.transactions_api, name='transactions_api'),
+    path('transactions/api/<int:transaction_id>/', views.transaction_detail_api, name='transaction_detail_api'),
+    path('transactions/api/create/', views.create_transaction_api, name='create_transaction_api'),
+    path('transactions/api/<int:transaction_id>/update/', views.update_transaction_api, name='update_transaction_api'),
+    path('transactions/api/<int:transaction_id>/delete/', views.delete_transaction_api, name='delete_transaction_api'),
 ] 

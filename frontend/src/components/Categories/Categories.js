@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import './Categories.css';
 
 const Categories = () => {
@@ -510,7 +511,127 @@ const Categories = () => {
     }
   };
 
-  const renderCategoryItem = (category, index, listType) => {
+  // Handle drag start to add body class
+  const onDragStart = () => {
+    document.body.classList.add('dnd-dragging');
+  };
+
+  // Handle drag end event
+  const onDragEnd = async (result) => {
+    // Remove body class
+    document.body.classList.remove('dnd-dragging');
+    
+    // Dropped outside the list
+    if (!result.destination) {
+      return;
+    }
+    
+    const { source, destination } = result;
+    
+    // If the user drops the item back in the same position
+    if (source.index === destination.index) {
+      return;
+    }
+    
+    // Clone the current category list for the active tab
+    const items = Array.from(categories[activeTab]);
+    
+    // Remove the dragged item from its position
+    const [removed] = items.splice(source.index, 1);
+    
+    // Insert the dragged item at the new position
+    items.splice(destination.index, 0, removed);
+    
+    // Update the state with new order
+    const newCategories = {
+      ...categories,
+      [activeTab]: items
+    };
+    
+    setCategories(newCategories);
+    
+    // Save the new order to the backend
+    try {
+      const response = await fetch('/finances/api/categories/reorder/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': window.csrfToken,
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+          category_type: activeTab === 'expenses' ? 'expense' : 'income',
+          category_ids: items.map(item => item.id)
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update category order');
+      }
+      
+      showNotification('Category order updated successfully');
+    } catch (err) {
+      console.error('Error updating category order:', err);
+      showNotification('Failed to update category order. Order will reset on reload.', 'danger');
+      // Optionally revert to original order by fetching categories again
+      // fetchCategories();
+    }
+  };
+
+  const renderCategoryList = (categoryItems) => {
+    return (
+      <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        <Droppable droppableId="categories">
+          {(provided, snapshot) => (
+            <ul 
+              className={`list-group ${snapshot.isDraggingOver ? 'dragging-over' : ''}`}
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+            >
+              {categoryItems.map((category, index) => (
+                <Draggable
+                  key={category.id.toString()}
+                  draggableId={category.id.toString()}
+                  index={index}
+                >
+                  {(provided, snapshot) => {
+                    // Custom styles to make dragged item follow cursor and appear on top
+                    const customStyle = snapshot.isDragging
+                      ? {
+                          ...provided.draggableProps.style,
+                          left: 'auto',
+                          top: 'auto',
+                          position: 'relative',
+                          transform: provided.draggableProps.style.transform,
+                          boxShadow: '0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)',
+                          zIndex: 9999,
+                          width: 'calc(100% - 16px)', // Maintain width but account for padding
+                        }
+                      : provided.draggableProps.style;
+                    
+                    return (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        style={customStyle}
+                        className={snapshot.isDragging ? "dragging-wrapper" : ""}
+                      >
+                        {renderCategoryItem(category, index, activeTab, snapshot.isDragging)}
+                      </div>
+                    );
+                  }}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </ul>
+          )}
+        </Droppable>
+      </DragDropContext>
+    );
+  };
+
+  const renderCategoryItem = (category, index, listType, isDragging) => {
     // Check if subcategories exist and log for debugging
     const hasSubcategories = category.subcategories && Array.isArray(category.subcategories) && category.subcategories.length > 0;
     if (process.env.NODE_ENV !== 'production') {
@@ -520,11 +641,18 @@ const Categories = () => {
     
     const isExpanded = expandedCategories[category.id] || false;
     
+    // Prevent click handler from triggering when starting a drag
+    const handleCategoryClick = (e) => {
+      // Only toggle if not dragging and clicking on the main part
+      if (isDragging || e.target.closest('.btn-group')) return;
+      if (hasSubcategories) toggleCategoryExpand(category.id);
+    };
+    
     return (
       <React.Fragment key={category.id}>
         <li 
-          className="list-group-item d-flex justify-content-between align-items-center category-item"
-          onClick={() => hasSubcategories && toggleCategoryExpand(category.id)}
+          className={`list-group-item d-flex justify-content-between align-items-center category-item ${isDragging ? 'dragging' : ''}`}
+          onClick={handleCategoryClick}
         >
           <div className="d-flex align-items-center">
             <div className="category-icon me-3">
@@ -544,7 +672,7 @@ const Categories = () => {
               )}
             </div>
           </div>
-          <div className="btn-group">
+          <div className="btn-group" onClick={(e) => e.stopPropagation()}>
             <button 
               className="btn btn-sm btn-outline-primary"
               onClick={(e) => openEditModal(category, e)}
@@ -660,22 +788,14 @@ const Categories = () => {
                       <div className="text-center p-4">
                         <p>No income categories found. Add your first category using the button above!</p>
                       </div>
-                    ) : (
-                      <ul className="list-group">
-                        {categories.income.map((category, index) => renderCategoryItem(category, index, 'income'))}
-                      </ul>
-                    )}
+                    ) : renderCategoryList(categories.income)}
                   </div>
                   <div className={`tab-pane fade ${activeTab === 'expenses' ? 'show active' : ''}`}>
                     {categories.expenses.length === 0 ? (
                       <div className="text-center p-4">
                         <p>No expense categories found. Add your first category using the button above!</p>
                       </div>
-                    ) : (
-                      <ul className="list-group">
-                        {categories.expenses.map((category, index) => renderCategoryItem(category, index, 'expenses'))}
-                      </ul>
-                    )}
+                    ) : renderCategoryList(categories.expenses)}
                   </div>
                 </div>
               )}

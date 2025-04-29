@@ -55,12 +55,14 @@ class Category(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     icon = models.CharField(max_length=50, default='bi-tag')
     type = models.CharField(max_length=7, choices=CATEGORY_TYPES, default='expense')
+    order = models.IntegerField(default=0)
     
     def __str__(self):
         return self.name
     
     class Meta:
         verbose_name_plural = "Categories"
+        ordering = ['order', 'name']
 
 class SubCategory(models.Model):
     name = models.CharField(max_length=100)
