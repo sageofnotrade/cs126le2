@@ -31,7 +31,7 @@ class TransactionForm(forms.ModelForm):
 class DebtForm(forms.ModelForm):
     class Meta:
         model = Debt
-        fields = ['person', 'amount', 'date_issued', 'date_payback', 'account', 'notes', 'debt_type']
+        fields = ['person', 'amount', 'date_issued', 'date_payback', 'notes', 'debt_type']
         widgets = {
             'date_issued': forms.DateInput(attrs={'type': 'date'}),
             'date_payback': forms.DateInput(attrs={'type': 'date'}),

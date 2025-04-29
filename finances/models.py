@@ -14,12 +14,13 @@ class Debt(models.Model):
     paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     date_issued = models.DateField(default=timezone.now)
     date_payback = models.DateField()
-    account = models.ForeignKey('Account', on_delete=models.CASCADE)
     notes = models.TextField(blank=True)
     debt_type = models.CharField(max_length=10, choices=DEBT_TYPES)  # 'debt' or 'credit'
-
+    
     def __str__(self):
-        return f"{self.debt_type.capitalize()}: {self.person} owes you {self.amount}"
+        if self.debt_type.lower() == 'debt':
+            return f"You → {self.person}: {self.amount}"
+        return f"{self.person} → You: {self.amount}"
 
     @property
     def residual_amount(self):
@@ -31,7 +32,7 @@ class Account(models.Model):
     description = models.CharField(max_length=50, blank=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.__class__.__name__}: {self.name}"
 
 class DebitAccount(Account):
     balance = models.DecimalField(max_digits=10, decimal_places=2)

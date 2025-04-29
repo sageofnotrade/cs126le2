@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Debt{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Add a New Debt</h2>
+    
+    <!-- Display form -->
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Create Debt</button>
+    </form>
+
+    <br>
+    <a href="{% url 'debts_list' %}" class="btn btn-secondary">Cancel</a>
+</div>
+{% endblock %}

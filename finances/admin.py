@@ -42,8 +42,8 @@ class WalletAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     
 class DebtAdmin(admin.ModelAdmin):
-    list_display = ('person', 'amount', 'paid', 'date_issued', 'date_payback', 'residual_amount', 'account', 'notes', 'user')
-    list_filter = ('date_issued', 'date_payback', 'person', 'account', 'user')
+    list_display = ('person', 'amount', 'paid', 'date_issued', 'date_payback', 'residual_amount', 'notes', 'user')
+    list_filter = ('date_issued', 'date_payback', 'person', 'user')
     search_fields = ('person', 'notes')
 
 admin.site.register(Transaction, TransactionAdmin)

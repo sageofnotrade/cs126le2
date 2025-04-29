@@ -65,23 +65,120 @@
     <div class="row">
         {% for debt in debts %}
             <div class="col-md-4 mb-3">
-                <div class="card">
+                <div class="card {% if debt.debt_type == 'debt' %}border-primary{% else %}border-success{% endif %}">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <strong>{{ debt.debt_type|capfirst }}: {{ debt.person }}</strong>
+                        <strong>
+                            {% if debt.debt_type == 'debt' %}
+                                You → {{ debt.person }}
+                            {% else %}
+                                {{ debt.person }} → You
+                            {% endif %}
+                        </strong>
+                        <div>
+                            <!-- Edit Debt Button -->
+                            <a href="{% url 'edit_debt' debt.id %}" class="btn btn-light btn-sm">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <form method="POST" action="{% url 'delete_debt' debt.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <p class="card-text">
-                            Amount: USD {{ debt.amount }}<br>
-                            Paid: USD {{ debt.paid }}<br>
-                            Residual: USD {{ debt.residual_amount }}<br>
-                            Date Issued: {{ debt.date_issued }}<br>
-                            Payback Date: {{ debt.date_payback }}
-                        </p>
+                        <div class="d-flex justify-content-between mb-2">
+                            <div class="d-flex flex-column">
+                                <span><strong>Amount:</strong> USD {{ debt.amount }}</span>
+                                <span><strong>Paid:</strong> USD {{ debt.paid }}</span>
+                                <span><strong>Residual:</strong> USD {{ debt.residual_amount }}</span>
+                            </div>
+                            <!-- Progress Bar -->
+                            <div class="progress" style="height: 10px; width: 60%;">
+                                <div class="progress-bar {% if debt.debt_type == 'debt' %}bg-primary{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ debt.progress_percentage }}%" aria-valuenow="{{ debt.progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span><strong>Date Issued:</strong> {{ debt.date_issued }}</span>
+                            <span><strong>Payback Date:</strong> {{ debt.date_payback }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted">Residual Amount: USD {{ debt.residual_amount }}</div>
+                            <!-- Update Payment Button -->
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#updateDebtModal{{ debt.id }}">
+                                Update Payment
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Edit Debt Modal -->
+            <div class="modal fade" id="editDebtModal{{ debt.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Debt Entry</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form method="POST" action="{% url 'edit_transaction' debt.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label>Person:</label>
+                                    <input type="text" class="form-control" name="person" value="{{ debt.person }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Amount:</label>
+                                    <input type="number" class="form-control" name="amount" value="{{ debt.amount }}" step="0.01" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Date Issued:</label>
+                                    <input type="date" class="form-control" name="date_issued" value="{{ debt.date_issued }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Payback Date:</label>
+                                    <input type="date" class="form-control" name="date_payback" value="{{ debt.date_payback }}" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Update Payment Modal -->
+            <div class="modal fade" id="updateDebtModal{{ debt.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Update Payment</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form method="POST" action="{% url 'update_payment' debt.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label>Amount Paid:</label>
+                                    <input type="number" class="form-control" name="paid_amount" step="0.01" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Bank Account:</label>
+                                    <select class="form-control" name="account">
+                                        {% for account in accounts %}
+                                            <option value={{account.id}}>{{ account.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Payment</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>            
         {% empty %}
-        <p class="text-muted">No debts found.</p>
+            <p class="text-muted">No debts found.</p>
         {% endfor %}
     </div>
 </div>
@@ -95,7 +192,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form method="post">
+                <form method="POST" action="{% url 'add_debt' %}">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label>Person:</label>
@@ -112,14 +209,6 @@
                     <div class="mb-3">
                         <label>Payback Date:</label>
                         <input type="date" class="form-control" name="date_payback" required>
-                    </div>
-                    <div class="mb-3">
-                        <label>Account:</label>
-                        <select class="form-control" name="account">
-                            {% for account in accounts %}
-                                <option value="{{ account.id }}">{{ account.name }}</option>
-                            {% endfor %}
-                        </select>
                     </div>
                     <div class="mb-3">
                         <label>Notes:</label>

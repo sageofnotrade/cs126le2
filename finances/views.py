@@ -15,6 +15,7 @@ from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, Deb
 from django import forms
 from django.contrib.auth.models import User
 import logging
+from decimal import Decimal
 
 def home(request):
     return render(request, 'finances/home.html')
@@ -50,16 +51,12 @@ def debts_list(request):
     debts = Debt.objects.filter(user=request.user)
 
     debt_type = request.GET.get('type', '')
-    account_id = request.GET.get('account', '')
     search = request.GET.get('search', '')
     sort_by = request.GET.get('sort_by', 'date_issued')
     order = request.GET.get('order', 'asc')
 
     if debt_type:
         debts = debts.filter(debt_type=debt_type)
-
-    if account_id:
-        debts = debts.filter(account_id=account_id)
     
     if search:
         debts = debts.filter(
@@ -67,7 +64,16 @@ def debts_list(request):
             Q(amount__icontains=search) |
             Q(notes__icontains=search)
         )
+
+    account_filter = Q(user=request.user)
     
+    debit_accounts = DebitAccount.objects.filter(account_filter)
+    credit_accounts = CreditAccount.objects.filter(account_filter)
+    wallet_accounts = Wallet.objects.filter(account_filter)
+    
+    # Combine the results in the context
+    accounts = list(debit_accounts) + list(credit_accounts) + list(wallet_accounts)
+
     if sort_by == 'residual_amount':
         debts = debts.annotate(
             residual = ExpressionWrapper(
@@ -80,8 +86,9 @@ def debts_list(request):
             debts = debts.order_by(sort_by)
             if order == 'desc':
                 debts = debts.reverse()
-
-    accounts = Account.objects.filter(user=request.user)
+                
+    for debt in debts:
+        debt.progress_percentage = (debt.paid / debt.amount) * 100 if debt.amount > 0 else 0
     
     context = {
         'debts': debts,
@@ -108,6 +115,99 @@ def add_debt(request):
         form = DebtForm()
         
     return render(request, 'finances/add_debt.html', {'form': form})
+
+@login_required
+def edit_debt(request, pk):
+    debt = get_object_or_404(Debt, pk=pk)
+    
+    if request.method == "POST":
+        form = DebtForm(request.POST, instance=debt)
+        if form.is_valid():
+            form.save()
+            return redirect('debts_list')
+    else:
+        form = DebtForm(instance=debt)
+    
+    return render(request, 'finances/edit_debt.html', {'form': form, 'debt': debt})
+
+@login_required
+def delete_debt(request, pk):
+    debt = get_object_or_404(Debt, pk=pk)
+    
+    if request.method == "POST":
+        debt.delete()
+        return redirect('debts_list')
+    
+    return render(request, 'finances/confirm_delete_debt.html', {'debt': debt})
+
+def update_payment(request, pk):
+    debt = get_object_or_404(Debt, pk=pk)
+    
+    if request.method == 'POST':
+        paid_amount = Decimal(request.POST.get('paid_amount'))
+        account_id = request.POST.get('account')
+        
+        # account = None
+        account3 = Wallet.objects.filter(id=account_id).first()
+        account1 = DebitAccount.objects.filter(id=account_id).first()
+        account2 = CreditAccount.objects.filter(id=account_id).first()
+        
+        if paid_amount > debt.residual_amount:
+            messages.error(request, "The payment amount exceeds the residual amount.")
+            return redirect('debts_list')        
+        
+        if account1:
+            if (account1.balance - paid_amount) < account1.maintaining_balance:
+                messages.error(request, "Balance after deduction is below the maintaining balance.")
+                return redirect('debts_list')
+            # account = account1
+            if debt.debt_type.lower() == 'credit':
+                account1.balance += paid_amount
+            else:
+                account1.balance -= paid_amount
+            account1.save()
+        elif account2:
+            if debt.debt_type.lower() == 'credit':
+                messages.error(request, "Credit accounts cannot accept payments for credit-type debts.")
+                return redirect('debts_list')
+            if (account2.current_usage + paid_amount) > account2.credit_limit:
+                messages.error(request, "Payment exceeds credit limit.")
+                return redirect('debts_list')
+            # account = account2
+            account2.current_usage += paid_amount
+            account2.save()
+        elif account3:
+            if account3.balance < paid_amount:
+                messages.error(request, "Insufficient balance in wallet.")
+                return redirect('debts_list')
+            # account = account3
+            if debt.debt_type.lower() == 'credit':
+                account3.balance += paid_amount
+            else:
+                account3.balance -= paid_amount
+            account3.save()        
+        else:
+            messages.error(request, "Account not found.")
+            return redirect('debts_list')
+        
+        debt.paid += paid_amount
+        debt.save()
+            
+        Transaction.objects.create(
+            title="Debt Payment",
+            amount=paid_amount,
+            type="expense" if debt.debt_type == 'debt' else "income",
+            category=None,
+            subcategory=None,
+            user=request.user,
+            notes=f"Payment for debt with {debt.person}",
+            # account=account
+        )
+
+        messages.success(request, "Payment successfully updated!")
+        return redirect('debts_list')
+    
+    return redirect('debts_list')
 
 @login_required
 def accounts_list(request):

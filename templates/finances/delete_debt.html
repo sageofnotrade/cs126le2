@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+    <h2>Are you sure you want to delete this debt entry?</h2>
+    <div class="card">
+      <div class="card-body">
+        <p><strong>Person:</strong> {{ debt.person }}</p>
+        <p><strong>Amount:</strong> USD {{ debt.amount }}</p>
+        <p><strong>Paid:</strong> USD {{ debt.paid }}</p>
+        <p><strong>Residual:</strong> USD {{ debt.residual_amount }}</p>
+        <p><strong>Date Issued:</strong> {{ debt.date_issued }}</p>
+        <p><strong>Payback Date:</strong> {{ debt.date_payback }}</p>
+      </div>
+    </div>
+
+    <form method="POST">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Yes, Delete</button>
+      <a href="{% url 'debts_list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+{% endblock %}
