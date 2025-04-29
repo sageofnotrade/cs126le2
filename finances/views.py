@@ -160,7 +160,7 @@ def dashboard(request):
             })
     
     # Budget warnings
-    budgets = Budget.objects.filter(user=request.user, month__year=today.year, month__month=today.month)
+    budgets = Budget.objects.filter(user=request.user, start_date__year=today.year, end_date__month=today.month)
     budget_warnings = []
     
     for budget in budgets:
@@ -368,38 +368,13 @@ def export_csv(request):
 
 @login_required
 def manage_budget(request):
-    if request.method == 'POST':
-        form = BudgetForm(request.POST, user=request.user)
-        if form.is_valid():
-            budget = form.save(commit=False)
-            budget.user = request.user
-            
-            # Handle the case where a budget for this category and start_date already exists
-            existing_budget = Budget.objects.filter(
-                user=request.user,
-                category=budget.category,
-                start_date__year=budget.start_date.year,  # Corrected to use start_date
-                start_date__month=budget.start_date.month,  # Corrected to use start_date
-                account=budget.account  # Ensure account is also considered
-            ).first()
-            
-            if existing_budget:
-                existing_budget.amount = budget.amount
-                existing_budget.save()
-                messages.success(request, 'Budget updated successfully.')
-            else:
-                budget.save()
-                messages.success(request, 'Budget added successfully.')
-            
-            return redirect('manage_budget')
-    else:
-        form = BudgetForm(user=request.user)
+    form = BudgetForm(user=request.user)
     
     today = timezone.now().date()
-    budgets = Budget.objects.filter(
+    budgets = Budget.objects.select_related('category').filter(
         user=request.user,
         start_date__year=today.year,
-        start_date__month=today.month  # Corrected to use start_date
+        start_date__month=today.month
     )
     
     budget_data = []
@@ -411,7 +386,7 @@ def manage_budget(request):
             category=budget.category,
             date__year=today.year,
             date__month=today.month,
-            account=budget.account  # Ensure the spending comes from the correct account
+            account=budget.account
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         
         # Calculate the remaining budget and the percentage used
@@ -420,15 +395,23 @@ def manage_budget(request):
         
         # Prepare the budget data to display
         budget_data.append({
-            'category': budget.category.name,
+            'id': budget.id,
+            'category': budget.category,  # Pass the entire category object
             'budget': budget.amount,
             'spent': spent,
             'remaining': remaining,
-            'percentage': percentage,
-            'start_date': budget.start_date,  # Include the start date for display
-            'end_date': budget.end_date,  # Include the end date for display
+            'percentage_used': percentage,
+            'start_date': budget.start_date,
+            'end_date': budget.end_date,
+            'duration': budget.duration,
+            'amount': budget.amount
         })
-    return render(request, 'finances/manage_budget.html', {'form': form, 'budgets': budget_data})
+    
+    return render(request, 'finances/manage_budget.html', {
+        'form': form,
+        'budgets': budget_data,
+        'categories': Category.objects.filter(user=request.user)
+    })
 
 @login_required
 def update_budget(request):
@@ -454,12 +437,11 @@ def update_budget(request):
 
         # Return the updated budget data as JSON
         updated_budget = {
-            'id': budget.id,
             'category': budget.category.name,
             'amount': budget.amount,
             'spent': budget.spent,
             'remaining': budget.remaining,
-            'percentage_used': budget.percentage_used,
+            'percentage': budget.percentage,
             'start_date': budget.start_date.strftime('%Y-%m-%d'),
             'end_date': budget.end_date.strftime('%Y-%m-%d')
         }
@@ -467,7 +449,100 @@ def update_budget(request):
 
     return JsonResponse({'success': False})
 
+def get_budgets(request):
+    budgets = Budget.objects.all().values(
+        'category', 'amount', 'spent', 'start_date', 'end_date', 'duration'
+    )
+    
+    # Calculate 'remaining' dynamically for each budget
+    budget_list = []
+    for budget in budgets:
+        budget['remaining'] = budget['amount'] - budget['spent']
+        budget_list.append(budget)
+    
+    return JsonResponse(budget_list, safe=False)
+
 def custom_logout(request):
     logout(request)
     messages.success(request, 'You have been successfully logged out.')
     return redirect('home')
+
+@login_required
+def add_budget(request):
+    if request.method == 'POST':
+        form = BudgetForm(request.POST, user=request.user)
+        if form.is_valid():
+            budget = form.save(commit=False)
+            budget.user = request.user
+            
+            # Check for existing budget in the same period
+            existing_budget = Budget.objects.filter(
+                user=request.user,
+                category=budget.category,
+                start_date__year=budget.start_date.year,
+                start_date__month=budget.start_date.month,
+                account=budget.account
+            ).first()
+            
+            if existing_budget:
+                return JsonResponse({
+                    'success': False, 
+                    'errors': {
+                        'category': ['A budget for this category already exists in the selected period.']
+                    }
+                })
+            
+            budget.save()
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def delete_budget(request):
+    if request.method == 'POST':
+        budget_id = request.POST.get('budget_id')
+        try:
+            budget = Budget.objects.get(id=budget_id, user=request.user)
+            budget.delete()
+            return JsonResponse({'success': True})
+        except Budget.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Budget not found'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def categories_chart(request):
+    # Placeholder data - will be replaced with actual data later
+    context = {
+        'chart_data': {
+            'labels': ['Food', 'Transport', 'Entertainment', 'Bills', 'Shopping'],
+            'data': [30, 20, 15, 25, 10],
+            'colors': ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+        }
+    }
+    return render(request, 'finances/categories_chart.html', context)
+
+@login_required
+def future_projections(request):
+    # Placeholder data - will be replaced with actual data later
+    context = {
+        'projections': {
+            'labels': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            'income': [2000, 2200, 2100, 2300, 2400, 2500],
+            'expenses': [1800, 1900, 2000, 2100, 2200, 2300],
+            'savings': [200, 300, 100, 200, 200, 200]
+        }
+    }
+    return render(request, 'finances/future_projections.html', context)
+
+@login_required
+def time_analysis(request):
+    # Placeholder data - will be replaced with actual data later
+    context = {
+        'time_data': {
+            'labels': ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            'spending': [500, 600, 450, 700],
+            'income': [1000, 1000, 1000, 1000]
+        }
+    }
+    return render(request, 'finances/time_analysis.html', context)
