@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory
+from .models import Transaction, Category, Account, DebitAccount, CreditAccount, Wallet, SubCategory
 from django.utils import timezone
 import datetime
 
@@ -107,6 +107,8 @@ class SubCategoryForm(forms.ModelForm):
             if not Category.objects.filter(id=category_id, user=user).exists():
                 raise forms.ValidationError("Invalid category selection")
 
+# Comment out BudgetForm class
+"""
 class BudgetForm(forms.ModelForm):
     month = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'month'}),
@@ -121,6 +123,7 @@ class BudgetForm(forms.ModelForm):
         super(BudgetForm, self).__init__(*args, **kwargs)
         if user:
             self.fields['category'].queryset = Category.objects.filter(user=user)
+"""
 
 class DateRangeForm(forms.Form):
     start_date = forms.DateField(

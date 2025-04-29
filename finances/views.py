@@ -10,8 +10,8 @@ from datetime import timedelta
 import calendar
 import csv
 import json
-from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory
-from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, SubCategoryForm
+from .models import Transaction, Category, Account, DebitAccount, CreditAccount, Wallet, SubCategory
+from .forms import TransactionForm, CategoryForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, SubCategoryForm
 from django import forms
 from django.contrib.auth.models import User
 import logging
@@ -160,26 +160,27 @@ def dashboard(request):
                 'amount': float(amount)
             })
     
-    # Budget warnings
-    budgets = Budget.objects.filter(user=request.user, month__year=today.year, month__month=today.month)
+    # Comment out Budget warnings section
+    # budgets = Budget.objects.filter(user=request.user, month__year=today.year, month__month=today.month)
     budget_warnings = []
     
-    for budget in budgets:
-        spent = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            category=budget.category,
-            date__gte=first_day,
-            date__lte=last_day
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        if spent > budget.amount:
-            budget_warnings.append({
-                'category': budget.category.name,
-                'budget': float(budget.amount),
-                'spent': float(spent),
-                'percentage': round((spent / budget.amount) * 100)
-            })
+    # Comment out budget processing
+    # for budget in budgets:
+    #     spent = Transaction.objects.filter(
+    #         user=request.user,
+    #         type='expense',
+    #         category=budget.category,
+    #         date__gte=first_day,
+    #         date__lte=last_day
+    #     ).aggregate(Sum('amount'))['amount__sum'] or 0
+    #     
+    #     if spent > budget.amount:
+    #         budget_warnings.append({
+    #             'category': budget.category.name,
+    #             'budget': float(budget.amount),
+    #             'spent': float(spent),
+    #             'percentage': round((spent / budget.amount) * 100)
+    #         })
     
     context = {
         'income': income,
@@ -414,62 +415,69 @@ def export_csv(request):
     
     return render(request, 'finances/export_csv.html', {'form': form})
 
+# Comment out the manage_budget view
+# @login_required
+# def manage_budget(request):
+#     if request.method == 'POST':
+#         form = BudgetForm(request.POST, user=request.user)
+#         if form.is_valid():
+#             budget = form.save(commit=False)
+#             budget.user = request.user
+#             
+#             # Handle the case where a budget for this category and month already exists
+#             existing_budget = Budget.objects.filter(
+#                 user=request.user,
+#                 category=budget.category,
+#                 month__year=budget.month.year,
+#                 month__month=budget.month.month
+#             ).first()
+#             
+#             if existing_budget:
+#                 existing_budget.amount = budget.amount
+#                 existing_budget.save()
+#                 messages.success(request, 'Budget updated successfully.')
+#             else:
+#                 budget.save()
+#                 messages.success(request, 'Budget added successfully.')
+#             
+#             return redirect('manage_budget')
+#     else:
+#         form = BudgetForm(user=request.user)
+#     
+#     today = timezone.now().date()
+#     budgets = Budget.objects.filter(
+#         user=request.user,
+#         month__year=today.year,
+#         month__month=today.month
+#     )
+#     
+#     budget_data = []
+#     for budget in budgets:
+#         spent = Transaction.objects.filter(
+#             user=request.user,
+#             type='expense',
+#             category=budget.category,
+#             date__year=today.year,
+#             date__month=today.month
+#         ).aggregate(Sum('amount'))['amount__sum'] or 0
+#         
+#         percentage = round((spent / budget.amount) * 100) if budget.amount > 0 else 0
+#         
+#         budget_data.append({
+#             'category': budget.category.name,
+#             'budget': budget.amount,
+#             'spent': spent,
+#             'remaining': budget.amount - spent,
+#             'percentage': percentage
+#         })
+#     
+#     return render(request, 'finances/manage_budget.html', {'form': form, 'budgets': budget_data})
+
+# Add a placeholder view that returns a simple message
 @login_required
 def manage_budget(request):
-    if request.method == 'POST':
-        form = BudgetForm(request.POST, user=request.user)
-        if form.is_valid():
-            budget = form.save(commit=False)
-            budget.user = request.user
-            
-            # Handle the case where a budget for this category and month already exists
-            existing_budget = Budget.objects.filter(
-                user=request.user,
-                category=budget.category,
-                month__year=budget.month.year,
-                month__month=budget.month.month
-            ).first()
-            
-            if existing_budget:
-                existing_budget.amount = budget.amount
-                existing_budget.save()
-                messages.success(request, 'Budget updated successfully.')
-            else:
-                budget.save()
-                messages.success(request, 'Budget added successfully.')
-            
-            return redirect('manage_budget')
-    else:
-        form = BudgetForm(user=request.user)
-    
-    today = timezone.now().date()
-    budgets = Budget.objects.filter(
-        user=request.user,
-        month__year=today.year,
-        month__month=today.month
-    )
-    
-    budget_data = []
-    for budget in budgets:
-        spent = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            category=budget.category,
-            date__year=today.year,
-            date__month=today.month
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        percentage = round((spent / budget.amount) * 100) if budget.amount > 0 else 0
-        
-        budget_data.append({
-            'category': budget.category.name,
-            'budget': budget.amount,
-            'spent': spent,
-            'remaining': budget.amount - spent,
-            'percentage': percentage
-        })
-    
-    return render(request, 'finances/manage_budget.html', {'form': form, 'budgets': budget_data})
+    messages.info(request, 'Budget management feature is currently unavailable')
+    return redirect('dashboard')
 
 def custom_logout(request):
     logout(request)
