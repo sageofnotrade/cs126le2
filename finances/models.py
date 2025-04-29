@@ -57,20 +57,34 @@ class Transaction(models.Model):
         ('expense', 'Expense'),
     )
     
+    CURRENCY_CHOICES = (
+        ('PHP', 'Philippine Peso (₱)'),
+        ('USD', 'US Dollar ($)'),
+        ('EUR', 'Euro (€)'),
+        ('GBP', 'British Pound (£)'),
+        ('JPY', 'Japanese Yen (¥)'),
+        ('CNY', 'Chinese Yuan (¥)'),
+        ('KRW', 'Korean Won (₩)'),
+    )
+    
     title = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='PHP')
     date = models.DateField(default=timezone.now)
+    time = models.TimeField(default=timezone.now)
     type = models.CharField(max_length=7, choices=TRANSACTION_TYPES)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
     subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, null=True, blank=True)
+    transaction_account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     notes = models.TextField(blank=True, null=True)
+    photo = models.ImageField(upload_to='transaction_photos/', null=True, blank=True)
     
     def __str__(self):
         return f"{self.title} - {self.amount}"
     
     class Meta:
-        ordering = ['-date']
+        ordering = ['-date', '-time']
 
 class Budget(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
