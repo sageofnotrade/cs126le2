@@ -303,6 +303,16 @@ const Categories = () => {
           [selectedCategory.id]: true
         }));
         
+        // Immediately update the UI with the new subcategory
+        setSelectedCategory(prevCategory => {
+          if (!prevCategory) return null;
+          
+          return {
+            ...prevCategory,
+            subcategories: [...prevCategory.subcategories, newSubcategory]
+          };
+        });
+        
         // Reset form
         setNewSubcategoryName('');
         setSelectedSubcategoryIcon('bi-tag-fill');
@@ -310,28 +320,11 @@ const Categories = () => {
         // Focus the input field for the next subcategory
         document.getElementById('subcategoryName')?.focus();
         
-        // Refresh categories to include the new subcategory
-        await fetchCategories();
+        // Refresh categories in the background to ensure data consistency
+        fetchCategories().catch(error => {
+          console.error('Error refreshing categories:', error);
+        });
         
-        // Update the selected category with fresh data
-        if (selectedCategory) {
-          // Find the selected category in our refreshed state
-          // First determine which list the category belongs to
-          const listType = categories.income.some(c => c.id === selectedCategory.id) ? 'income' : 'expenses';
-          
-          // Find the updated category in our refreshed state
-          const updatedCategories = await new Promise(resolve => {
-            setTimeout(() => {
-              const updatedCategory = categories[listType].find(c => c.id === selectedCategory.id);
-              console.log('Updated selected category:', updatedCategory);
-              resolve(updatedCategory || selectedCategory);
-            }, 100);
-          });
-          
-          // Update selected category
-          setSelectedCategory(updatedCategories);
-        }
-
         // Show success notification
         showNotification(`Subcategory "${newSubcategory.name}" added successfully`);
       }
@@ -448,25 +441,21 @@ const Categories = () => {
       if (data.success) {
         const updatedSubcategory = data.subcategory;
         
-        // Refresh categories to update the UI
-        await fetchCategories();
+        // Immediately update the subcategory in the current state
+        const updatedSubcategories = selectedCategory.subcategories.map(sub => 
+          sub.id === editingSubcategory.id 
+            ? { ...sub, name: updatedSubcategory.name, icon: updatedSubcategory.icon } 
+            : sub
+        );
         
-        // Update the selected category with fresh data
-        if (selectedCategory) {
-          // Determine which list the category belongs to
-          const listType = categories.income.some(c => c.id === selectedCategory.id) ? 'income' : 'expenses';
-          
-          // Find the updated category in our refreshed state
-          const updatedCategories = await new Promise(resolve => {
-            setTimeout(() => {
-              const updatedCategory = categories[listType].find(c => c.id === selectedCategory.id);
-              resolve(updatedCategory || selectedCategory);
-            }, 100);
-          });
-          
-          // Update selected category
-          setSelectedCategory(updatedCategories);
-        }
+        // Update the selected category with the updated subcategories
+        setSelectedCategory({
+          ...selectedCategory,
+          subcategories: updatedSubcategories
+        });
+        
+        // Now refresh categories in the background to ensure data consistency
+        await fetchCategories();
         
         // Show success notification
         showNotification(`Subcategory "${updatedSubcategory.name}" updated successfully`);

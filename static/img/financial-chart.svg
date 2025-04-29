@@ -51,19 +51,19 @@
       ry: 5;
     }
     .legend-text {
-      font-family: Arial, sans-serif;
+      font-family: Poppins, sans-serif;
       font-size: 12px;
       fill: #333;
     }
     .title {
-      font-family: Arial, sans-serif;
+      font-family: Poppins, sans-serif;
       font-size: 20px;
       font-weight: bold;
       fill: #333;
       text-anchor: middle;
     }
     .label {
-      font-family: Arial, sans-serif;
+      font-family: Poppins, sans-serif;
       font-size: 12px;
       fill: #666;
       text-anchor: middle;
