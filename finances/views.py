@@ -15,6 +15,7 @@ from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, Deb
 from django import forms
 from django.contrib.auth.models import User
 import logging
+from django.db import models
 
 def home(request):
     return render(request, 'finances/home.html')
@@ -38,6 +39,67 @@ def signup(request):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
+            
+            # Create default income categories
+            income_categories = [
+                {"name": "Salary", "icon": "bi-cash-coin", "type": "income", "order": 1},
+                {"name": "Freelance or Sideline Income", "icon": "bi-laptop", "type": "income", "order": 2},
+                {"name": "Investment Income", "icon": "bi-graph-up-arrow", "type": "income", "order": 3},
+                {"name": "Other Income", "icon": "bi-three-dots", "type": "income", "order": 4},
+            ]
+            
+            # Create default expense categories
+            expense_categories = [
+                {"name": "Transportation", "icon": "bi-truck", "type": "expense", "order": 1},
+                {"name": "Food/Drinks", "icon": "bi-cup-hot", "type": "expense", "order": 2},
+                {"name": "Shopping", "icon": "bi-cart", "type": "expense", "order": 3},
+                {"name": "Entertainment", "icon": "bi-music-note-beamed", "type": "expense", "order": 4},
+                {"name": "Home", "icon": "bi-house", "type": "expense", "order": 5},
+                {"name": "Family", "icon": "bi-people", "type": "expense", "order": 6},
+                {"name": "Health/Sport", "icon": "bi-heart-pulse", "type": "expense", "order": 7},
+                {"name": "Pets", "icon": "bi-heart", "type": "expense", "order": 8},
+                {"name": "Travels", "icon": "bi-airplane", "type": "expense", "order": 9},
+                {"name": "School Expenses", "icon": "bi-book", "type": "expense", "order": 10},
+                {"name": "Other Expenses", "icon": "bi-three-dots", "type": "expense", "order": 11},
+            ]
+            
+            # Create all categories
+            created_categories = {}
+            
+            for category_data in income_categories:
+                category = Category.objects.create(
+                    name=category_data["name"],
+                    icon=category_data["icon"],
+                    type=category_data["type"],
+                    order=category_data["order"],
+                    user=user
+                )
+                created_categories[category.name] = category
+                
+            for category_data in expense_categories:
+                category = Category.objects.create(
+                    name=category_data["name"],
+                    icon=category_data["icon"],
+                    type=category_data["type"],
+                    order=category_data["order"],
+                    user=user
+                )
+                created_categories[category.name] = category
+            
+            # Create subcategories for "Other Income"
+            other_income_category = created_categories.get("Other Income")
+            if other_income_category:
+                SubCategory.objects.create(
+                    name="Money Gifts",
+                    parent_category=other_income_category,
+                    icon="bi-gift"
+                )
+                SubCategory.objects.create(
+                    name="Loan Repayments",
+                    parent_category=other_income_category,
+                    icon="bi-currency-exchange"
+                )
+            
             login(request, user)
             messages.success(request, f'Account created successfully! Welcome to Budget Tracker.')
             return redirect('dashboard')
@@ -345,24 +407,7 @@ def categories(request):
     categories = Category.objects.filter(user=request.user)
     
     # Get available icon options for the form
-    available_icons = [
-        { 'icon': 'bi-tag', 'name': 'Tag' },
-        { 'icon': 'bi-cash-coin', 'name': 'Cash' },
-        { 'icon': 'bi-credit-card', 'name': 'Credit Card' },
-        { 'icon': 'bi-cart', 'name': 'Shopping Cart' },
-        { 'icon': 'bi-bag', 'name': 'Shopping Bag' },
-        { 'icon': 'bi-truck', 'name': 'Transportation' },
-        { 'icon': 'bi-house', 'name': 'Home' },
-        { 'icon': 'bi-cup-hot', 'name': 'Food' },
-        { 'icon': 'bi-music-note-beamed', 'name': 'Entertainment' },
-        { 'icon': 'bi-people', 'name': 'Family' },
-        { 'icon': 'bi-heart-pulse', 'name': 'Health' },
-        { 'icon': 'bi-graph-up-arrow', 'name': 'Investments' },
-        { 'icon': 'bi-gift', 'name': 'Gift' },
-        { 'icon': 'bi-airplane', 'name': 'Travel' },
-        { 'icon': 'bi-book', 'name': 'Education' },
-        { 'icon': 'bi-lightning', 'name': 'Utilities' }
-    ]
+    available_icons = get_available_icons()
     
     context = {
         'form': form,
@@ -706,17 +751,17 @@ def get_icon_for_category(category_name):
     """Get a suitable icon for a category based on its name"""
     category_name = category_name.lower()
     
-    if any(word in category_name for word in ['salary', 'income', 'wage']):
+    if any(word in category_name for word in ['salary', 'income', 'wage', 'pay']):
         return 'bi-cash-coin'
     elif any(word in category_name for word in ['invest', 'stock', 'dividend', 'return']):
         return 'bi-graph-up-arrow'
-    elif any(word in category_name for word in ['food', 'grocery', 'restaurant', 'dining']):
+    elif any(word in category_name for word in ['food', 'grocery', 'restaurant', 'dining', 'drink']):
         return 'bi-cup-hot'
-    elif any(word in category_name for word in ['transport', 'fuel', 'car', 'bus', 'train']):
+    elif any(word in category_name for word in ['transport', 'fuel', 'car', 'bus', 'train', 'travel']):
         return 'bi-truck'
-    elif any(word in category_name for word in ['house', 'rent', 'mortgage', 'property']):
+    elif any(word in category_name for word in ['house', 'rent', 'mortgage', 'property', 'home']):
         return 'bi-house'
-    elif any(word in category_name for word in ['health', 'medical', 'doctor', 'medicine']):
+    elif any(word in category_name for word in ['health', 'medical', 'doctor', 'medicine', 'sport']):
         return 'bi-heart-pulse'
     elif any(word in category_name for word in ['gift', 'present', 'donation']):
         return 'bi-gift'
@@ -730,6 +775,14 @@ def get_icon_for_category(category_name):
         return 'bi-airplane'
     elif any(word in category_name for word in ['entertainment', 'movie', 'game', 'fun']):
         return 'bi-music-note-beamed'
+    elif any(word in category_name for word in ['family', 'child', 'kid', 'parent']):
+        return 'bi-people'
+    elif any(word in category_name for word in ['pet', 'animal', 'dog', 'cat']):
+        return 'bi-heart'
+    elif any(word in category_name for word in ['freelance', 'sideline', 'side job', 'part time']):
+        return 'bi-laptop'
+    elif any(word in category_name for word in ['other', 'misc', 'miscellaneous']):
+        return 'bi-three-dots'
     
     # Default icon
     return 'bi-tag'
@@ -753,7 +806,20 @@ def get_available_icons():
         { 'icon': 'bi-gift', 'name': 'Gift' },
         { 'icon': 'bi-airplane', 'name': 'Travel' },
         { 'icon': 'bi-book', 'name': 'Education' },
-        { 'icon': 'bi-lightning', 'name': 'Utilities' }
+        { 'icon': 'bi-lightning', 'name': 'Utilities' },
+        # Additional icons for default categories
+        { 'icon': 'bi-laptop', 'name': 'Laptop/Freelance' },
+        { 'icon': 'bi-three-dots', 'name': 'Other/Misc' },
+        { 'icon': 'bi-heart', 'name': 'Heart/Pets' },
+        { 'icon': 'bi-currency-exchange', 'name': 'Currency Exchange' },
+        { 'icon': 'bi-shop', 'name': 'Shop' },
+        { 'icon': 'bi-controller', 'name': 'Gaming' },
+        { 'icon': 'bi-building', 'name': 'Building/Office' },
+        { 'icon': 'bi-boombox', 'name': 'Entertainment Alt' },
+        { 'icon': 'bi-hospital', 'name': 'Hospital' },
+        { 'icon': 'bi-piggy-bank', 'name': 'Savings' },
+        { 'icon': 'bi-bus-front', 'name': 'Public Transport' },
+        { 'icon': 'bi-mortarboard', 'name': 'Education/Graduation' }
     ]
 
 @login_required
@@ -798,3 +864,300 @@ def api_reorder_categories(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def transactions(request):
+    """View for the transactions page with filtering and monthly view"""
+    
+    # Get current month and year, defaulting to current date
+    current_date = timezone.now().date()
+    current_month = int(request.GET.get('month', current_date.month))
+    current_year = int(request.GET.get('year', current_date.year))
+    
+    # Get start and end date for the selected month
+    start_date = timezone.datetime(current_year, current_month, 1).date()
+    if current_month == 12:
+        end_date = timezone.datetime(current_year + 1, 1, 1).date() - timedelta(days=1)
+    else:
+        end_date = timezone.datetime(current_year, current_month + 1, 1).date() - timedelta(days=1)
+    
+    # Get all transactions for the month
+    transactions = Transaction.objects.filter(
+        user=request.user,
+        date__gte=start_date,
+        date__lte=end_date
+    ).order_by('-date')
+    
+    # Calculate total
+    income = Transaction.objects.filter(
+        user=request.user,
+        type='income',
+        date__gte=start_date,
+        date__lte=end_date
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    
+    expenses = Transaction.objects.filter(
+        user=request.user,
+        type='expense',
+        date__gte=start_date,
+        date__lte=end_date
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    
+    total_balance = income - expenses
+    
+    # Get all categories for filter and forms
+    categories = Category.objects.filter(user=request.user).order_by('order', 'name')
+    
+    # Format month name
+    month_names = ['January', 'February', 'March', 'April', 'May', 'June', 
+                'July', 'August', 'September', 'October', 'November', 'December']
+    current_month_name = month_names[current_month - 1]
+    
+    context = {
+        'transactions': transactions,
+        'categories': categories,
+        'current_month': current_month,
+        'current_year': current_year,
+        'current_month_name': current_month_name,
+        'total_balance': total_balance,
+    }
+    
+    return render(request, 'finances/transactions.html', context)
+
+@login_required
+def transactions_api(request):
+    """API endpoint for fetching transactions with filters"""
+    
+    # Get parameters from request
+    current_month = int(request.GET.get('month', timezone.now().date().month))
+    current_year = int(request.GET.get('year', timezone.now().date().year))
+    category_id = request.GET.get('category', '')
+    search_term = request.GET.get('search', '')
+    types_param = request.GET.get('types', 'expense,income')
+    types = types_param.split(',') if types_param else ['expense', 'income']
+    
+    # Get start and end date for the selected month
+    start_date = timezone.datetime(current_year, current_month, 1).date()
+    if current_month == 12:
+        end_date = timezone.datetime(current_year + 1, 1, 1).date() - timedelta(days=1)
+    else:
+        end_date = timezone.datetime(current_year, current_month + 1, 1).date() - timedelta(days=1)
+    
+    # Filter transactions
+    transactions = Transaction.objects.filter(
+        user=request.user,
+        date__gte=start_date,
+        date__lte=end_date,
+        type__in=types
+    )
+    
+    # Additional filters
+    if category_id:
+        transactions = transactions.filter(category_id=category_id)
+    
+    if search_term:
+        transactions = transactions.filter(
+            models.Q(title__icontains=search_term) | 
+            models.Q(notes__icontains=search_term)
+        )
+    
+    # Order by date (newest first)
+    transactions = transactions.order_by('-date')
+    
+    # Calculate totals
+    income = sum(t.amount for t in transactions if t.type == 'income')
+    expenses = sum(t.amount for t in transactions if t.type == 'expense')
+    total = income - expenses
+    
+    # Prepare data for JSON response
+    transactions_data = []
+    for transaction in transactions:
+        category_name = transaction.category.name if transaction.category else None
+        category_icon = transaction.category.icon if transaction.category else 'bi bi-tag'
+        
+        transactions_data.append({
+            'id': transaction.id,
+            'title': transaction.title,
+            'amount': float(transaction.amount),
+            'date': transaction.date.isoformat(),
+            'type': transaction.type,
+            'category': transaction.category_id if transaction.category else None,
+            'subcategory': transaction.subcategory_id if transaction.subcategory else None,
+            'category_name': category_name,
+            'category_icon': category_icon,
+            'notes': transaction.notes or '',
+        })
+    
+    return JsonResponse({
+        'transactions': transactions_data,
+        'count': len(transactions_data),
+        'total': float(total),
+    })
+
+@login_required
+def transaction_detail_api(request, transaction_id):
+    """API endpoint for getting a single transaction's details"""
+    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+    
+    data = {
+        'id': transaction.id,
+        'title': transaction.title,
+        'amount': float(transaction.amount),
+        'date': transaction.date.isoformat(),
+        'type': transaction.type,
+        'payment_method': transaction.payment_method,
+        'category': transaction.category_id if transaction.category else None,
+        'subcategory': transaction.subcategory_id if transaction.subcategory else None,
+        'notes': transaction.notes or '',
+    }
+    
+    return JsonResponse(data)
+
+@login_required
+def create_transaction_api(request):
+    """API endpoint for creating a transaction"""
+    if request.method == 'POST':
+        try:
+            # Debug: Print out all POST data
+            print("Creating transaction with POST data:", request.POST)
+            
+            title = request.POST.get('title')
+            amount = request.POST.get('amount')
+            date_str = request.POST.get('date')
+            transaction_type = request.POST.get('type')
+            category_id = request.POST.get('category') or None
+            subcategory_id = request.POST.get('subcategory') or None
+            payment_method = request.POST.get('payment_method', 'cash')  # Default to cash if not provided
+            notes = request.POST.get('notes', '')
+            
+            # Debug: Print all parameters
+            print(f"Title: {title}, Amount: {amount}, Date: {date_str}, Type: {transaction_type}")
+            print(f"Category ID: {category_id}, Subcategory ID: {subcategory_id}, Payment Method: {payment_method}, Notes: {notes}")
+            
+            # Validate required fields
+            if not title or not amount or not date_str or not transaction_type:
+                return JsonResponse({'success': False, 'error': 'Missing required fields'})
+            
+            # Convert amount to float
+            try:
+                amount = float(amount)
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid amount format'})
+            
+            # Create the transaction
+            transaction = Transaction(
+                title=title,
+                amount=amount,
+                date=date_str,
+                type=transaction_type,
+                user=request.user,
+                payment_method=payment_method,
+                notes=notes
+            )
+            
+            if category_id and category_id != 'null' and category_id != '':
+                try:
+                    category = get_object_or_404(Category, id=category_id, user=request.user)
+                    transaction.category = category
+                except Exception as e:
+                    print(f"Error getting category: {e}")
+            
+            if subcategory_id and subcategory_id != 'null' and subcategory_id != '':
+                try:
+                    subcategory = get_object_or_404(SubCategory, id=subcategory_id, parent_category__user=request.user)
+                    transaction.subcategory = subcategory
+                except Exception as e:
+                    print(f"Error getting subcategory: {e}")
+            
+            transaction.save()
+            print(f"Transaction created successfully with ID: {transaction.id}")
+            
+            return JsonResponse({'success': True, 'transaction_id': transaction.id})
+        except Exception as e:
+            print(f"Error creating transaction: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def update_transaction_api(request, transaction_id):
+    """API endpoint for updating a transaction"""
+    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+    
+    if request.method == 'POST':
+        try:
+            # Debug: Print out all POST data
+            print(f"Updating transaction {transaction_id} with POST data:", request.POST)
+            
+            title = request.POST.get('title')
+            amount = request.POST.get('amount')
+            date_str = request.POST.get('date')
+            transaction_type = request.POST.get('type')
+            category_id = request.POST.get('category') or None
+            subcategory_id = request.POST.get('subcategory') or None
+            payment_method = request.POST.get('payment_method', 'cash')  # Default to cash if not provided
+            notes = request.POST.get('notes', '')
+            
+            # Debug: Print all parameters
+            print(f"Title: {title}, Amount: {amount}, Date: {date_str}, Type: {transaction_type}")
+            print(f"Category ID: {category_id}, Subcategory ID: {subcategory_id}, Payment Method: {payment_method}, Notes: {notes}")
+            
+            # Validate required fields
+            if not title or not amount or not date_str or not transaction_type:
+                return JsonResponse({'success': False, 'error': 'Missing required fields'})
+            
+            # Convert amount to float
+            try:
+                amount = float(amount)
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid amount format'})
+            
+            # Update the transaction
+            transaction.title = title
+            transaction.amount = amount
+            transaction.date = date_str
+            transaction.type = transaction_type
+            transaction.payment_method = payment_method
+            transaction.notes = notes
+            
+            if category_id and category_id != 'null' and category_id != '':
+                try:
+                    category = get_object_or_404(Category, id=category_id, user=request.user)
+                    transaction.category = category
+                except Exception as e:
+                    print(f"Error getting category: {e}")
+            else:
+                transaction.category = None
+            
+            if subcategory_id and subcategory_id != 'null' and subcategory_id != '':
+                try:
+                    subcategory = get_object_or_404(SubCategory, id=subcategory_id, parent_category__user=request.user)
+                    transaction.subcategory = subcategory
+                except Exception as e:
+                    print(f"Error getting subcategory: {e}")
+            else:
+                transaction.subcategory = None
+            
+            transaction.save()
+            print(f"Transaction updated successfully: {transaction.id}")
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            print(f"Error updating transaction: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def delete_transaction_api(request, transaction_id):
+    """API endpoint for deleting a transaction"""
+    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+    
+    if request.method == 'POST':
+        try:
+            transaction.delete()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
