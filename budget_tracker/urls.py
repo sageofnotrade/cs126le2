@@ -27,4 +27,5 @@ urlpatterns = [
     path('logout/', views.custom_logout, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('finances/', include('finances.urls')),
+    path('login/', views.login_view, name='login'),
 ]

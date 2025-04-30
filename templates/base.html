@@ -526,7 +526,7 @@
             <i class="bi bi-pie-chart sidebar-icon"></i>
             <span class="sidebar-text">Budgets</span>
         </a>
-        <a href="#" class="sidebar-item">
+        <a href="{% url 'charts' %}" class="sidebar-item {% if '/charts/' in request.path %}active{% endif %}">
             <i class="bi bi-graph-up sidebar-icon"></i>
             <span class="sidebar-text">Charts</span>
         </a>
@@ -676,12 +676,16 @@
             function updateDarkModeState(isDarkMode) {
                 if (isDarkMode) {
                     document.body.classList.add('dark-mode');
-                    darkModeIcon.classList.remove('bi-moon-fill');
-                    darkModeIcon.classList.add('bi-sun-fill');
+                    if (darkModeIcon) {
+                        darkModeIcon.classList.remove('bi-moon-fill');
+                        darkModeIcon.classList.add('bi-sun-fill');
+                    }
                 } else {
                     document.body.classList.remove('dark-mode');
-                    darkModeIcon.classList.remove('bi-sun-fill');
-                    darkModeIcon.classList.add('bi-moon-fill');
+                    if (darkModeIcon) {
+                        darkModeIcon.classList.remove('bi-sun-fill');
+                        darkModeIcon.classList.add('bi-moon-fill');
+                    }
                 }
                 localStorage.setItem('darkMode', isDarkMode.toString());
             }
@@ -703,7 +707,7 @@
             const navbarToggler = document.querySelector('.navbar-toggler');
             if (navbarToggler) {
                 navbarToggler.addEventListener('click', function() {
-                    if (window.innerWidth < 992) {
+                    if (window.innerWidth < 992 && sidebar) {
                         if (sidebar.classList.contains('mobile-open')) {
                             sidebar.classList.remove('mobile-open');
                         }
@@ -712,7 +716,7 @@
             }
             
             // Handle mobile sidebar open/close
-            if (window.innerWidth < 992 && sidebarToggle) {
+            if (window.innerWidth < 992 && sidebarToggle && sidebar) {
                 sidebarToggle.addEventListener('click', function(e) {
                     if (window.innerWidth < 992) {
                         e.stopPropagation();
@@ -734,7 +738,7 @@
             
             // Handle window resize
             window.addEventListener('resize', function() {
-                if (window.innerWidth >= 992) {
+                if (window.innerWidth >= 992 && sidebar) {
                     sidebar.classList.remove('mobile-open');
                     
                     // Apply saved state for desktop

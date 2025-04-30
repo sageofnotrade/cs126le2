@@ -1,12 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Sum
-from django.db.models import Sum, Q, F, ExpressionWrapper, DecimalField
+from django.db.models import Sum, Q, F, ExpressionWrapper, DecimalField, Avg
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth import login, logout
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth import login, logout, authenticate
 from datetime import timedelta
 import calendar
 import csv
@@ -21,6 +20,25 @@ from decimal import Decimal
 
 def home(request):
     return render(request, 'finances/home.html')
+
+def login_view(request):
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                messages.success(request, f'Welcome back, {username}!')
+                return redirect('dashboard')
+            else:
+                messages.error(request, 'Invalid username or password.')
+        else:
+            messages.error(request, 'Invalid username or password.')
+    else:
+        form = AuthenticationForm()
+    return render(request, 'registration/login.html', {'form': form})
 
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True)
@@ -1497,3 +1515,84 @@ def delete_transaction_api(request, transaction_id):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def charts_view(request):
+    # Get the current date and calculate date ranges
+    today = timezone.now().date()
+    start_of_month = today.replace(day=1)
+    start_of_year = today.replace(month=1, day=1)
+    
+    # Categories Analysis Data
+    categories = Category.objects.filter(user=request.user)
+    category_data = []
+    
+    for category in categories:
+        total = Transaction.objects.filter(
+            user=request.user,
+            category=category,
+            date__gte=start_of_month
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        if total != 0:  # Only include categories with transactions
+            category_data.append({
+                'category': category.name,
+                'amount': float(total)
+            })
+    
+    # Time Analysis Data (Last 6 months)
+    time_data = {
+        'labels': [],
+        'income': [],
+        'expenses': []
+    }
+    
+    for i in range(6):
+        month = today.replace(day=1) - timedelta(days=30*i)
+        month_name = month.strftime('%b %Y')
+        time_data['labels'].insert(0, month_name)
+        
+        # Get income for the month
+        income = Transaction.objects.filter(
+            user=request.user,
+            type='income',
+            date__year=month.year,
+            date__month=month.month
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        time_data['income'].insert(0, float(income))
+        
+        # Get expenses for the month
+        expenses = Transaction.objects.filter(
+            user=request.user,
+            type='expense',
+            date__year=month.year,
+            date__month=month.month
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        time_data['expenses'].insert(0, float(expenses))
+    
+    # Future Projections Data (Next 6 months)
+    future_data = {
+        'labels': [],
+        'projected': []
+    }
+    
+    # Calculate average monthly income and expenses from the last 3 months
+    last_3_months_avg = Transaction.objects.filter(
+        user=request.user,
+        date__gte=today - timedelta(days=90)
+    ).aggregate(avg=Avg('amount'))['avg'] or 0
+    
+    # Project next 6 months
+    for i in range(1, 7):
+        month = today.replace(day=1) + timedelta(days=30*i)
+        month_name = month.strftime('%b %Y')
+        future_data['labels'].append(month_name)
+        future_data['projected'].append(float(last_3_months_avg))
+    
+    context = {
+        'category_data': json.dumps(category_data),
+        'time_data': json.dumps(time_data),
+        'future_data': json.dumps(future_data)
+    }
+    
+    return render(request, 'finances/charts.html', context)

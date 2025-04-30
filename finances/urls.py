@@ -34,7 +34,8 @@ urlpatterns = [
     path('budget/update/', views.update_budget, name='update_budget'),
     path('budget/delete/', views.delete_budget, name='delete_budget'),
     path('api/get_budgets/', views.get_budgets, name='get_budgets'),
-    # New chart URLs
+    # Charts URLs
+    path('charts/', views.charts_view, name='charts'),
     path('charts/categories/', views.categories_chart, name='categories_chart'),
     path('charts/future/', views.future_projections, name='future_projections'),
     path('charts/time/', views.time_analysis, name='time_analysis'),
