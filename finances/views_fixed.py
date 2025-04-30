@@ -1320,23 +1320,24 @@ def transactions_api(request):
     transactions_data = []
     for transaction in transactions:
         # Get category information (with fallbacks)
+        category_name = "Uncategorized"
+        category_icon = 'bi bi-tag'
+        subcategory_name = None
+        
         if transaction.category:
             category_name = transaction.category.name
             # Use icon from category, with fallback
             category_icon = transaction.category.icon if transaction.category.icon else 'bi bi-tag'
-            # If has subcategory, get subcategory details (with icon fallback)
+            
+            # If has subcategory, get subcategory details
             if transaction.subcategory:
                 subcategory_name = transaction.subcategory.name
-                category_name = f"{category_name} - {subcategory_name}"
                 # Prefer subcategory icon if available
                 if transaction.subcategory.icon:
                     category_icon = transaction.subcategory.icon
-        else:
-            category_name = "Uncategorized"
-            category_icon = 'bi bi-tag'
         
         # Print category info for debugging
-        print(f"Transaction {transaction.id}: {transaction.title}, Category: {category_name}, Icon: {category_icon}")
+        print(f"Transaction {transaction.id}: {transaction.title}, Category: {category_name}, Subcategory: {subcategory_name}, Icon: {category_icon}")
         
         transactions_data.append({
             'id': transaction.id,
@@ -1347,6 +1348,7 @@ def transactions_api(request):
             'category': transaction.category_id if transaction.category else None,
             'subcategory': transaction.subcategory_id if transaction.subcategory else None,
             'category_name': category_name,
+            'subcategory_name': subcategory_name,
             'category_icon': category_icon,
             'notes': transaction.notes or '',
         })
@@ -1365,6 +1367,7 @@ def transaction_detail_api(request, transaction_id):
     # Get category information (with fallbacks)
     category_name = "Uncategorized"
     category_icon = "bi bi-tag"
+    subcategory_name = None
     
     if transaction.category:
         category_name = transaction.category.name
@@ -1373,7 +1376,6 @@ def transaction_detail_api(request, transaction_id):
         # If has subcategory, get subcategory details
         if transaction.subcategory:
             subcategory_name = transaction.subcategory.name
-            category_name = f"{category_name} - {subcategory_name}"
             # Prefer subcategory icon if available
             if transaction.subcategory.icon:
                 category_icon = transaction.subcategory.icon
@@ -1388,6 +1390,7 @@ def transaction_detail_api(request, transaction_id):
         'category': transaction.category_id if transaction.category else None,
         'subcategory': transaction.subcategory_id if transaction.subcategory else None,
         'category_name': category_name,
+        'subcategory_name': subcategory_name,
         'category_icon': category_icon,
         'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
         'currency': transaction.currency,
@@ -1396,7 +1399,7 @@ def transaction_detail_api(request, transaction_id):
     
     # Log for debugging
     print(f"Returning transaction details for ID {transaction_id}:")
-    print(f"Category name: {category_name}, Category icon: {category_icon}")
+    print(f"Category name: {category_name}, Subcategory: {subcategory_name}, Icon: {category_icon}")
     
     return JsonResponse(data)
 
@@ -1513,8 +1516,8 @@ def create_transaction_api(request):
             # Save with detailed error capture
             try:
                 transaction.save()
-                print(f"Transaction created successfully with ID: {transaction.id}")
-                
+            print(f"Transaction created successfully with ID: {transaction.id}")
+            
                 # Double-check that the category info is correct for the response
                 category_name = transaction.category.name if transaction.category else "Uncategorized"
                 category_icon = transaction.category.icon if transaction.category and transaction.category.icon else "bi bi-tag"
@@ -1653,8 +1656,8 @@ def update_transaction_api(request, transaction_id):
             # Save with detailed error capture
             try:
                 transaction.save()
-                print(f"Transaction updated successfully: {transaction.id}")
-                
+            print(f"Transaction updated successfully: {transaction.id}")
+            
                 # Double-check that the category info is correct for the response
                 category_name = transaction.category.name if transaction.category else "Uncategorized"
                 category_icon = transaction.category.icon if transaction.category and transaction.category.icon else "bi bi-tag"

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import HomePage from './components/HomePage';
-import Categories from './components/Categories';
+import Categories from './components/Categories/Categories';
 import './index.css';
 
 function App() {
@@ -17,9 +17,20 @@ function App() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const rootElement = document.getElementById('react-root');
+    const homepageContainer = document.getElementById('react-homepage');
     
+<<<<<<< Updated upstream
     if (rootElement) {
         ReactDOM.render(<App />, rootElement);
+=======
+    if (homepageContainer) {
+        ReactDOM.render(<HomePage />, homepageContainer);
+    }
+    
+    const categoriesContainer = document.getElementById('react-categories');
+    
+    if (categoriesContainer) {
+        ReactDOM.render(<Categories />, categoriesContainer);
+>>>>>>> Stashed changes
     }
 });

@@ -105,20 +105,18 @@ const Categories = () => {
         expenses: data.expenses || []
       });
       
-      // Debug info for subcategories
+      // Debug info for subcategories - fix state closure issue
       setTimeout(() => {
-        // Log subcategories after state update
+        // Log subcategories after state update - get current state directly from data
         console.log('Categories state after update:');
-        const incomeCats = [...categories.income];
-        const expenseCats = [...categories.expenses];
         
-        console.log(`Income categories: ${incomeCats.length}`);
-        incomeCats.forEach(cat => {
+        console.log(`Income categories: ${data.income.length}`);
+        data.income.forEach(cat => {
           console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
         });
         
-        console.log(`Expense categories: ${expenseCats.length}`);
-        expenseCats.forEach(cat => {
+        console.log(`Expense categories: ${data.expenses.length}`);
+        data.expenses.forEach(cat => {
           console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
         });
       }, 100);
