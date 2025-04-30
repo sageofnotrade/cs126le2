@@ -31,7 +31,7 @@
                 "name": "{{ category.name|escapejs }}",
                 "icon": "{{ category.icon|escapejs }}",
                 "subcategories": [
-                {% for subcategory in category.subcategory_set.all %}
+                {% for subcategory in category.subcategories.all %}
                     {
                         "id": {{ subcategory.id }},
                         "name": "{{ subcategory.name|escapejs }}",
