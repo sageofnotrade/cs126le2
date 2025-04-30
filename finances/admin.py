@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Transaction, Budget, Account, CreditAccount, DebitAccount, Wallet, SubCategory, Debt
+from .models import Category, Transaction, Budget, Account, CreditAccount, DebitAccount, Wallet, SubCategory, Debt, ScheduledTransaction
 
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ('title', 'amount', 'date', 'type', 'category', 'subcategory', 'user')
@@ -18,8 +18,8 @@ class SubCategoryAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 class BudgetAdmin(admin.ModelAdmin):
-    list_display = ('category', 'amount', 'month', 'user')
-    list_filter = ('category', 'user', 'month')
+    list_display = ('category', 'amount', 'start_date', 'end_date', 'user')  # Show start_date and end_date
+    list_filter = ('category', 'user', 'start_date', 'end_date')  # Filter by start_date and end_date
 
 class AccountAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'user')
@@ -46,6 +46,12 @@ class DebtAdmin(admin.ModelAdmin):
     list_filter = ('date_issued', 'date_payback', 'person', 'user')
     search_fields = ('person', 'notes')
 
+class ScheduledTransactionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'amount', 'account', 'date_scheduled', 'repeat_type', 'repeats', 'note', 'transaction_type', 'user')
+    list_filter = ('category', 'user', 'transaction_type', 'repeat_type')
+    search_fields = ('name', 'note')
+
+
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(SubCategory, SubCategoryAdmin)
@@ -55,3 +61,4 @@ admin.site.register(CreditAccount, CreditAccountAdmin)
 admin.site.register(DebitAccount, DebitAccountAdmin)
 admin.site.register(Wallet, WalletAdmin)
 admin.site.register(Debt, DebtAdmin)
+admin.site.register(ScheduledTransaction, ScheduledTransactionAdmin)

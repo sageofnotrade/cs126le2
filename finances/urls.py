@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('add/', views.add_transaction, name='add_transaction'),
@@ -12,6 +14,10 @@ urlpatterns = [
     path('debts/edit/<int:pk>/', views.edit_debt, name='edit_debt'),
     path('debts/delete/<int:pk>/', views.delete_debt, name='delete_debt'),
     path('debts/update_payment/<int:pk>/', views.update_payment, name='update_payment'),
+    path('scheduled/', views.scheduled_transactions, name='scheduled_transactions'),
+    path('scheduled/create/', views.create_scheduled_transaction, name='create_scheduled_transaction'),
+    # path('scheduled/edit/<int:pk>/', views.edit_scheduled_transaction, name='edit_scheduled_transaction'),
+    # path('scheduled/delete/<int:pk>/', views.delete_scheduled_transaction, name='delete_scheduled_transaction'),
     path('summary/', views.monthly_summary, name='monthly_summary'),
     path('categories/', views.categories, name='categories'),
     path('api/categories/', views.api_categories, name='api_categories'),
@@ -24,7 +30,14 @@ urlpatterns = [
     path('api/categories/reorder/', views.api_reorder_categories, name='api_reorder_categories'),
     path('export/', views.export_csv, name='export_csv'),
     path('budget/', views.manage_budget, name='manage_budget'),
-    
+    path('budget/add/', views.add_budget, name='add_budget'),
+    path('budget/update/', views.update_budget, name='update_budget'),
+    path('budget/delete/', views.delete_budget, name='delete_budget'),
+    path('api/get_budgets/', views.get_budgets, name='get_budgets'),
+    # New chart URLs
+    path('charts/categories/', views.categories_chart, name='categories_chart'),
+    path('charts/future/', views.future_projections, name='future_projections'),
+    path('charts/time/', views.time_analysis, name='time_analysis'),
     # New transaction routes
     path('transactions/', views.transactions, name='transactions'),
     path('transactions/api/', views.transactions_api, name='transactions_api'),
@@ -32,4 +45,4 @@ urlpatterns = [
     path('transactions/api/create/', views.create_transaction_api, name='create_transaction_api'),
     path('transactions/api/<int:transaction_id>/update/', views.update_transaction_api, name='update_transaction_api'),
     path('transactions/api/<int:transaction_id>/delete/', views.delete_transaction_api, name='delete_transaction_api'),
-] 
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 

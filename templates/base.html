@@ -510,7 +510,7 @@
             <i class="bi bi-list-check sidebar-icon"></i>
             <span class="sidebar-text">Transactions</span>
         </a>
-        <a href="#" class="sidebar-item">
+        <a href="{% url 'scheduled_transactions' %}" class="sidebar-item {% if request.path == '/scheduled/' %}active{% endif %}">
             <i class="bi bi-calendar-event sidebar-icon"></i>
             <span class="sidebar-text">Scheduled transactions</span>
         </a>
@@ -749,6 +749,7 @@
             });
         });
     </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
     {% block extra_js %}{% endblock %}
 </body>

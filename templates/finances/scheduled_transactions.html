@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Scheduled Transactions{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Scheduled Transactions</h2>
+
+    <form method="GET" class="mb-3">
+        <input type="text" class="form-control" name="search" placeholder="Search by name or note" value="{{ request.GET.search }}">
+        <button type="submit" class="btn btn-primary mt-2">Apply Filter</button>
+    </form>
+
+    <ul class="list-group">
+        {% for transaction in scheduled_transactions %}
+            <li class="list-group-item d-flex justify-content-between">
+                <div>
+                    <strong>{{ transaction.name }}</strong>
+                    <br>
+                    {{ transaction.amount }} USD ({{ transaction.transaction_type }})
+                    <br>
+                    Scheduled: {{ transaction.date_scheduled }} 
+                    {% if transaction.repeats %}
+                        (Repeats {{ transaction.repeats }} times)
+                    {% else %}
+                        (One-time)
+                    {% endif %}
+                </div>
+                <!--<div>
+                    <a href="{% url 'edit_scheduled_transaction' transaction.id %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'delete_scheduled_transaction' transaction.id %}" class="btn btn-sm btn-danger">Delete</a>
+                </div>-->
+            </li>
+        {% empty %}
+            <p>No scheduled transactions found.</p>
+        {% endfor %}
+    </ul>
+
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5>Expected Net Transaction for this Month:</h5>
+            <p>
+                Income: {{ income_sum }} USD<br>
+                Expenses: {{ expense_sum }} USD<br>
+                <strong>Net: {{ net_sum }} USD</strong>
+            </p>
+        </div>
+    </div>
+
+    <a href="{% url 'create_scheduled_transaction' %}" class="btn btn-primary my-3">Create Scheduled Transaction</a>
+</div>
+{% endblock %}

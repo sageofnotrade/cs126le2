@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Scheduled Transaction{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Create Scheduled Transaction</h2>
+    
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        
+        <button type="submit" class="btn btn-primary">Save Scheduled Transaction</button>
+        <a href="{% url 'scheduled_transactions' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

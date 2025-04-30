@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, Debt, SubCategory
+from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, Debt, SubCategory, ScheduledTransaction
 from django.utils import timezone
 import datetime
 
@@ -41,6 +41,14 @@ class TransactionForm(forms.ModelForm):
             self.fields['category'].label = "Category"
             self.fields['subcategory'].label = "Subcategory"
             self.fields['transaction_account'].label = "Account"
+
+class ScheduledTransactionForm(forms.ModelForm):
+    class Meta:
+        model = ScheduledTransaction
+        fields = ['name', 'category', 'amount', 'account', 'date_scheduled', 'repeat_type', 'repeats', 'note', 'transaction_type']
+        widgets = {
+            'date_scheduled': forms.DateInput(attrs={'type': 'date'}),
+        }
 
 class DebtForm(forms.ModelForm):
     class Meta:
@@ -138,15 +146,13 @@ class SubCategoryForm(forms.ModelForm):
                 raise forms.ValidationError("Invalid category selection")
 
 class BudgetForm(forms.ModelForm):
-    month = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'month'}),
-        initial=timezone.now().replace(day=1)
-    )
-    
+    duration = forms.ChoiceField(choices=[('1 week', '1 Week'), ('1 month', '1 Month')])
+    account = forms.ModelChoiceField(queryset=Account.objects.all(), required=True)
+
     class Meta:
         model = Budget
-        fields = ['category', 'amount', 'month']
-    
+        fields = ['category', 'account', 'amount', 'duration']
+
     def __init__(self, *args, user=None, **kwargs):
         super(BudgetForm, self).__init__(*args, **kwargs)
         if user:
