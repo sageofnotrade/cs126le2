@@ -3,6 +3,30 @@
 {% load static %}
 
 {% block title %}Manage Budget - Budget Tracker{% endblock %}
+{% block navbar_title %}Manage Budget{% endblock %}
+
+{% block extra_css %}
+<style>
+    .budgets-list {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .budget-icon {
+        min-width: 40px;
+    }
+    .progress {
+        background-color: #e9ecef;
+        border-radius: 4px;
+    }
+    .btn-link {
+        text-decoration: none;
+    }
+    .card {
+        border: none;
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -217,29 +241,6 @@
 </div>
 {% endblock %}
 
-{% block styles %}
-<style>
-    .budgets-list {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    .budget-icon {
-        min-width: 40px;
-    }
-    .progress {
-        background-color: #e9ecef;
-        border-radius: 4px;
-    }
-    .btn-link {
-        text-decoration: none;
-    }
-    .card {
-        border: none;
-        border-radius: 8px;
-    }
-</style>
-{% endblock %}
-
-{% block scripts %}
+{% block extra_js %}
 <script src="{% static 'js/budget_modal.js' %}"></script>
 {% endblock %}

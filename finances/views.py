@@ -373,7 +373,8 @@ def dashboard(request):
             type='expense',
             category=budget.category,
             date__gte=first_day,
-            date__lte=last_day
+            date__lte=last_day,
+            transaction_account=budget.account
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         
         if spent > budget.amount:
@@ -637,7 +638,7 @@ def manage_budget(request):
             category=budget.category,
             date__year=today.year,
             date__month=today.month,
-            account=budget.account
+            transaction_account=budget.account
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         
         # Calculate the remaining budget and the percentage used
