@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -114,10 +115,34 @@ class Budget(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    month = models.DateField()
-    
+    spent = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)  # The account from which the budget comes
+    duration = models.CharField(max_length=20, choices=[('1 week', '1 Week'), ('1 month', '1 Month')])  # Duration (1 week or 1 month)
+
+    start_date = models.DateField(default=timezone.now)  # Default to current date
+    end_date = models.DateField()  # Calculated based on duration
+
     def __str__(self):
-        return f"{self.category.name} - {self.amount}"
-    
+        return f"{self.category.name} - {self.amount} ({self.duration})"
+
+    @property
+    def remaining(self):
+        return self.amount - self.spent
+
+    @property
+    def percentage_used(self):
+        if self.amount > 0:
+            return round((self.spent / self.amount) * 100, 2)
+        return 0
+
+    def save(self, *args, **kwargs):
+        # Calculate the end_date based on the start_date and duration
+        if not self.end_date:  # Only calculate if end_date is not set (to avoid overriding)
+            if self.duration == '1 week':
+                self.end_date = self.start_date + timedelta(weeks=1)
+            elif self.duration == '1 month':
+                self.end_date = self.start_date.replace(month=self.start_date.month + 1)
+        super().save(*args, **kwargs)
+
     class Meta:
-        unique_together = ('category', 'user', 'month')
+        unique_together = ('category', 'user', 'start_date', 'account')  

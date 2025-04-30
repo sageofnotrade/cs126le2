@@ -138,15 +138,13 @@ class SubCategoryForm(forms.ModelForm):
                 raise forms.ValidationError("Invalid category selection")
 
 class BudgetForm(forms.ModelForm):
-    month = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'month'}),
-        initial=timezone.now().replace(day=1)
-    )
-    
+    duration = forms.ChoiceField(choices=[('1 week', '1 Week'), ('1 month', '1 Month')])
+    account = forms.ModelChoiceField(queryset=Account.objects.all(), required=True)
+
     class Meta:
         model = Budget
-        fields = ['category', 'amount', 'month']
-    
+        fields = ['category', 'account', 'amount', 'duration']
+
     def __init__(self, *args, user=None, **kwargs):
         super(BudgetForm, self).__init__(*args, **kwargs)
         if user:
