@@ -1852,20 +1852,34 @@ def charts_data_future(request):
             'credit_card_payments': []
         }
         
-        # Determine the end date based on period
+        # Determine the end date and date points based on period
         if period == 'month':
             end_date = today + timedelta(days=30)
+            date_points = [(today + timedelta(days=x)) for x in range(31)]
             date_format = '%d %b'
         elif period == 'quarter':
+            # For quarter, we'll use monthly points instead of daily
             end_date = today + timedelta(days=90)
-            date_format = '%b'
+            current_month = today.replace(day=1)
+            date_points = []
+            for i in range(3):  # Next 3 months
+                date_points.append(current_month + timedelta(days=32*i))  # Using 32 to ensure we get to next month
+            date_format = '%b %Y'
         else:  # year
+            # For year, we'll use monthly points
             end_date = today + timedelta(days=365)
+            current_month = today.replace(day=1)
+            date_points = []
+            for i in range(12):  # Next 12 months
+                date_points.append(current_month + timedelta(days=32*i))
             date_format = '%b %Y'
 
-        # Generate dates for the x-axis
-        current_date = today
-        while current_date <= end_date:
+        # Process each date point
+        for current_date in date_points:
+            # Ensure we're always using the 1st of the month for quarter and year periods
+            if period in ['quarter', 'year']:
+                current_date = current_date.replace(day=1)
+            
             data['labels'].append(current_date.strftime(date_format))
             
             # Initialize amounts for this date
@@ -1875,10 +1889,17 @@ def charts_data_future(request):
             credit_card_amount = 0
 
             try:
-                # Get scheduled transactions for this date
+                # For quarter and year, get all transactions for the whole month
+                if period in ['quarter', 'year']:
+                    month_end = (current_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+                    date_range = [current_date, month_end]
+                else:
+                    date_range = [current_date, current_date]
+
+                # Get scheduled transactions for this period
                 scheduled = ScheduledTransaction.objects.filter(
                     user=request.user,
-                    date_scheduled=current_date
+                    date_scheduled__range=date_range
                 )
                 for transaction in scheduled:
                     amount = float(transaction.amount)
@@ -1890,10 +1911,10 @@ def charts_data_future(request):
                 scheduled_amount = 0
 
             try:
-                # Get debt payments due on this date
+                # Get debt payments due in this period
                 debts = Debt.objects.filter(
                     user=request.user,
-                    due_date=current_date
+                    due_date__range=date_range
                 )
                 for debt in debts:
                     if debt.debt_type == 'debt':
@@ -1905,14 +1926,16 @@ def charts_data_future(request):
                 debts_credits_amount = 0
 
             try:
-                # Get credit card payments due on this date
+                # Get credit card payments due in this period
                 credit_accounts = CreditAccount.objects.filter(
                     user=request.user
                 )
                 for account in credit_accounts:
-                    if hasattr(account, 'payment_due_date') and account.payment_due_date and account.payment_due_date == current_date:
-                        if hasattr(account, 'minimum_payment'):
-                            credit_card_amount -= float(account.minimum_payment)
+                    if hasattr(account, 'payment_due_date') and account.payment_due_date:
+                        payment_date = account.payment_due_date
+                        if date_range[0] <= payment_date <= date_range[1]:
+                            if hasattr(account, 'minimum_payment'):
+                                credit_card_amount -= float(account.minimum_payment)
             except Exception as e:
                 print(f"Error processing credit cards: {str(e)}")
                 credit_card_amount = 0
@@ -1926,9 +1949,6 @@ def charts_data_future(request):
             # Calculate total projected amount for this date
             total_projected = future_amount + scheduled_amount + debts_credits_amount + credit_card_amount
             data['projected'].append(total_projected)
-
-            # Move to next date
-            current_date += timedelta(days=1)
         
         return JsonResponse(data)
         
