@@ -7,7 +7,7 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login, logout
-from datetime import timedelta
+from datetime import timedelta, datetime
 import calendar
 import csv
 import json
@@ -50,25 +50,91 @@ def signup(request):
 
 @login_required
 def scheduled_transactions(request):
+    search_query = request.GET.get('search', '')
+    month_str = request.GET.get('month', '')
+    
+    # Parse selected month or use current month
+    if month_str:
+        try:
+            selected_month = datetime.strptime(month_str, '%Y-%m')
+        except ValueError:
+            selected_month = timezone.now()
+    else:
+        selected_month = timezone.now()
+    
+    # Get the first and last day of the selected month
+    first_day = selected_month.replace(day=1)
+    if selected_month.month == 12:
+        last_day = selected_month.replace(year=selected_month.year + 1, month=1, day=1) - timezone.timedelta(days=1)
+    else:
+        last_day = selected_month.replace(month=selected_month.month + 1, day=1) - timezone.timedelta(days=1)
+    
+    # Get scheduled transactions
     scheduled_transactions = ScheduledTransaction.objects.filter(user=request.user)
-
-    search = request.GET.get('search', '')
-    if search:
+    if search_query:
         scheduled_transactions = scheduled_transactions.filter(
-            Q(name__icontains=search) |
-            Q(note__icontains=search)
+            Q(name__icontains=search_query) | Q(note__icontains=search_query)
         )
 
-    income_sum = scheduled_transactions.filter(transaction_type='income', date_scheduled__month=timezone.now().month).aggregate(Sum('amount'))['amount__sum'] or 0
-    expense_sum = scheduled_transactions.filter(transaction_type='expense', date_scheduled__month=timezone.now().month).aggregate(Sum('amount'))['amount__sum'] or 0
+    # Get actual transactions for the selected month
+    actual_transactions = Transaction.objects.filter(
+        user=request.user,
+        date__range=[first_day, last_day]
+    )
 
-    net_sum = income_sum - expense_sum
+    # Calculate expected amounts for the selected month
+    expected_income = 0
+    expected_expense = 0
+    monthly_transactions = []
+
+    # Add actual transactions
+    for transaction in actual_transactions:
+        if transaction.type == 'income':
+            expected_income += transaction.amount
+        else:
+            expected_expense += transaction.amount
+        
+        monthly_transactions.append({
+            'date': transaction.date,
+            'name': transaction.title,
+            'type': transaction.type,
+            'amount': transaction.amount,
+            'is_scheduled': False
+        })
+
+    # Add scheduled transactions
+    for scheduled in scheduled_transactions:
+        # Get all occurrences for the selected month
+        occurrences = scheduled.get_occurrences_for_month(selected_month.year, selected_month.month)
+        
+        for occurrence_date in occurrences:
+            if scheduled.transaction_type == 'income':
+                expected_income += scheduled.amount
+            else:
+                expected_expense += scheduled.amount
+            
+            monthly_transactions.append({
+                'date': occurrence_date,
+                'name': scheduled.name,
+                'type': scheduled.transaction_type,
+                'amount': scheduled.amount,
+                'is_scheduled': True
+            })
+
+    # Sort transactions by date
+    monthly_transactions.sort(key=lambda x: x['date'])
+
+    # Calculate net
+    net_sum = expected_income - expected_expense
 
     context = {
         'scheduled_transactions': scheduled_transactions,
-        'income_sum': income_sum,
-        'expense_sum': expense_sum,
+        'monthly_transactions': monthly_transactions,
+        'income_sum': expected_income,
+        'expense_sum': expected_expense,
         'net_sum': net_sum,
+        'search_query': search_query,
+        'selected_month': selected_month,
     }
 
     return render(request, 'finances/scheduled_transactions.html', context)

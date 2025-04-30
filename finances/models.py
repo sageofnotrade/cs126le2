@@ -135,23 +135,53 @@ class ScheduledTransaction(models.Model):
     repeats = models.PositiveIntegerField(default=0)
     note = models.TextField(blank=True, null=True)
     transaction_type = models.CharField(max_length=7, choices=TRANSACTION_TYPES)
+    last_occurrence = models.DateField(null=True, blank=True)  # Track the last occurrence
+    occurrences_remaining = models.PositiveIntegerField(null=True, blank=True)  # Track remaining occurrences
 
     def __str__(self):
         return f"{self.name} - {self.amount} ({self.transaction_type})"
 
-    @property
-    def next_occurrence(self):
-        """Calculate the next occurrence of the transaction based on repeat_type."""
-        if self.repeat_type == 'daily':
+    def save(self, *args, **kwargs):
+        if not self.pk:  # New instance
+            if self.repeat_type == 'once':
+                self.occurrences_remaining = 1
+            else:
+                self.occurrences_remaining = self.repeats if self.repeats > 0 else None
+        super().save(*args, **kwargs)
+
+    def get_next_occurrence(self):
+        """Calculate the next occurrence date based on repeat_type"""
+        if self.repeat_type == 'once':
+            return self.date_scheduled
+        elif self.repeat_type == 'daily':
             return self.date_scheduled + timezone.timedelta(days=1)
         elif self.repeat_type == 'weekly':
             return self.date_scheduled + timezone.timedelta(weeks=1)
         elif self.repeat_type == 'monthly':
-            return self.date_scheduled + timezone.timedelta(weeks=4)
+            return self.date_scheduled + timezone.timedelta(days=30)  # Approximate
         elif self.repeat_type == 'yearly':
-            return self.date_scheduled + timezone.timedelta(weeks=52)
-        else:
-            return None
+            return self.date_scheduled + timezone.timedelta(days=365)  # Approximate
+        return None
+
+    def get_occurrences_for_month(self, year, month):
+        """Get all occurrences of this transaction for a specific month"""
+        occurrences = []
+        current_date = self.date_scheduled
+        remaining = self.occurrences_remaining if self.occurrences_remaining is not None else float('inf')
+        
+        while (current_date.year < year or 
+               (current_date.year == year and current_date.month <= month)) and remaining > 0:
+            if current_date.year == year and current_date.month == month:
+                occurrences.append(current_date)
+            current_date = self.get_next_occurrence()
+            remaining -= 1
+            
+        return occurrences
+
+    def get_monthly_amount(self, year, month):
+        """Calculate the total amount for a specific month"""
+        occurrences = self.get_occurrences_for_month(year, month)
+        return self.amount * len(occurrences)
 
 class Budget(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
