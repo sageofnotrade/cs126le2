@@ -3,7 +3,7 @@ import Hero from './Hero';
 import Features from './Features';
 import Testimonial from './Testimonial';
 import CallToAction from './CallToAction';
-import BudgetList from './BudgetList';  // Import the BudgetList component
+import BudgetList from './Budgets/BudgetList';  // Import the BudgetList component
 
 const HomePage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

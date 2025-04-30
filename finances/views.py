@@ -1497,3 +1497,64 @@ def delete_transaction_api(request, transaction_id):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def api_accounts(request):
+    transaction_type = request.GET.get('transaction_type', 'expense')
+    accounts = Account.objects.filter(user=request.user)
+    
+    # For income transactions, exclude credit accounts
+    if transaction_type == 'income':
+        accounts = accounts.exclude(creditaccount__isnull=False)
+    
+    account_data = []
+    for account in accounts:
+        # Get the specific account type instance
+        try:
+            if hasattr(account, 'debitaccount'):
+                account_instance = account.debitaccount
+                balance = account_instance.balance
+                account_type = 'debit'
+            elif hasattr(account, 'creditaccount'):
+                account_instance = account.creditaccount
+                balance = account_instance.credit_limit - account_instance.current_usage
+                account_type = 'credit'
+            elif hasattr(account, 'wallet'):
+                account_instance = account.wallet
+                balance = account_instance.balance
+                account_type = 'wallet'
+            else:
+                continue  # Skip if not a valid account type
+                
+            account_data.append({
+                'id': account.id,
+                'name': account.name,
+                'type': account_type,
+                'balance': float(balance)
+            })
+        except Exception as e:
+            continue  # Skip if there's any error getting the account details
+    
+    return JsonResponse(account_data, safe=False)
+
+@login_required
+def api_account_balance(request, account_id):
+    try:
+        account = Account.objects.get(id=account_id, user=request.user)
+        
+        # Get the specific account type instance
+        if hasattr(account, 'debitaccount'):
+            account_instance = account.debitaccount
+            balance = account_instance.balance
+        elif hasattr(account, 'creditaccount'):
+            account_instance = account.creditaccount
+            balance = account_instance.credit_limit - account_instance.current_usage
+        elif hasattr(account, 'wallet'):
+            account_instance = account.wallet
+            balance = account_instance.balance
+        else:
+            return JsonResponse({'error': 'Invalid account type'}, status=400)
+            
+        return JsonResponse({'balance': float(balance)})
+    except Account.DoesNotExist:
+        return JsonResponse({'error': 'Account not found'}, status=404)

@@ -17,7 +17,7 @@
                     <br>
                     {{ transaction.amount }} USD ({{ transaction.transaction_type }})
                     <br>
-                    Scheduled: {{ transaction.date_scheduled }} 
+                    Next Schedule: {{ transaction.date_scheduled }} 
                     {% if transaction.repeats %}
                         (Repeats {{ transaction.repeats }} times)
                     {% else %}
