@@ -6,57 +6,97 @@
 <div class="container">
     <h2>Create Scheduled Transaction</h2>
     
-    <form method="POST">
+    {% if form.errors %}
+        <div class="alert alert-danger">
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <form method="POST" id="scheduledTransactionForm">
         {% csrf_token %}
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="id_name">Name</label>
             {{ form.name }}
+            {% if form.name.errors %}
+                <div class="text-danger">{{ form.name.errors }}</div>
+            {% endif %}
         </div>
 
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="id_category">Category</label>
             {{ form.category }}
+            {% if form.category.errors %}
+                <div class="text-danger">{{ form.category.errors }}</div>
+            {% endif %}
         </div>
 
-        <div class="form-group">
-            <label for="id_account">Account</label>
-            {{ form.account }}
-        </div>
-
-        <div class="form-group">
-            <label for="id_amount">Amount</label>
-            {{ form.amount }}
-        </div>
-
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="id_transaction_type">Transaction Type</label>
             {{ form.transaction_type }}
+            {% if form.transaction_type.errors %}
+                <div class="text-danger">{{ form.transaction_type.errors }}</div>
+            {% endif %}
         </div>
 
-        <div class="form-group">
+        <div class="form-group mb-3">
+            <label for="id_account">Account</label>
+            {{ form.account }}
+            {% if form.account.errors %}
+                <div class="text-danger">{{ form.account.errors }}</div>
+            {% endif %}
+            <div id="accountBalance" class="text-muted mt-1"></div>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="id_amount">Amount</label>
+            {{ form.amount }}
+            {% if form.amount.errors %}
+                <div class="text-danger">{{ form.amount.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group mb-3">
             <label for="id_date_scheduled">Date Scheduled</label>
             {{ form.date_scheduled }}
+            {% if form.date_scheduled.errors %}
+                <div class="text-danger">{{ form.date_scheduled.errors }}</div>
+            {% endif %}
         </div>
 
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="id_repeat_type">Repeat Type</label>
             {{ form.repeat_type }}
+            {% if form.repeat_type.errors %}
+                <div class="text-danger">{{ form.repeat_type.errors }}</div>
+            {% endif %}
             <small id="repeatNote" class="form-text text-muted">
                 Select repeat type (One-time, Daily, Weekly, Monthly, Yearly). For One-time, set repeats to 1.
             </small>
         </div>
 
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="id_repeats">Number of Transactions</label>
-            {{ form.repeats }}
+            <div id="repeatsContainer">
+                {{ form.repeats }}
+            </div>
+            {% if form.repeats.errors %}
+                <div class="text-danger">{{ form.repeats.errors }}</div>
+            {% endif %}
             <small id="repeatsNote" class="form-text text-muted">
                 Setting this to 0 makes the scheduled transaction infinitely recurring.
             </small>
         </div>
 
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="id_note">Note</label>
             {{ form.note }}
+            {% if form.note.errors %}
+                <div class="text-danger">{{ form.note.errors }}</div>
+            {% endif %}
         </div>
 
         <button type="submit" class="btn btn-primary">Create</button>
@@ -64,16 +104,78 @@
 </div>
 
 <script>
-    document.getElementById('id_repeat_type').addEventListener('change', function () {
-        const repeatsField = document.getElementById('id_repeats');
-        const repeatType = this.value;
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('scheduledTransactionForm');
+        const transactionTypeSelect = document.getElementById('id_transaction_type');
+        const accountSelect = document.getElementById('id_account');
+        const accountBalanceDiv = document.getElementById('accountBalance');
+        const repeatTypeSelect = document.getElementById('id_repeat_type');
+        const repeatsContainer = document.getElementById('repeatsContainer');
+        let repeatsInput = document.getElementById('id_repeats');
 
-        if (repeatType === 'once') {
-            repeatsField.disabled = true;
-            repeatsField.value = 1;
-        } else {
-            repeatsField.disabled = false;
+        // Function to update account options based on transaction type
+        function updateAccountOptions() {
+            const transactionType = transactionTypeSelect.value;
+            const currentAccountId = accountSelect.value;
+            
+            fetch(`/finances/api/accounts/?transaction_type=${transactionType}`)
+                .then(response => response.json())
+                .then(accounts => {
+                    accountSelect.innerHTML = '';
+                    accounts.forEach(account => {
+                        const option = document.createElement('option');
+                        option.value = account.id;
+                        option.textContent = account.name;
+                        if (account.id == currentAccountId) {
+                            option.selected = true;
+                        }
+                        accountSelect.appendChild(option);
+                    });
+                    updateAccountBalance();
+                });
         }
+
+        // Function to update account balance display
+        function updateAccountBalance() {
+            const accountId = accountSelect.value;
+            if (accountId) {
+                fetch(`/finances/api/accounts/${accountId}/balance/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        accountBalanceDiv.textContent = `Available Balance: ${data.balance} USD`;
+                    });
+            } else {
+                accountBalanceDiv.textContent = '';
+            }
+        }
+
+        // Function to handle repeat type changes
+        function handleRepeatTypeChange() {
+            if (repeatTypeSelect.value === 'once') {
+                // Create a hidden input for the repeats value
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'repeats';
+                hiddenInput.value = '1';
+                
+                // Replace the visible input with the hidden one
+                repeatsContainer.innerHTML = '';
+                repeatsContainer.appendChild(hiddenInput);
+            } else {
+                // Restore the original input
+                repeatsContainer.innerHTML = '<input type="number" name="repeats" class="form-control" id="id_repeats" min="0">';
+                repeatsInput = document.getElementById('id_repeats');
+            }
+        }
+
+        // Event listeners
+        transactionTypeSelect.addEventListener('change', updateAccountOptions);
+        accountSelect.addEventListener('change', updateAccountBalance);
+        repeatTypeSelect.addEventListener('change', handleRepeatTypeChange);
+
+        // Initial setup
+        updateAccountOptions();
+        handleRepeatTypeChange(); // Initialize repeat type handling
     });
 </script>
 {% endblock %}

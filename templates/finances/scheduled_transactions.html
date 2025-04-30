@@ -5,8 +5,17 @@
     <h2>Scheduled Transactions</h2>
 
     <form method="GET" class="mb-3">
-        <input type="text" class="form-control" name="search" placeholder="Search by name or note" value="{{ request.GET.search }}">
-        <button type="submit" class="btn btn-primary mt-2">Apply Filter</button>
+        <div class="row">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="search" placeholder="Search by name or note" value="{{ request.GET.search }}">
+            </div>
+            <div class="col-md-4">
+                <input type="month" class="form-control" name="month" value="{{ selected_month|date:'Y-m' }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Apply Filter</button>
+            </div>
+        </div>
     </form>
 
     <ul class="list-group">
@@ -17,7 +26,7 @@
                     <br>
                     {{ transaction.amount }} USD ({{ transaction.transaction_type }})
                     <br>
-                    Scheduled: {{ transaction.date_scheduled }} 
+                    Next Schedule: {{ transaction.date_scheduled }} 
                     {% if transaction.repeats %}
                         (Repeats {{ transaction.repeats }} times)
                     {% else %}
@@ -35,13 +44,72 @@
     </ul>
 
     <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Monthly Summary for {{ selected_month|date:"F Y" }}</h5>
+        </div>
         <div class="card-body">
-            <h5>Expected Net Transaction for this Month:</h5>
-            <p>
-                Income: {{ income_sum }} USD<br>
-                Expenses: {{ expense_sum }} USD<br>
-                <strong>Net: {{ net_sum }} USD</strong>
-            </p>
+            <div class="row">
+                <div class="col-md-4">
+                    <h6>Income</h6>
+                    <p class="text-success">{{ income_sum }} USD</p>
+                </div>
+                <div class="col-md-4">
+                    <h6>Expenses</h6>
+                    <p class="text-danger">{{ expense_sum }} USD</p>
+                </div>
+                <div class="col-md-4">
+                    <h6>Net</h6>
+                    <p class="{% if net_sum >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ net_sum }} USD
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Monthly Transactions</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in monthly_transactions %}
+                            <tr>
+                                <td>{{ transaction.date|date:"Y-m-d" }}</td>
+                                <td>{{ transaction.name }}</td>
+                                <td>
+                                    <span class="badge {% if transaction.type == 'income' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ transaction.type }}
+                                    </span>
+                                </td>
+                                <td>{{ transaction.amount }} USD</td>
+                                <td>
+                                    {% if transaction.is_scheduled %}
+                                        <span class="badge bg-warning">Scheduled</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No transactions for this month</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
