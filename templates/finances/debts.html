@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% block title %}Debts{% endblock %}
+{% block navbar_title %}Debts{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mt-4">Your Debts and Credits</h2>
+
+    <!-- Search/Filter Button -->
+    <button class="btn btn-secondary my-3" id="toggleFilterBtn">
+        <i class="bi bi-filter"></i> Filter & Search
+    </button>
+
+    <!-- Filter/Search Form -->
+    <div id="filterForm" style="display:none;">
+        <form method="GET" id="filterFormContent">
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Type</label>
+                    <select class="form-control" name="type">
+                        <option value="">All</option>
+                        <option value="debt" {% if request.GET.type == 'debt' %}selected{% endif %}>Debt</option>
+                        <option value="credit" {% if request.GET.type == 'credit' %}selected{% endif %}>Credit</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Account</label>
+                    <select class="form-control" name="account">
+                        <option value="">All</option>
+                        {% for account in accounts %}
+                            <option value="{{ account.id }}" {% if request.GET.account == account.id %}selected{% endif %}>{{ account.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Search</label>
+                    <input type="text" class="form-control" name="search" value="{{ request.GET.search }}" placeholder="Search by person, amount, or notes">
+                </div>
+                <div class="col-md-3">
+                    <label>Sort By</label>
+                    <select class="form-control" name="sort_by">
+                        <option value="date_issued" {% if request.GET.sort_by == 'date_issued' %}selected{% endif %}>Date Issued</option>
+                        <option value="date_payback" {% if request.GET.sort_by == 'date_payback' %}selected{% endif %}>Date Payback</option>
+                        <option value="residual_amount" {% if request.GET.sort_by == 'residual_amount' %}selected{% endif %}>Residual Amount</option>
+                        <option value="amount" {% if request.GET.sort_by == 'amount' %}selected{% endif %}>Amount</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Order</label>
+                    <select class="form-control" name="order">
+                        <option value="asc" {% if request.GET.order == 'asc' %}selected{% endif %}>Ascending</option>
+                        <option value="desc" {% if request.GET.order == 'desc' %}selected{% endif %}>Descending</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-2">Apply Filter</button>
+        </form>
+    </div>
+
+    <!-- Add Debt/Credit Button -->
+    <button class="btn btn-primary my-3" data-bs-toggle="modal" data-bs-target="#addDebtModal">
+        <i class="bi bi-plus"></i> Add Debt/Credit
+    </button>
+
+    <div class="row">
+        {% for debt in debts %}
+            <div class="col-md-4 mb-3">
+                <div class="card {% if debt.debt_type == 'debt' %}border-primary{% else %}border-success{% endif %}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong>
+                            {% if debt.debt_type == 'debt' %}
+                                You → {{ debt.person }}
+                            {% else %}
+                                {{ debt.person }} → You
+                            {% endif %}
+                        </strong>
+                        <div>
+                            <!-- Edit Debt Button -->
+                            <a href="{% url 'edit_debt' debt.id %}" class="btn btn-light btn-sm">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <form method="POST" action="{% url 'delete_debt' debt.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <div class="d-flex flex-column">
+                                <span><strong>Amount:</strong> USD {{ debt.amount }}</span>
+                                <span><strong>Paid:</strong> USD {{ debt.paid }}</span>
+                                <span><strong>Residual:</strong> USD {{ debt.residual_amount }}</span>
+                            </div>
+                            <!-- Progress Bar -->
+                            <div class="progress" style="height: 10px; width: 60%;">
+                                <div class="progress-bar {% if debt.debt_type == 'debt' %}bg-primary{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ debt.progress_percentage }}%" aria-valuenow="{{ debt.progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span><strong>Date Issued:</strong> {{ debt.date_issued }}</span>
+                            <span><strong>Payback Date:</strong> {{ debt.date_payback }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted">Residual Amount: USD {{ debt.residual_amount }}</div>
+                            <!-- Update Payment Button -->
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#updateDebtModal{{ debt.id }}">
+                                Update Payment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Debt Modal -->
+            <div class="modal fade" id="editDebtModal{{ debt.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Debt Entry</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form method="POST" action="{% url 'edit_transaction' debt.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label>Person:</label>
+                                    <input type="text" class="form-control" name="person" value="{{ debt.person }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Amount:</label>
+                                    <input type="number" class="form-control" name="amount" value="{{ debt.amount }}" step="0.01" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Date Issued:</label>
+                                    <input type="date" class="form-control" name="date_issued" value="{{ debt.date_issued }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Payback Date:</label>
+                                    <input type="date" class="form-control" name="date_payback" value="{{ debt.date_payback }}" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Update Payment Modal -->
+            <div class="modal fade" id="updateDebtModal{{ debt.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Update Payment</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form method="POST" action="{% url 'update_payment' debt.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label>Amount Paid:</label>
+                                    <input type="number" class="form-control" name="paid_amount" step="0.01" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Bank Account:</label>
+                                    <select class="form-control" name="account">
+                                        {% for account in accounts %}
+                                            <option value={{account.id}}>{{ account.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Payment</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>            
+        {% empty %}
+            <p class="text-muted">No debts found.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal for adding debts -->
+<div class="modal fade" id="addDebtModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Debt/Credit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'add_debt' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label>Person:</label>
+                        <input type="text" class="form-control" name="person" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Amount:</label>
+                        <input type="number" step="0.01" class="form-control" name="amount" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Date Issued:</label>
+                        <input type="date" class="form-control" name="date_issued" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Payback Date:</label>
+                        <input type="date" class="form-control" name="date_payback" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Notes:</label>
+                        <textarea class="form-control" name="notes"></textarea>
+                    </div>
+
+                    <!-- Toggle between Debt and Credit -->
+                    <label> Type</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="debt_type" id="debtType" value="debt" checked>
+                        <label class="form-check-label" for="debtType">
+                            Debt
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="debt_type" id="creditType" value="credit">
+                        <label class="form-check-label" for="creditType">
+                            Credit
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle the filter form visibility
+    document.getElementById("toggleFilterBtn").addEventListener("click", function() {
+        const filterForm = document.getElementById("filterForm");
+        if (filterForm.style.display === "none" || filterForm.style.display === "") {
+            filterForm.style.display = "block";
+        } else {
+            filterForm.style.display = "none";
+        }
+    });
+</script>
+
+{% endblock %}

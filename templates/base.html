@@ -7,7 +7,7 @@
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -42,7 +42,7 @@
         
         body {
             background-color: var(--background-color);
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Poppins', sans-serif;
             color: var(--text-primary);
             min-height: 100vh;
         }
@@ -504,6 +504,10 @@
         </a>
         <a href="{% url 'monthly_summary' %}" class="sidebar-item {% if '/monthly_summary/' in request.path %}active{% endif %}">
             <i class="bi bi-list-ul sidebar-icon"></i>
+            <span class="sidebar-text">Transactions Summary</span>
+        </a>
+        <a href="{% url 'transactions' %}" class="sidebar-item {% if '/transactions/' in request.path %}active{% endif %}">
+            <i class="bi bi-list-check sidebar-icon"></i>
             <span class="sidebar-text">Transactions</span>
         </a>
         <a href="#" class="sidebar-item">
@@ -514,17 +518,13 @@
             <i class="bi bi-bank sidebar-icon"></i>
             <span class="sidebar-text">Accounts</span>
         </a>
-        <a href="#" class="sidebar-item">
-            <i class="bi bi-credit-card sidebar-icon"></i>
-            <span class="sidebar-text">Credit cards</span>
+        <a href="{% url 'debts_list' %}" class="sidebar-item {% if request.path == '/debts/' %}active{% endif %}">
+            <i class="bi bi-cash-coin sidebar-icon"></i>
+            <span class="sidebar-text">Debts</span>
         </a>
         <a href="{% url 'manage_budget' %}" class="sidebar-item {% if '/manage_budget/' in request.path %}active{% endif %}">
             <i class="bi bi-pie-chart sidebar-icon"></i>
             <span class="sidebar-text">Budgets</span>
-        </a>
-        <a href="#" class="sidebar-item">
-            <i class="bi bi-cash-coin sidebar-icon"></i>
-            <span class="sidebar-text">Debts</span>
         </a>
         <a href="#" class="sidebar-item">
             <i class="bi bi-graph-up sidebar-icon"></i>
@@ -539,9 +539,9 @@
             <i class="bi bi-box-arrow-down sidebar-icon"></i>
             <span class="sidebar-text">Import/Export</span>
         </a>
-        <a href="#" class="sidebar-item">
+        <a href="{% url 'categories' %}" class="sidebar-item {% if '/categories/' in request.path %}active{% endif %}">
             <i class="bi bi-gear sidebar-icon"></i>
-            <span class="sidebar-text">Preferences</span>
+            <span class="sidebar-text">Categories</span>
         </a>
         <a href="#" class="sidebar-item">
             <i class="bi bi-sliders sidebar-icon"></i>
@@ -592,6 +592,9 @@
                         <div class="dropdown-menu dropdown-menu-end">
                             <a class="dropdown-item" href="{% url 'monthly_summary' %}">
                                 <i class="bi bi-bar-chart"></i> Monthly Summary
+                            </a>
+                            <a class="dropdown-item" href="{% url 'transactions' %}">
+                                <i class="bi bi-list-check"></i> Transactions
                             </a>
                             <a class="dropdown-item" href="{% url 'categories' %}">
                                 <i class="bi bi-tags"></i> Categories

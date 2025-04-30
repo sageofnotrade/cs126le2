@@ -1,0 +1,301 @@
+.category-icon {
+  width: 36px;
+  height: 36px;
+  background-color: #f1f8fe;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-icon i {
+  font-size: 1.1rem;
+  color: #2196f3;
+}
+
+.subcategory-icon {
+  width: 30px;
+  height: 30px;
+  background-color: #f8f9fa;
+}
+
+.card {
+  transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link {
+  color: #495057;
+  cursor: pointer;
+  border-bottom-width: 2px;
+}
+
+.nav-tabs .nav-link.active {
+  color: #2196f3;
+  font-weight: 500;
+  border-bottom-color: #2196f3;
+}
+
+.page-header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.tab-content {
+  padding-top: 1rem;
+}
+
+.tab-content > .tab-pane {
+  display: none;
+}
+
+.tab-content > .active {
+  display: block;
+}
+
+.fade {
+  transition: opacity 0.15s linear;
+}
+
+.fade:not(.show) {
+  opacity: 0;
+}
+
+.fade.show {
+  opacity: 1;
+}
+
+/* Notification toast styling */
+.notification-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  min-width: 250px;
+  max-width: 350px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  animation: slideIn 0.3s ease-out forwards;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.list-group-item {
+  border-left: none;
+  border-right: none;
+  border-radius: 0 !important;
+}
+
+.list-group-item:first-child {
+  border-top: none;
+}
+
+.list-group-item:last-child {
+  border-bottom: none;
+}
+
+/* Category item styling */
+.category-item {
+  cursor: grab;
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  border-left: 3px solid transparent;
+}
+
+.category-item:hover {
+  background-color: #f0f7ff;
+  border-left: 3px solid #2196f3;
+}
+
+.category-name {
+  display: flex;
+  align-items: center;
+}
+
+/* Subcategory styling */
+.subcategories-container {
+  padding-left: 2.5rem;
+  background-color: #f8f9fa;
+  border-top: none;
+}
+
+.subcategories-container .list-group {
+  margin-bottom: 0;
+}
+
+.subcategory-item {
+  padding-left: 0;
+  padding-right: 0;
+  background-color: transparent;
+  border-color: #eee;
+}
+
+.subcategory-item:last-child {
+  border-bottom: none;
+}
+
+/* Modal styling */
+.modal-backdrop.show {
+  opacity: 0.5;
+}
+
+.modal.show {
+  display: block;
+  padding-right: 17px;
+}
+
+.modal-content {
+  border: none;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.modal-footer {
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+/* Icon selection styling */
+.icon-selection {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.icon-option {
+  width: 36px;
+  height: 36px;
+  background-color: #f1f8fe;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.icon-option:hover {
+  background-color: #e3f2fd;
+  transform: scale(1.1);
+}
+
+.icon-option.selected {
+  border-color: #2196f3;
+  background-color: #e3f2fd;
+  transform: scale(1.1);
+}
+
+.icon-option i {
+  font-size: 1.1rem;
+  color: #2196f3;
+}
+
+/* Smaller icon options for subcategories */
+.icon-option.small {
+  width: 30px;
+  height: 30px;
+}
+
+.icon-option.small i {
+  font-size: 0.9rem;
+}
+
+/* Make the subcategory icon grid more compact */
+.icon-selection .small {
+  gap: 5px;
+}
+
+.selected-icon-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-preview {
+  width: 36px;
+  height: 36px;
+  background-color: #e3f2fd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #2196f3;
+}
+
+.icon-preview i {
+  font-size: 1.1rem;
+  color: #2196f3;
+}
+
+/* Wrapper for dragging item */
+.dragging-wrapper {
+  pointer-events: auto !important;
+}
+
+/* Drag and drop styling */
+.category-item.dragging {
+  box-shadow: 0 8px 24px rgba(33, 150, 243, 0.3), 0 3px 8px rgba(33, 150, 243, 0.2) !important;
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3 !important;
+  border-radius: 6px !important;
+  border-left: 3px solid #2196f3 !important;
+  opacity: 0.95;
+  z-index: 9999 !important;
+  transform: scale(1.02) !important;
+  cursor: grabbing;
+  position: relative;
+  transition: none !important;
+  height: auto !important;
+}
+
+.category-item.dragging .category-icon {
+  background-color: #bbdefb;
+}
+
+.category-item.dragging .category-icon i {
+  color: #0d6efd;
+}
+
+/* During drag animation */
+.list-group.dragging {
+  background-color: #f8f9fa;
+}
+
+/* When dragging over the list */
+.list-group.dragging-over {
+  background-color: #f0f7ff;
+  border-radius: 4px;
+  padding: 4px 0;
+  transition: background-color 0.2s ease;
+}
+
+/* CSS to ensure the placeholder works correctly */
+.react-beautiful-dnd-placeholder {
+  opacity: 0.3;
+  background: #e3f2fd;
+  border: 1px dashed #2196f3 !important;
+  border-left: 3px solid #2196f3 !important;
+  margin: 4px 0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+/* Fix for the document body during drag to prevent unwanted scrolling */
+body.dnd-dragging {
+  overflow: hidden;
+  user-select: none;
+} 
