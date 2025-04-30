@@ -50,6 +50,42 @@ class ScheduledTransactionForm(forms.ModelForm):
             'date_scheduled': forms.DateInput(attrs={'type': 'date'}),
         }
 
+    def clean_date_scheduled(self):
+        date_scheduled = self.cleaned_data.get('date_scheduled')
+        if date_scheduled < timezone.now().date():
+            raise forms.ValidationError("The scheduled date cannot be in the past.")
+        return date_scheduled
+
+    def clean_repeats(self):
+        repeats = self.cleaned_data.get('repeats')
+        repeat_type = self.cleaned_data.get('repeat_type')
+
+        if repeat_type == 'once' and repeats != 1:
+            raise forms.ValidationError("For a one-time transaction, the number of transactions must be set to 1.")
+        
+        return repeats
+
+    def clean(self):
+        cleaned_data = super().clean()
+        account = cleaned_data.get('account')
+        amount = cleaned_data.get('amount')
+
+        if isinstance(account, CreditAccount):
+            available_balance = account.credit_limit - account.current_usage
+            if amount > available_balance:
+                raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your credit account. Available balance: {available_balance} USD.")
+        
+        elif isinstance(account, DebitAccount):
+            available_balance = account.balance - account.maintaining_balance
+            if amount > available_balance:
+                raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your debit account. Available balance: {available_balance} USD.")
+        
+        elif isinstance(account, Wallet):
+            if amount > available_balance:
+                raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your wallet. Available balance: {available_balance} USD.")
+
+        return cleaned_data
+
 class DebtForm(forms.ModelForm):
     class Meta:
         model = Debt

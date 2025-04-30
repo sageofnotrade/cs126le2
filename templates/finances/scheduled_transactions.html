@@ -24,10 +24,10 @@
                         (One-time)
                     {% endif %}
                 </div>
-                <!--<div>
+                <div>
                     <a href="{% url 'edit_scheduled_transaction' transaction.id %}" class="btn btn-sm btn-warning">Edit</a>
                     <a href="{% url 'delete_scheduled_transaction' transaction.id %}" class="btn btn-sm btn-danger">Delete</a>
-                </div>-->
+                </div>
             </li>
         {% empty %}
             <p>No scheduled transactions found.</p>

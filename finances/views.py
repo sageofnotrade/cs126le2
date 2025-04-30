@@ -59,13 +59,8 @@ def scheduled_transactions(request):
             Q(note__icontains=search)
         )
 
-    income_sum = scheduled_transactions.filter(
-        transaction_type='income'
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-
-    expense_sum = scheduled_transactions.filter(
-        transaction_type='expense'
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    income_sum = scheduled_transactions.filter(transaction_type='income', date_scheduled__month=timezone.now().month).aggregate(Sum('amount'))['amount__sum'] or 0
+    expense_sum = scheduled_transactions.filter(transaction_type='expense', date_scheduled__month=timezone.now().month).aggregate(Sum('amount'))['amount__sum'] or 0
 
     net_sum = income_sum - expense_sum
 
@@ -97,6 +92,36 @@ def create_scheduled_transaction(request):
         form = ScheduledTransactionForm()
 
     return render(request, 'finances/create_scheduled_transaction.html', {'form': form})
+
+@login_required
+def edit_scheduled_transaction(request, pk):
+    scheduled_transaction = get_object_or_404(ScheduledTransaction, pk=pk, user=request.user)
+
+    if request.method == 'POST':
+        form = ScheduledTransactionForm(request.POST, instance=scheduled_transaction)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Scheduled transaction updated successfully!')
+            return redirect('scheduled_transactions')
+        else:
+            messages.error(request, 'There was an error with your input.')
+
+    else:
+        form = ScheduledTransactionForm(instance=scheduled_transaction)
+
+    return render(request, 'finances/create_scheduled_transaction.html', {'form': form})
+
+@login_required
+def delete_scheduled_transaction(request, pk):
+    scheduled_transaction = get_object_or_404(ScheduledTransaction, pk=pk, user=request.user)
+
+    if request.method == 'POST':
+        scheduled_transaction.delete()
+        messages.success(request, 'Scheduled transaction deleted successfully!')
+        return redirect('scheduled_transactions')
+
+    return render(request, 'finances/confirm_delete_scheduled_transaction.html', {'scheduled_transaction': scheduled_transaction})
 
 @login_required
 def debts_list(request):

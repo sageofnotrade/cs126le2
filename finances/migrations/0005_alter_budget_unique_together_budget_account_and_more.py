@@ -33,11 +33,6 @@ class Migration(migrations.Migration):
             name='spent',
             field=models.DecimalField(decimal_places=2, default=0, max_digits=10),
         ),
-        migrations.AddField(
-            model_name='category',
-            name='icon',
-            field=models.ImageField(blank=True, null=True, upload_to='category_icons/'),
-        ),
         migrations.AlterUniqueTogether(
             name='budget',
             unique_together={('category', 'user', 'month', 'account')},

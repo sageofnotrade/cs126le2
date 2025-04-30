@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirm Deletion{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Are you sure you want to delete this scheduled transaction?</h2>
+    <div class="card">
+        <div class="card-body">
+            <p><strong>Name:</strong> {{ scheduled_transaction.name }}</p>
+            <p><strong>Amount:</strong> USD {{ scheduled_transaction.amount }}</p>
+            <p><strong>Scheduled Date:</strong> {{ scheduled_transaction.date_scheduled }}</p>
+            <p><strong>Repeat Type:</strong> {{ scheduled_transaction.get_repeat_type_display }}</p>
+            <p><strong>Note:</strong> {{ scheduled_transaction.note }}</p>
+        </div>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        <a href="{% url 'scheduled_transactions' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
