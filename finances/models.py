@@ -42,6 +42,8 @@ class DebitAccount(Account):
 class CreditAccount(Account):
     current_usage = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     credit_limit = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_due_date = models.DateField(null=True, blank=True)
+    minimum_payment = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
 class Wallet(Account):
     balance = models.DecimalField(max_digits=10, decimal_places=2)

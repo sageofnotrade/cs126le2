@@ -39,6 +39,8 @@ urlpatterns = [
     path('charts/categories/', views.categories_chart, name='categories_chart'),
     path('charts/future/', views.future_projections, name='future_projections'),
     path('charts/time/', views.time_analysis, name='time_analysis'),
+    path('charts/data/time/', views.charts_data_time, name='charts_data_time'),
+    path('charts/data/future/', views.charts_data_future, name='charts_data_future'),
     # New transaction routes
     path('transactions/', views.transactions, name='transactions'),
     path('transactions/api/', views.transactions_api, name='transactions_api'),

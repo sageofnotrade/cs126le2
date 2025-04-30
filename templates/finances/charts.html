@@ -210,20 +210,41 @@
 <script>
     // Parse JSON data from Django template
     const categoryData = JSON.parse('{{ category_data|escapejs }}');
-    const timeData = JSON.parse('{{ time_data|escapejs }}');
-    const futureData = JSON.parse('{{ future_data|escapejs }}');
+    let timeData = JSON.parse('{{ time_data|escapejs }}');
+    let futureData = JSON.parse('{{ future_data|escapejs }}');
 
-    // Colors for charts (matching accounts.html)
-    const CHART_COLORS = [
-        'rgba(255, 99, 132, 0.6)',
-        'rgba(54, 162, 235, 0.6)',
-        'rgba(75, 192, 192, 0.6)'
+    // Provided color palette
+    const COLOR_PALETTE = [
+        '#3498DB', // Cool Blue
+        '#2ECC71', // Fresh Green
+        '#1ABC9C', // Teal
+        '#9B59B6', // Soft Purple
+        '#34495E', // Slate
+        '#95A5A6'  // Silver Gray
     ];
-    const CHART_BORDER_COLORS = [
-        'rgba(255, 99, 132, 1)',
-        'rgba(54, 162, 235, 1)',
-        'rgba(75, 192, 192, 1)'
-    ];
+
+    // Shuffle function for randomizing colors
+    function shuffle(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    // Get a randomized color array for a given length
+    function getRandomColors(length) {
+        let palette = [...COLOR_PALETTE];
+        let colors = [];
+        while (colors.length < length) {
+            if (palette.length === 0) palette = [...COLOR_PALETTE];
+            shuffle(palette);
+            colors = colors.concat(palette.slice(0, Math.min(length - colors.length, palette.length)));
+        }
+        return colors;
+    }
 
     // Initialize charts
     let categoryChart = null;
@@ -274,27 +295,110 @@
         }
     }
 
-    function updateTimeChart() {
-        // Destroy existing chart if it exists
-        if (timeChart) {
-            timeChart.destroy();
+    // --- Time Filter Logic ---
+    const timeRangeSelect = document.getElementById('time-range');
+    const timeIntervalSelect = document.getElementById('time-interval');
+    const futurePeriodSelect = document.getElementById('future-period');
+    const futureTypeSelect = document.getElementById('future-type');
+
+    function updateTimeIntervalOptions() {
+        const range = timeRangeSelect.value;
+        // Reset all options
+        for (let opt of timeIntervalSelect.options) opt.disabled = false;
+        if (range === 'year') {
+            timeIntervalSelect.value = 'month';
+            for (let opt of timeIntervalSelect.options) {
+                if (opt.value !== 'month') opt.disabled = true;
+            }
+        } else if (range === 'week') {
+            timeIntervalSelect.value = 'day';
+            for (let opt of timeIntervalSelect.options) {
+                if (opt.value !== 'day') opt.disabled = true;
+            }
+        } else if (range === 'month') {
+            // Only allow daily and weekly for month view
+            for (let opt of timeIntervalSelect.options) {
+                if (opt.value === 'month') opt.disabled = true;
+            }
+            if (timeIntervalSelect.value === 'month') {
+                timeIntervalSelect.value = 'week';
+            }
         }
-        
-        // Create new chart
-        timeChart = createTimeChart('timeChart', timeData);
     }
 
-    function updateFutureChart() {
-        const chartType = document.getElementById('future-type').value;
+    function updateFuturePeriodOptions() {
+        const period = futurePeriodSelect.value;
         
-        // Destroy existing chart if it exists
-        if (futureChart) {
-            futureChart.destroy();
+        // Reset chart type options
+        for (let opt of futureTypeSelect.options) opt.disabled = false;
+        
+        if (period === 'year') {
+            // For yearly projections, only allow line charts
+            futureTypeSelect.value = 'line';
+            for (let opt of futureTypeSelect.options) {
+                if (opt.value !== 'line') opt.disabled = true;
+            }
         }
-        
-        // Create new chart based on selected type
-        futureChart = createFutureChart('futureChart', futureData, chartType);
     }
+
+    // Function to fetch updated chart data
+    async function fetchChartData(chartType, filters) {
+        try {
+            const queryParams = new URLSearchParams(filters).toString();
+            const response = await fetch(`/finances/charts/data/${chartType}?${queryParams}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching chart data:', error);
+            return null;
+        }
+    }
+
+    async function updateTimeChart() {
+        const filters = {
+            range: timeRangeSelect.value,
+            interval: timeIntervalSelect.value
+        };
+
+        const newData = await fetchChartData('time', filters);
+        if (newData) {
+            if (timeChart) timeChart.destroy();
+            timeData = newData; // Update the global timeData
+            timeChart = createTimeChart('timeChart', timeData);
+        }
+    }
+
+    async function updateFutureChart() {
+        const filters = {
+            period: futurePeriodSelect.value,
+            chartType: futureTypeSelect.value
+        };
+
+        const newData = await fetchChartData('future', filters);
+        if (newData) {
+            if (futureChart) futureChart.destroy();
+            futureData = newData; // Update the global futureData
+            futureChart = createFutureChart('futureChart', futureData, futureTypeSelect.value);
+        }
+    }
+
+    // On page load, set correct interval options
+    updateTimeIntervalOptions();
+    updateFuturePeriodOptions();
+
+    // Event listeners for time chart filters
+    timeRangeSelect.addEventListener('change', function() {
+        updateTimeIntervalOptions();
+        updateTimeChart();
+    });
+    timeIntervalSelect.addEventListener('change', updateTimeChart);
+
+    // Event listeners for future chart filters
+    futurePeriodSelect.addEventListener('change', function() {
+        updateFuturePeriodOptions();
+        updateFutureChart();
+    });
+    futureTypeSelect.addEventListener('change', updateFutureChart);
 
     function createPieChart(elementId, data) {
         const ctx = document.getElementById(elementId).getContext('2d');
@@ -307,14 +411,15 @@
             return null;
         }
         
+        const colors = getRandomColors(data.length);
         return new Chart(ctx, {
             type: 'pie',
             data: {
                 labels: data.map(item => item.category),
                 datasets: [{
                     data: data.map(item => item.amount),
-                    backgroundColor: CHART_COLORS,
-                    borderColor: CHART_BORDER_COLORS,
+                    backgroundColor: colors,
+                    borderColor: '#fff',
                     borderWidth: 1
                 }]
             },
@@ -340,6 +445,7 @@
             return null;
         }
         
+        const colors = getRandomColors(data.length);
         return new Chart(ctx, {
             type: 'bar',
             data: {
@@ -347,8 +453,8 @@
                 datasets: [{
                     label: 'Amount',
                     data: data.map(item => item.amount),
-                    backgroundColor: CHART_COLORS,
-                    borderColor: CHART_BORDER_COLORS,
+                    backgroundColor: colors,
+                    borderColor: '#fff',
                     borderWidth: 1
                 }]
             },
@@ -382,15 +488,15 @@
                     {
                         label: 'Income',
                         data: data.income,
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: '#2ECC71', // Fresh Green
+                        borderColor: '#fff',
                         borderWidth: 1
                     },
                     {
                         label: 'Expenses',
                         data: data.expenses,
-                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: '#3498DB', // Cool Blue
+                        borderColor: '#fff',
                         borderWidth: 1
                     }
                 ]
@@ -418,24 +524,77 @@
         }
         
         return new Chart(ctx, {
-            type: type,
+            type: 'line',  // Always use line chart for future projections
             data: {
                 labels: data.labels,
-                datasets: [{
-                    label: 'Projected Amount',
-                    data: data.projected,
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    backgroundColor: type === 'bar' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(54, 162, 235, 0.2)',
-                    borderWidth: 2,
-                    fill: type === 'line'
-                }]
+                datasets: [
+                    {
+                        label: 'Future Transactions',
+                        data: data.future_transactions,
+                        borderColor: '#4BC0C0',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    {
+                        label: 'Scheduled Transactions',
+                        data: data.scheduled_transactions,
+                        borderColor: '#36A2EB',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    {
+                        label: 'Debts/Credits',
+                        data: data.debts_credits,
+                        borderColor: '#FF6384',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    {
+                        label: 'Credit Card Payments',
+                        data: data.credit_card_payments,
+                        borderColor: '#FFCE56',
+                        backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    {
+                        label: 'Total Projected',
+                        data: data.projected,
+                        borderColor: '#9966FF',
+                        backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                        borderWidth: 3,
+                        fill: true
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        stacked: false
                     }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
                 }
             }
         });

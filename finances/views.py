@@ -1596,3 +1596,223 @@ def charts_view(request):
     }
     
     return render(request, 'finances/charts.html', context)
+
+@login_required
+def charts_data_time(request):
+    """API endpoint for time-based chart data"""
+    # Get query parameters
+    range_param = request.GET.get('range', 'month')
+    interval = request.GET.get('interval', 'day')
+    
+    today = timezone.now().date()
+    data = {
+        'labels': [],
+        'income': [],
+        'expenses': []
+    }
+    
+    if range_param == 'week':
+        # Last 7 days
+        for i in range(7):
+            date = today - timedelta(days=i)
+            data['labels'].insert(0, date.strftime('%a %d'))
+            
+            # Get income for the day
+            income = Transaction.objects.filter(
+                user=request.user,
+                type='income',
+                date=date
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            data['income'].insert(0, float(income))
+            
+            # Get expenses for the day
+            expenses = Transaction.objects.filter(
+                user=request.user,
+                type='expense',
+                date=date
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            data['expenses'].insert(0, float(expenses))
+            
+    elif range_param == 'month':
+        if interval == 'day':
+            # Last 30 days
+            for i in range(30):
+                date = today - timedelta(days=i)
+                data['labels'].insert(0, date.strftime('%d'))
+                
+                # Get income for the day
+                income = Transaction.objects.filter(
+                    user=request.user,
+                    type='income',
+                    date=date
+                ).aggregate(total=Sum('amount'))['total'] or 0
+                data['income'].insert(0, float(income))
+                
+                # Get expenses for the day
+                expenses = Transaction.objects.filter(
+                    user=request.user,
+                    type='expense',
+                    date=date
+                ).aggregate(total=Sum('amount'))['total'] or 0
+                data['expenses'].insert(0, float(expenses))
+                
+        elif interval == 'week':
+            # Last 4 weeks
+            for i in range(4):
+                end_date = today - timedelta(weeks=i)
+                start_date = end_date - timedelta(days=6)
+                data['labels'].insert(0, f'Week {4-i}')
+                
+                # Get income for the week
+                income = Transaction.objects.filter(
+                    user=request.user,
+                    type='income',
+                    date__gte=start_date,
+                    date__lte=end_date
+                ).aggregate(total=Sum('amount'))['total'] or 0
+                data['income'].insert(0, float(income))
+                
+                # Get expenses for the week
+                expenses = Transaction.objects.filter(
+                    user=request.user,
+                    type='expense',
+                    date__gte=start_date,
+                    date__lte=end_date
+                ).aggregate(total=Sum('amount'))['total'] or 0
+                data['expenses'].insert(0, float(expenses))
+                
+    elif range_param == 'year':
+        # Last 12 months
+        for i in range(12):
+            month = today.replace(day=1) - timedelta(days=30*i)
+            data['labels'].insert(0, month.strftime('%b'))
+            
+            # Get income for the month
+            income = Transaction.objects.filter(
+                user=request.user,
+                type='income',
+                date__year=month.year,
+                date__month=month.month
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            data['income'].insert(0, float(income))
+            
+            # Get expenses for the month
+            expenses = Transaction.objects.filter(
+                user=request.user,
+                type='expense',
+                date__year=month.year,
+                date__month=month.month
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            data['expenses'].insert(0, float(expenses))
+    
+    return JsonResponse(data)
+
+@login_required
+def charts_data_future(request):
+    """API endpoint for future projections chart data"""
+    try:
+        # Get query parameters
+        period = request.GET.get('period', 'month')
+        chart_type = request.GET.get('chartType', 'line')
+        
+        today = timezone.now().date()
+        data = {
+            'labels': [],
+            'projected': [],
+            'future_transactions': [],
+            'scheduled_transactions': [],
+            'debts_credits': [],
+            'credit_card_payments': []
+        }
+        
+        # Determine the end date based on period
+        if period == 'month':
+            end_date = today + timedelta(days=30)
+            date_format = '%d %b'
+        elif period == 'quarter':
+            end_date = today + timedelta(days=90)
+            date_format = '%b'
+        else:  # year
+            end_date = today + timedelta(days=365)
+            date_format = '%b %Y'
+
+        # Generate dates for the x-axis
+        current_date = today
+        while current_date <= end_date:
+            data['labels'].append(current_date.strftime(date_format))
+            
+            # Initialize amounts for this date
+            future_amount = 0
+            scheduled_amount = 0
+            debts_credits_amount = 0
+            credit_card_amount = 0
+
+            try:
+                # Get scheduled transactions for this date
+                scheduled = ScheduledTransaction.objects.filter(
+                    user=request.user,
+                    date_scheduled=current_date
+                )
+                for transaction in scheduled:
+                    amount = float(transaction.amount)
+                    if transaction.transaction_type == 'expense':
+                        amount = -amount
+                    scheduled_amount += amount
+            except Exception as e:
+                print(f"Error processing scheduled transactions: {str(e)}")
+                scheduled_amount = 0
+
+            try:
+                # Get debt payments due on this date
+                debts = Debt.objects.filter(
+                    user=request.user,
+                    due_date=current_date
+                )
+                for debt in debts:
+                    if debt.debt_type == 'debt':
+                        debts_credits_amount -= float(debt.residual_amount)
+                    else:  # credit
+                        debts_credits_amount += float(debt.residual_amount)
+            except Exception as e:
+                print(f"Error processing debts: {str(e)}")
+                debts_credits_amount = 0
+
+            try:
+                # Get credit card payments due on this date
+                credit_accounts = CreditAccount.objects.filter(
+                    user=request.user
+                )
+                for account in credit_accounts:
+                    if hasattr(account, 'payment_due_date') and account.payment_due_date and account.payment_due_date == current_date:
+                        if hasattr(account, 'minimum_payment'):
+                            credit_card_amount -= float(account.minimum_payment)
+            except Exception as e:
+                print(f"Error processing credit cards: {str(e)}")
+                credit_card_amount = 0
+
+            # Add the amounts to their respective arrays
+            data['future_transactions'].append(future_amount)
+            data['scheduled_transactions'].append(scheduled_amount)
+            data['debts_credits'].append(debts_credits_amount)
+            data['credit_card_payments'].append(credit_card_amount)
+            
+            # Calculate total projected amount for this date
+            total_projected = future_amount + scheduled_amount + debts_credits_amount + credit_card_amount
+            data['projected'].append(total_projected)
+
+            # Move to next date
+            current_date += timedelta(days=1)
+        
+        return JsonResponse(data)
+        
+    except Exception as e:
+        print(f"Error in charts_data_future: {str(e)}")
+        return JsonResponse({
+            'error': str(e),
+            'labels': [],
+            'projected': [],
+            'future_transactions': [],
+            'scheduled_transactions': [],
+            'debts_credits': [],
+            'credit_card_payments': []
+        }, status=500)
