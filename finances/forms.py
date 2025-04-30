@@ -45,10 +45,45 @@ class TransactionForm(forms.ModelForm):
 class ScheduledTransactionForm(forms.ModelForm):
     class Meta:
         model = ScheduledTransaction
-        fields = ['name', 'category', 'amount', 'account', 'date_scheduled', 'repeat_type', 'repeats', 'note', 'transaction_type']
+        fields = ['name', 'category', 'transaction_type', 'account', 'amount', 'date_scheduled', 'repeat_type', 'repeats', 'note']
         widgets = {
-            'date_scheduled': forms.DateInput(attrs={'type': 'date'}),
+            'date_scheduled': forms.DateInput(attrs={'type': 'date', 'min': timezone.now().date().isoformat()}),
+            'note': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'amount': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
+            'repeat_type': forms.Select(attrs={'class': 'form-select'}),
+            'repeats': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        if self.user:
+            # Filter categories by user
+            self.fields['category'].queryset = Category.objects.filter(user=self.user)
+            
+            # Set up the accounts field based on transaction type
+            if 'transaction_type' in self.data:
+                transaction_type = self.data.get('transaction_type')
+                if transaction_type == 'income':
+                    self.fields['account'].queryset = Account.objects.filter(
+                        user=self.user
+                    ).exclude(
+                        creditaccount__isnull=False
+                    )
+                else:
+                    self.fields['account'].queryset = Account.objects.filter(user=self.user)
+            else:
+                self.fields['account'].queryset = Account.objects.filter(user=self.user)
+
+            # Initialize repeats field based on repeat_type
+            if 'repeat_type' in self.data:
+                if self.data.get('repeat_type') == 'once':
+                    self.fields['repeats'].initial = 1
+                    self.fields['repeats'].widget.attrs['disabled'] = True
+            elif self.instance and self.instance.repeat_type == 'once':
+                self.fields['repeats'].initial = 1
+                self.fields['repeats'].widget.attrs['disabled'] = True
 
     def clean_date_scheduled(self):
         date_scheduled = self.cleaned_data.get('date_scheduled')
@@ -60,6 +95,10 @@ class ScheduledTransactionForm(forms.ModelForm):
         repeats = self.cleaned_data.get('repeats')
         repeat_type = self.cleaned_data.get('repeat_type')
 
+        # If the field is disabled (one-time transaction), set repeats to 1
+        if self.fields['repeats'].widget.attrs.get('disabled'):
+            return 1
+
         if repeat_type == 'once' and repeats != 1:
             raise forms.ValidationError("For a one-time transaction, the number of transactions must be set to 1.")
         
@@ -69,20 +108,22 @@ class ScheduledTransactionForm(forms.ModelForm):
         cleaned_data = super().clean()
         account = cleaned_data.get('account')
         amount = cleaned_data.get('amount')
+        transaction_type = cleaned_data.get('transaction_type')
 
-        if isinstance(account, CreditAccount):
-            available_balance = account.credit_limit - account.current_usage
-            if amount > available_balance:
-                raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your credit account. Available balance: {available_balance} USD.")
-        
-        elif isinstance(account, DebitAccount):
-            available_balance = account.balance - account.maintaining_balance
-            if amount > available_balance:
-                raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your debit account. Available balance: {available_balance} USD.")
-        
-        elif isinstance(account, Wallet):
-            if amount > available_balance:
-                raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your wallet. Available balance: {available_balance} USD.")
+        if account and amount and transaction_type == 'expense':  # Only validate balance for expenses
+            if hasattr(account, 'creditaccount'):
+                available_balance = account.creditaccount.credit_limit - account.creditaccount.current_usage
+                if amount > available_balance:
+                    raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your credit account. Available balance: {available_balance} USD.")
+            
+            elif hasattr(account, 'debitaccount'):
+                available_balance = account.debitaccount.balance - (account.debitaccount.maintaining_balance or 0)
+                if amount > available_balance:
+                    raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your debit account. Available balance: {available_balance} USD.")
+            
+            elif hasattr(account, 'wallet'):
+                if amount > account.wallet.balance:
+                    raise forms.ValidationError(f"The scheduled amount exceeds the available balance in your wallet. Available balance: {account.wallet.balance} USD.")
 
         return cleaned_data
 
