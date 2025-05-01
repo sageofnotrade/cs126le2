@@ -1105,22 +1105,32 @@ def api_add_category(request):
         print(f"Form validation errors: {form.errors}")
         return JsonResponse({'error': 'Invalid form data', 'errors': form.errors}, status=400)
     
-# API endpoint for getting subcategories of a specific category
 def api_subcategories(request, category_id):
-    """API endpoint to get subcategories for a specific category"""
+    """API endpoint to get subcategories for a category"""
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Authentication required'}, status=401)
     
     try:
         category = Category.objects.get(id=category_id, user=request.user)
+        subcategories = SubCategory.objects.filter(parent_category=category)
+        
+        # Debug info
+        print(f"User {request.user.username} requested subcategories for category {category.name} (ID: {category_id})")
+        print(f"Found {subcategories.count()} subcategories")
+        
+        subcategories_data = []
+        for subcategory in subcategories:
+            subcategories_data.append({
+                'id': subcategory.id,
+                'name': subcategory.name,
+                'icon': subcategory.icon
+            })
+            print(f"  - Subcategory: {subcategory.name} (ID: {subcategory.id})")
+        
+        return JsonResponse(subcategories_data, safe=False)
     except Category.DoesNotExist:
+        print(f"Category with ID {category_id} not found for user {request.user.username}")
         return JsonResponse({'error': 'Category not found'}, status=404)
-    
-    subcategories = list(SubCategory.objects.filter(parent_category=category).values('id', 'name', 'icon'))
-    
-    return JsonResponse({
-        'subcategories': subcategories
-    })
 
 # API endpoint for adding a subcategory
 def api_add_subcategory(request, category_id):
@@ -1218,6 +1228,45 @@ def api_delete_category(request, category_id):
         # Delete the category (this will also delete all subcategories due to CASCADE)
         category.delete()
         return JsonResponse({'success': True})
+    except Category.DoesNotExist:
+        return JsonResponse({'error': 'Category not found'}, status=404)
+
+# API endpoint for updating a category
+def api_update_category(request, category_id):
+    """API endpoint to update a category"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST request required'}, status=400)
+    
+    try:
+        category = Category.objects.get(id=category_id, user=request.user)
+        
+        # Update category fields
+        name = request.POST.get('name', '').strip()
+        icon = request.POST.get('icon', category.icon)
+        
+        if not name:
+            return JsonResponse({'error': 'Category name cannot be empty'}, status=400)
+        
+        # Check if the name is already used by another category
+        if Category.objects.filter(user=request.user, name=name).exclude(id=category_id).exists():
+            return JsonResponse({'error': 'A category with this name already exists'}, status=400)
+        
+        category.name = name
+        category.icon = icon
+        category.save()
+        
+        return JsonResponse({
+            'success': True,
+            'category': {
+                'id': category.id,
+                'name': category.name,
+                'icon': category.icon,
+                'type': category.type
+            }
+        })
     except Category.DoesNotExist:
         return JsonResponse({'error': 'Category not found'}, status=404)
 
@@ -1400,13 +1449,13 @@ def transactions_api(request):
     else:
         end_date = timezone.datetime(current_year, current_month + 1, 1).date() - timedelta(days=1)
     
-    # Filter transactions
+    # Filter transactions and use select_related to fetch category and subcategory in a single query
     transactions = Transaction.objects.filter(
         user=request.user,
         date__gte=start_date,
         date__lte=end_date,
         type__in=types
-    )
+    ).select_related('category', 'subcategory', 'transaction_account')
     
     # Additional filters
     if category_id:
@@ -1429,8 +1478,20 @@ def transactions_api(request):
     # Prepare data for JSON response
     transactions_data = []
     for transaction in transactions:
+        # Get category information
         category_name = transaction.category.name if transaction.category else None
         category_icon = transaction.category.icon if transaction.category else 'bi bi-tag'
+        
+        # Get subcategory information
+        subcategory_name = None
+        subcategory_icon = None
+        if transaction.subcategory:
+            subcategory_name = transaction.subcategory.name
+            subcategory_icon = transaction.subcategory.icon or category_icon
+        
+        # Use subcategory info if it exists, otherwise use category info
+        display_name = subcategory_name or category_name or 'Uncategorized'
+        display_icon = subcategory_icon or category_icon or 'bi bi-tag'
         
         transactions_data.append({
             'id': transaction.id,
@@ -1442,6 +1503,10 @@ def transactions_api(request):
             'subcategory': transaction.subcategory_id if transaction.subcategory else None,
             'category_name': category_name,
             'category_icon': category_icon,
+            'subcategory_name': subcategory_name,
+            'subcategory_icon': subcategory_icon,
+            'display_name': display_name,
+            'display_icon': display_icon,
             'notes': transaction.notes or '',
         })
     
@@ -1456,14 +1521,36 @@ def transaction_detail_api(request, transaction_id):
     """API endpoint for getting a single transaction's details"""
     transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
     
+    # Load the related objects to ensure they're available
+    if transaction.category:
+        category_name = transaction.category.name
+        category_icon = transaction.category.icon
+    else:
+        category_name = None
+        category_icon = 'bi bi-tag'
+        
+    # Load subcategory info if available
+    if transaction.subcategory:
+        subcategory_name = transaction.subcategory.name
+        subcategory_icon = transaction.subcategory.icon or category_icon
+    else:
+        subcategory_name = None
+        subcategory_icon = None
+    
     data = {
         'id': transaction.id,
         'title': transaction.title,
         'amount': float(transaction.amount),
         'date': transaction.date.isoformat(),
+        'time': transaction.time.strftime('%H:%M') if transaction.time else None,
         'type': transaction.type,
         'category': transaction.category_id if transaction.category else None,
         'subcategory': transaction.subcategory_id if transaction.subcategory else None,
+        'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
+        'category_name': category_name,
+        'category_icon': category_icon,
+        'subcategory_name': subcategory_name,
+        'subcategory_icon': subcategory_icon,
         'notes': transaction.notes or '',
     }
     
@@ -1483,6 +1570,7 @@ def create_transaction_api(request):
             transaction_type = request.POST.get('type')
             category_id = request.POST.get('category') or None
             subcategory_id = request.POST.get('subcategory') or None
+            transaction_account_id = request.POST.get('transaction_account') or None
             notes = request.POST.get('notes', '')
             
             # Debug: Print all parameters
@@ -1523,6 +1611,13 @@ def create_transaction_api(request):
                 except Exception as e:
                     print(f"Error getting subcategory: {e}")
             
+            if transaction_account_id and transaction_account_id != 'null' and transaction_account_id != '':
+                try:
+                    account = get_object_or_404(Account, id=transaction_account_id, user=request.user)
+                    transaction.transaction_account = account
+                except Exception as e:
+                    print(f"Error getting account: {e}")
+            
             transaction.save()
             print(f"Transaction created successfully with ID: {transaction.id}")
             
@@ -1549,11 +1644,13 @@ def update_transaction_api(request, transaction_id):
             transaction_type = request.POST.get('type')
             category_id = request.POST.get('category') or None
             subcategory_id = request.POST.get('subcategory') or None
+            transaction_account_id = request.POST.get('transaction_account') or None
             notes = request.POST.get('notes', '')
             
             # Debug: Print all parameters
             print(f"Title: {title}, Amount: {amount}, Date: {date_str}, Type: {transaction_type}")
             print(f"Category ID: {category_id}, Subcategory ID: {subcategory_id}, Notes: {notes}")
+            print(f"Transaction Account ID: {transaction_account_id}")
             
             # Validate required fields
             if not title or not amount or not date_str or not transaction_type:
@@ -1572,28 +1669,40 @@ def update_transaction_api(request, transaction_id):
             transaction.type = transaction_type
             transaction.notes = notes
             
+            # Update category
             if category_id and category_id != 'null' and category_id != '':
                 try:
                     category = get_object_or_404(Category, id=category_id, user=request.user)
                     transaction.category = category
                 except Exception as e:
-                    print(f"Error getting category: {e}")
+                    print(f"Error updating category: {e}")
             else:
                 transaction.category = None
             
+            # Update subcategory
             if subcategory_id and subcategory_id != 'null' and subcategory_id != '':
                 try:
                     subcategory = get_object_or_404(SubCategory, id=subcategory_id, parent_category__user=request.user)
                     transaction.subcategory = subcategory
                 except Exception as e:
-                    print(f"Error getting subcategory: {e}")
+                    print(f"Error updating subcategory: {e}")
             else:
                 transaction.subcategory = None
             
-            transaction.save()
-            print(f"Transaction updated successfully: {transaction.id}")
+            # Update account
+            if transaction_account_id and transaction_account_id != 'null' and transaction_account_id != '':
+                try:
+                    account = get_object_or_404(Account, id=transaction_account_id, user=request.user)
+                    transaction.transaction_account = account
+                except Exception as e:
+                    print(f"Error updating account: {e}")
+            else:
+                transaction.transaction_account = None
             
-            return JsonResponse({'success': True})
+            transaction.save()
+            print(f"Transaction updated successfully with ID: {transaction.id}")
+            
+            return JsonResponse({'success': True, 'transaction_id': transaction.id})
         except Exception as e:
             print(f"Error updating transaction: {e}")
             return JsonResponse({'success': False, 'error': str(e)})
