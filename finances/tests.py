@@ -23,27 +23,33 @@ class DefaultCategoriesTest(TestCase):
         # Check that the default categories were created
         all_categories = Category.objects.filter(user=user)
         
-        # Check the total count (4 income + 11 expense = 15 total)
-        self.assertEqual(all_categories.count(), 15)
+        # Check the total count (4 income + 10 expense = 14 total)
+        self.assertEqual(all_categories.count(), 14)
         
         # Check income categories
         income_categories = Category.objects.filter(user=user, type='income')
         self.assertEqual(income_categories.count(), 4)
-        self.assertTrue(income_categories.filter(name='Salary').exists())
-        self.assertTrue(income_categories.filter(name='Freelance or Sideline Income').exists())
-        self.assertTrue(income_categories.filter(name='Investment Income').exists())
+        self.assertTrue(income_categories.filter(name='Salary/Wages').exists())
+        self.assertTrue(income_categories.filter(name='Business Income').exists())
+        self.assertTrue(income_categories.filter(name='Investments').exists())
         self.assertTrue(income_categories.filter(name='Other Income').exists())
         
         # Check expense categories
         expense_categories = Category.objects.filter(user=user, type='expense')
-        self.assertEqual(expense_categories.count(), 11)
+        self.assertEqual(expense_categories.count(), 10)
+        self.assertTrue(expense_categories.filter(name='Housing').exists())
+        self.assertTrue(expense_categories.filter(name='Utilities').exists())
+        self.assertTrue(expense_categories.filter(name='Food').exists())
         self.assertTrue(expense_categories.filter(name='Transportation').exists())
-        self.assertTrue(expense_categories.filter(name='Food/Drinks').exists())
-        self.assertTrue(expense_categories.filter(name='Other Expenses').exists())
+        self.assertTrue(expense_categories.filter(name='Insurance').exists())
+        self.assertTrue(expense_categories.filter(name='Entertainment').exists())
+        self.assertTrue(expense_categories.filter(name='Healthcare').exists())
+        self.assertTrue(expense_categories.filter(name='Debt Payments').exists())
+        self.assertTrue(expense_categories.filter(name='Savings/Investments').exists())
+        self.assertTrue(expense_categories.filter(name='Miscellaneous').exists())
         
-        # Check that subcategories were created for "Other Income"
-        other_income = Category.objects.get(user=user, name='Other Income')
-        subcategories = SubCategory.objects.filter(parent_category=other_income)
-        self.assertEqual(subcategories.count(), 2)
-        self.assertTrue(subcategories.filter(name='Money Gifts').exists())
-        self.assertTrue(subcategories.filter(name='Loan Repayments').exists())
+        # Check icons for a few categories
+        self.assertEqual(Category.objects.get(user=user, name='Salary/Wages').icon, 'bi-cash-coin')
+        self.assertEqual(Category.objects.get(user=user, name='Housing').icon, 'bi-house')
+        self.assertEqual(Category.objects.get(user=user, name='Utilities').icon, 'bi-lightning')
+        self.assertEqual(Category.objects.get(user=user, name='Food').icon, 'bi-cup-hot')

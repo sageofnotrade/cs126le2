@@ -57,6 +57,25 @@ const Categories = () => {
     setCategoryType(activeTab === 'expenses' ? 'expense' : 'income');
   }, [activeTab]);
   
+  // Add effect to update localStorage when categories change
+  useEffect(() => {
+    if (categories.income.length > 0 || categories.expenses.length > 0) {
+      localStorage.setItem('budgetTrackerCategories', JSON.stringify(categories));
+      
+      // Log the updated categories (using current state, not stale closure)
+      console.log('Categories state after update:');
+      console.log(`Income categories: ${categories.income.length}`);
+      categories.income.forEach(cat => {
+        console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
+      });
+      
+      console.log(`Expense categories: ${categories.expenses.length}`);
+      categories.expenses.forEach(cat => {
+        console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
+      });
+    }
+  }, [categories]);
+  
   const showNotification = (message, type = 'success') => {
     setNotification({
       show: true,
@@ -99,29 +118,11 @@ const Categories = () => {
         console.log('Sample expense category:', data.expenses[0]);
       }
       
-      // Set categories from API response
+      // Set categories from API response (the useEffect will handle logging)
       setCategories({
         income: data.income || [],
         expenses: data.expenses || []
       });
-      
-      // Debug info for subcategories
-      setTimeout(() => {
-        // Log subcategories after state update
-        console.log('Categories state after update:');
-        const incomeCats = [...categories.income];
-        const expenseCats = [...categories.expenses];
-        
-        console.log(`Income categories: ${incomeCats.length}`);
-        incomeCats.forEach(cat => {
-          console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
-        });
-        
-        console.log(`Expense categories: ${expenseCats.length}`);
-        expenseCats.forEach(cat => {
-          console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
-        });
-      }, 100);
       
       if (data.availableIcons && data.availableIcons.length > 0) {
         setAvailableIcons(data.availableIcons);
@@ -179,6 +180,23 @@ const Categories = () => {
       setNewCategoryName('');
       setSelectedIcon('bi-tag');
       setShowAddModal(false);
+      
+      // Immediately update local state with the new category
+      // This ensures we see the updated count right away
+      const newCategory = {
+        ...data.category,
+        subcategories: [] // Ensure it has the subcategories array
+      };
+      
+      setCategories(prevCategories => {
+        // Figure out which array to update (income or expenses)
+        const listType = type === 'income' ? 'income' : 'expenses';
+        
+        return {
+          ...prevCategories,
+          [listType]: [...prevCategories[listType], newCategory]
+        };
+      });
       
       // Refresh categories to get the updated list
       await fetchCategories();
@@ -314,6 +332,28 @@ const Categories = () => {
           };
         });
         
+        // Also update the main categories state
+        setCategories(prevCategories => {
+          // Determine if this is an income or expense category
+          const listType = selectedCategory.type === 'income' ? 'income' : 'expenses';
+          
+          // Update the specific category within the list
+          const updatedList = prevCategories[listType].map(cat => {
+            if (cat.id === selectedCategory.id) {
+              return {
+                ...cat,
+                subcategories: [...(cat.subcategories || []), newSubcategory]
+              };
+            }
+            return cat;
+          });
+          
+          return {
+            ...prevCategories,
+            [listType]: updatedList
+          };
+        });
+        
         // Reset form
         setNewSubcategoryName('');
         setSelectedSubcategoryIcon('bi-tag-fill');
@@ -385,6 +425,28 @@ const Categories = () => {
         };
       });
       
+      // Also update the main categories state
+      setCategories(prevCategories => {
+        // Determine if this is an income or expense category
+        const listType = selectedCategory.type === 'income' ? 'income' : 'expenses';
+        
+        // Update the specific category within the list
+        const updatedList = prevCategories[listType].map(cat => {
+          if (cat.id === selectedCategory.id) {
+            return {
+              ...cat,
+              subcategories: cat.subcategories.filter(sub => sub.id !== subcategoryId)
+            };
+          }
+          return cat;
+        });
+        
+        return {
+          ...prevCategories,
+          [listType]: updatedList
+        };
+      });
+      
       // Refresh categories in the background to update the full UI
       fetchCategories().catch(error => {
         console.error('Error refreshing categories:', error);
@@ -453,6 +515,28 @@ const Categories = () => {
         setSelectedCategory({
           ...selectedCategory,
           subcategories: updatedSubcategories
+        });
+        
+        // Also update the main categories state
+        setCategories(prevCategories => {
+          // Determine if this is an income or expense category
+          const listType = selectedCategory.type === 'income' ? 'income' : 'expenses';
+          
+          // Update the specific category within the list
+          const updatedList = prevCategories[listType].map(cat => {
+            if (cat.id === selectedCategory.id) {
+              return {
+                ...cat,
+                subcategories: updatedSubcategories
+              };
+            }
+            return cat;
+          });
+          
+          return {
+            ...prevCategories,
+            [listType]: updatedList
+          };
         });
         
         // Now refresh categories in the background to ensure data consistency
