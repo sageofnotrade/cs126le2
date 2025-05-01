@@ -15,10 +15,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterUniqueTogether(
-            name='budget',
-            unique_together={('subcategory', 'user', 'start_date', 'account')},
-        ),
         migrations.AddField(
             model_name='budget',
             name='subcategory',
@@ -50,10 +46,10 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(
             model_name='budget',
-            name='category',
-        ),
-        migrations.RemoveField(
-            model_name='budget',
             name='spent',
+        ),
+        migrations.AlterUniqueTogether(
+            name='budget',
+            unique_together={('subcategory', 'user', 'start_date', 'account')},
         ),
     ]
