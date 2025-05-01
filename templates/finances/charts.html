@@ -491,7 +491,7 @@
         });
     }
 
-    function createFutureChart(elementId, data, type) {
+    function createFutureChart(elementId, data) {
         const ctx = document.getElementById(elementId).getContext('2d');
         
         if (!data || data.labels.length === 0) {
@@ -505,16 +505,28 @@
         // Process data to handle zero values for line charts
         function processLineData(dataArray) {
             return dataArray.map((value, index) => {
-                if (value === 0) {
+                // Convert to number and handle null/undefined
+                const numValue = Number(value) || 0;
+                if (numValue === 0) {
                     // Check adjacent points
-                    const prevHasValue = index > 0 && dataArray[index - 1] !== 0;
-                    const nextHasValue = index < dataArray.length - 1 && dataArray[index + 1] !== 0;
+                    const prevValue = index > 0 ? Number(dataArray[index - 1]) || 0 : 0;
+                    const nextValue = index < dataArray.length - 1 ? Number(dataArray[index + 1]) || 0 : 0;
                     // Only keep zero if there's an adjacent non-zero value
-                    return (prevHasValue || nextHasValue) ? 0 : null;
+                    return (prevValue !== 0 || nextValue !== 0) ? 0 : null;
                 }
-                return value;
+                return numValue;
             });
         }
+
+        // Find the maximum absolute value in the data for scaling
+        const allValues = [
+            ...data.future_transactions,
+            ...data.scheduled_transactions,
+            ...data.debts_credits,
+            ...data.credit_card_payments,
+            ...data.projected
+        ].map(v => Math.abs(Number(v) || 0));
+        const maxValue = Math.max(...allValues, 1); // Use 1 as minimum to avoid division by zero
         
         return new Chart(ctx, {
             type: 'line',
@@ -525,54 +537,97 @@
                         label: 'Future Transactions',
                         data: processLineData(data.future_transactions),
                         borderColor: '#4BC0C0',
-                        backgroundColor: 'rgba(75, 192, 192, 0.05)',
-                        borderWidth: 1,
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        borderWidth: 2,
                         fill: true,
-                        order: 4
+                        tension: 0.4,
+                        spanGaps: true,
+                        order: 4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     },
                     {
                         label: 'Scheduled Transactions',
                         data: processLineData(data.scheduled_transactions),
                         borderColor: '#36A2EB',
                         backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                        borderWidth: 1,
+                        borderWidth: 2,
                         fill: true,
-                        order: 3
+                        tension: 0.4,
+                        spanGaps: true,
+                        order: 3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     },
                     {
                         label: 'Debts/Credits',
                         data: processLineData(data.debts_credits),
                         borderColor: '#FF6384',
-                        backgroundColor: 'rgba(255, 99, 132, 0.15)',
-                        borderWidth: 1,
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderWidth: 2,
                         fill: true,
-                        order: 2
+                        tension: 0.4,
+                        spanGaps: true,
+                        order: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     },
                     {
                         label: 'Credit Card Payments',
                         data: processLineData(data.credit_card_payments),
                         borderColor: '#FFCE56',
-                        backgroundColor: 'rgba(255, 206, 86, 0.2)',
-                        borderWidth: 1,
+                        backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                        borderWidth: 2,
                         fill: true,
-                        order: 1
+                        tension: 0.4,
+                        spanGaps: true,
+                        order: 1,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     },
                     {
                         label: 'Total Projected',
                         data: processLineData(data.projected),
                         borderColor: '#9966FF',
-                        backgroundColor: 'rgba(153, 102, 255, 0.25)',
-                        borderWidth: 2,
+                        backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                        borderWidth: 3,
                         fill: true,
-                        order: 0
+                        tension: 0.4,
+                        spanGaps: true,
+                        order: 0,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     }
                 ]
             },
             options: {
                 responsive: true,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        grid: {
+                            drawBorder: false,
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return new Intl.NumberFormat('en-US', {
+                                    style: 'currency',
+                                    currency: 'PHP',
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0
+                                }).format(value);
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
                     }
                 },
                 plugins: {
@@ -595,18 +650,15 @@
                                 if (context.parsed.y !== null) {
                                     label += new Intl.NumberFormat('en-US', {
                                         style: 'currency',
-                                        currency: 'USD'
+                                        currency: 'PHP',
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
                                     }).format(context.parsed.y);
                                 }
                                 return label;
                             }
                         }
                     }
-                },
-                interaction: {
-                    mode: 'nearest',
-                    axis: 'x',
-                    intersect: false
                 }
             }
         });

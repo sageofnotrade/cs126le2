@@ -77,6 +77,7 @@ $('#editBudgetModal').on('show.bs.modal', function (event) {
     var startDate = button.data('start_date');
     var endDate = button.data('end_date');
     var duration = button.data('duration');
+    var accountId = button.data('account');
     
     var modal = $(this);
     clearFormErrors(modal.find('form'));
@@ -87,6 +88,7 @@ $('#editBudgetModal').on('show.bs.modal', function (event) {
     modal.find('#id_start_date').val(startDate);
     modal.find('#id_end_date').val(endDate);
     modal.find('#id_duration').val(duration);
+    modal.find('#id_account').val(accountId);
     
     // Select the subcategory in the visual selector
     modal.find('.subcategory-item').removeClass('selected');

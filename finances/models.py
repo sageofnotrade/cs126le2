@@ -246,6 +246,45 @@ class Budget(models.Model):
             end_date = next_month - timedelta(days=1)
         return start_date, end_date
 
+    @classmethod
+    def renew_expired_budgets(cls):
+        """Automatically renew expired budgets"""
+        today = timezone.now().date()
+        expired_budgets = cls.objects.filter(end_date__lt=today)
+        
+        for budget in expired_budgets:
+            # Calculate new start and end dates based on duration
+            if budget.duration == '1 week':
+                new_start_date = today - timedelta(days=today.weekday())  # Start of current week
+                new_end_date = new_start_date + timedelta(days=6)
+            else:  # month
+                new_start_date = today.replace(day=1)  # Start of current month
+                if today.month == 12:
+                    next_month = today.replace(year=today.year + 1, month=1, day=1)
+                else:
+                    next_month = today.replace(month=today.month + 1, day=1)
+                new_end_date = next_month - timedelta(days=1)
+            
+            # Check if a budget already exists for this period
+            existing_budget = cls.objects.filter(
+                user=budget.user,
+                subcategory=budget.subcategory,
+                start_date=new_start_date,
+                account=budget.account
+            ).first()
+            
+            if not existing_budget:
+                # Create new budget with same amount but new dates
+                cls.objects.create(
+                    user=budget.user,
+                    subcategory=budget.subcategory,
+                    amount=budget.amount,
+                    account=budget.account,
+                    duration=budget.duration,
+                    start_date=new_start_date,
+                    end_date=new_end_date
+                )
+
     @property
     def spent(self):
         """Calculate total spent from transactions within the budget period"""

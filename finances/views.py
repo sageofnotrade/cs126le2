@@ -483,65 +483,21 @@ def dashboard(request):
     first_day = today.replace(day=1)
     last_day = today.replace(day=calendar.monthrange(today.year, today.month)[1])
     
-    # Get current month's transactions
-    current_month_income = Transaction.objects.filter(
+    income = Transaction.objects.filter(
         user=request.user,
         type='income',
         date__gte=first_day,
         date__lte=last_day
     ).aggregate(Sum('amount'))['amount__sum'] or 0
     
-    current_month_expenses = Transaction.objects.filter(
+    expenses = Transaction.objects.filter(
         user=request.user,
         type='expense',
         date__gte=first_day,
         date__lte=last_day
     ).aggregate(Sum('amount'))['amount__sum'] or 0
     
-    current_month_balance = current_month_income - current_month_expenses
-    
-    # Get previous month's transactions
-    if today.month == 1:
-        prev_month = today.replace(year=today.year - 1, month=12)
-    else:
-        prev_month = today.replace(month=today.month - 1)
-    
-    prev_first_day = prev_month.replace(day=1)
-    prev_last_day = prev_month.replace(day=calendar.monthrange(prev_month.year, prev_month.month)[1])
-    
-    prev_month_income = Transaction.objects.filter(
-        user=request.user,
-        type='income',
-        date__gte=prev_first_day,
-        date__lte=prev_last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    
-    prev_month_expenses = Transaction.objects.filter(
-        user=request.user,
-        type='expense',
-        date__gte=prev_first_day,
-        date__lte=prev_last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    
-    prev_month_balance = prev_month_income - prev_month_expenses
-    
-    # Get account balances
-    total_balance = debit_balance = credit_balance = wallet_balance = 0
-    
-    debit_accounts = DebitAccount.objects.filter(user=request.user)
-    credit_accounts = CreditAccount.objects.filter(user=request.user)
-    wallet_accounts = Wallet.objects.filter(user=request.user)
-    
-    for account in list(debit_accounts):
-        debit_balance += account.balance - account.maintaining_balance
-    
-    for account in list(credit_accounts):
-        credit_balance += account.credit_limit - account.current_usage
-    
-    for account in list(wallet_accounts):
-        wallet_balance += account.balance
-
-    total_balance = debit_balance + credit_balance + wallet_balance
+    balance = income - expenses
     
     recent_transactions = Transaction.objects.filter(
         user=request.user
@@ -574,46 +530,27 @@ def dashboard(request):
         spent = Transaction.objects.filter(
             user=request.user,
             type='expense',
-            category=budget.category,
-            date__year=today.year,
-            date__month=today.month
+            subcategory=budget.subcategory,
+            date__gte=first_day,
+            date__lte=last_day,
+            transaction_account=budget.account
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         
-        if spent > float(budget.amount) * 0.8:  # Warning at 80% of budget
+        if spent > budget.amount:
             budget_warnings.append({
-                'category': budget.category.name,
-                'budget': budget.amount,
-                'spent': spent,
+                'category': budget.subcategory.name,
+                'budget': float(budget.amount),
+                'spent': float(spent),
                 'percentage': round((spent / budget.amount) * 100)
             })
     
     context = {
-        'current_month_income': current_month_income,
-        'current_month_expenses': current_month_expenses,
-        'current_month_balance': current_month_balance,
-        'prev_month_income': prev_month_income,
-        'prev_month_expenses': prev_month_expenses,
-        'prev_month_balance': prev_month_balance,
-        'accounts_summary': {
-            'debit': {
-                'accounts': list(debit_accounts),
-                'balance': debit_balance
-            },
-            'credit': {
-                'accounts': list(credit_accounts),
-                'balance': credit_balance
-            },
-            'wallet': {
-                'accounts': list(wallet_accounts),
-                'balance': wallet_balance
-            },
-        },
-        'total_balance': total_balance,
+        'income': income,
+        'expenses': expenses,
+        'balance': balance,
         'recent_transactions': recent_transactions,
         'expenses_by_category': json.dumps(expenses_by_category),
-        'budget_warnings': budget_warnings,
-        'current_month': today,  # Add current month date object
-        'prev_month': prev_month,  # Add previous month date object
+        'budget_warnings': budget_warnings
     }
     
     return render(request, 'finances/dashboard.html', context)
@@ -663,6 +600,77 @@ def delete_transaction(request, pk):
 def reports_view(request):
     return render(request, 'reports.html')
     
+@login_required
+def monthly_summary(request):
+    if request.method == 'POST':
+        form = DateRangeForm(request.POST)
+        if form.is_valid():
+            start_date = form.cleaned_data['start_date']
+            end_date = form.cleaned_data['end_date']
+        else:
+            today = timezone.now().date()
+            start_date = today.replace(day=1)
+            end_date = today
+    else:
+        today = timezone.now().date()
+        start_date = today.replace(day=1)
+        end_date = today
+        form = DateRangeForm(initial={'start_date': start_date, 'end_date': end_date})
+    
+    # Get all transactions within the date range
+    transactions = Transaction.objects.filter(
+        user=request.user,
+        date__gte=start_date,
+        date__lte=end_date
+    ).order_by('-date')
+    
+    # Calculate totals
+    income = Transaction.objects.filter(
+        user=request.user,
+        type='income',
+        date__gte=start_date,
+        date__lte=end_date
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    
+    expenses = Transaction.objects.filter(
+        user=request.user,
+        type='expense',
+        date__gte=start_date,
+        date__lte=end_date
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    
+    # Get expenses by category for pie chart
+    categories = Category.objects.filter(user=request.user)
+    expenses_by_category = []
+    
+    for category in categories:
+        amount = Transaction.objects.filter(
+            user=request.user,
+            type='expense',
+            category=category,
+            date__gte=start_date,
+            date__lte=end_date
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        
+        if amount > 0:
+            expenses_by_category.append({
+                'category': category.name,
+                'amount': float(amount)
+            })
+    
+    context = {
+        'form': form,
+        'transactions': transactions,
+        'income': income,
+        'expenses': expenses,
+        'balance': income - expenses,
+        'expenses_by_category': json.dumps(expenses_by_category),
+        'start_date': start_date,
+        'end_date': end_date
+    }
+    
+    return render(request, 'finances/monthly_summary.html', context)
+
 @login_required
 def categories(request):
     """View to manage categories, works with both Django forms and React frontend"""
@@ -769,62 +777,17 @@ def export_csv(request):
     
     return render(request, 'finances/export_csv.html', {'form': form})
 
-def renew_expired_budgets():
-    """Automatically renew budgets that have reached their end date"""
-    today = timezone.now().date()
-    
-    # Get budgets that ended yesterday
-    expired_budgets = Budget.objects.filter(
-        end_date=today - timedelta(days=1)
-    )
-    
-    for budget in expired_budgets:
-        # Calculate new start and end dates based on duration
-        if budget.duration == '1 week':
-            new_start_date = budget.end_date + timedelta(days=1)
-            new_end_date = new_start_date + timedelta(days=6)
-        elif budget.duration == '1 month':
-            new_start_date = budget.end_date + timedelta(days=1)
-            # Get the last day of the next month
-            if new_start_date.month == 12:
-                next_month = new_start_date.replace(year=new_start_date.year + 1, month=1, day=1)
-            else:
-                next_month = new_start_date.replace(month=new_start_date.month + 1, day=1)
-            new_end_date = next_month - timedelta(days=1)
-        
-        # Create new budget with same details but new dates
-        new_budget = Budget.objects.create(
-            user=budget.user,
-            category=budget.category,
-            amount=budget.amount,
-            start_date=new_start_date,
-            end_date=new_end_date,
-            duration=budget.duration,
-            account=budget.account
-        )
-        new_budget.save()
-
-def cleanup_expired_budgets():
-    """Remove budgets that are more than 7 days past their end date"""
-    today = timezone.now().date()
-    cutoff_date = today - timedelta(days=7)
-    
-    # Delete budgets that ended more than 7 days ago
-    Budget.objects.filter(
-        end_date__lt=cutoff_date
-    ).delete()
-
 @login_required
 def manage_budget(request):
-    # Run cleanup and renewal before showing the page
-    cleanup_expired_budgets()
-    renew_expired_budgets()
-    
     form = BudgetForm(user=request.user)
     
     today = timezone.now().date()
-    # Get all active budgets (those that include today's date)
-    budgets = Budget.objects.select_related('subcategory').filter(
+    
+    # Renew expired budgets
+    Budget.renew_expired_budgets()
+    
+    # Get budgets that include today's date
+    budgets = Budget.objects.select_related('subcategory', 'account').filter(
         user=request.user,
         start_date__lte=today,
         end_date__gte=today
@@ -832,7 +795,7 @@ def manage_budget(request):
     
     budget_data = []
     for budget in budgets:
-        # Calculate the amount spent in this subcategory for the current period
+        # Calculate the amount spent in this category for the current period
         spent = Transaction.objects.filter(
             user=request.user,
             type='expense',
@@ -857,7 +820,8 @@ def manage_budget(request):
             'start_date': budget.start_date,
             'end_date': budget.end_date,
             'duration': budget.duration,
-            'amount': budget.amount
+            'amount': budget.amount,
+            'account': budget.account  # Include the account object
         })
     
     return render(request, 'finances/manage_budget.html', {
@@ -870,31 +834,41 @@ def manage_budget(request):
 def update_budget(request):
     if request.method == 'POST':
         budget_id = request.POST['budget_id']  # Get the budget ID from the form
-        budget = get_object_or_404(Budget, id=budget_id)
+        budget = get_object_or_404(Budget, id=budget_id, user=request.user)
 
         # Get form data
-        category = Category.objects.get(id=request.POST['category'])
-        amount = request.POST['amount']
-        start_date = request.POST['start_date']
-        end_date = request.POST['end_date']
+        subcategory = SubCategory.objects.get(id=request.POST['subcategory'])
+        amount = Decimal(request.POST['amount'])  # Convert amount to Decimal
+        start_date = datetime.strptime(request.POST['start_date'], '%Y-%m-%d').date()  # Convert to date object
         duration = request.POST['duration']
+        account = Account.objects.get(id=request.POST['account'])
 
         # Update the budget with new values
-        budget.category = category
+        budget.subcategory = subcategory
         budget.amount = amount
         budget.start_date = start_date
-        budget.end_date = end_date
         budget.duration = duration
+        budget.account = account
+        
+        # Calculate end date based on duration
+        if duration == '1 week':
+            budget.end_date = start_date + timedelta(days=6)
+        else:  # 1 month
+            if start_date.month == 12:
+                next_month = start_date.replace(year=start_date.year + 1, month=1, day=1)
+            else:
+                next_month = start_date.replace(month=start_date.month + 1, day=1)
+            budget.end_date = next_month - timedelta(days=1)
 
         budget.save()
 
         # Return the updated budget data as JSON
         updated_budget = {
-            'category': budget.category.name,
-            'amount': budget.amount,
-            'spent': budget.spent,
-            'remaining': budget.remaining,
-            'percentage': budget.percentage,
+            'subcategory': budget.subcategory.name,
+            'amount': float(budget.amount),
+            'spent': float(budget.spent),
+            'remaining': float(budget.remaining),
+            'percentage_used': budget.percentage_used,
             'start_date': budget.start_date.strftime('%Y-%m-%d'),
             'end_date': budget.end_date.strftime('%Y-%m-%d')
         }
@@ -904,7 +878,7 @@ def update_budget(request):
 
 def get_budgets(request):
     budgets = Budget.objects.all().values(
-        'category', 'amount', 'spent', 'start_date', 'end_date', 'duration'
+        'subcategory', 'amount', 'spent', 'start_date', 'end_date', 'duration'
     )
     
     # Calculate 'remaining' dynamically for each budget
@@ -931,7 +905,7 @@ def add_budget(request):
             # Check for existing budget in the same period
             existing_budget = Budget.objects.filter(
                 user=request.user,
-                category=budget.category,
+                subcategory=budget.subcategory,
                 start_date__year=budget.start_date.year,
                 start_date__month=budget.start_date.month,
                 account=budget.account
@@ -941,7 +915,7 @@ def add_budget(request):
                 return JsonResponse({
                     'success': False, 
                     'errors': {
-                        'category': ['A budget for this category already exists in the selected period.']
+                        'subcategory': ['A budget for this subcategory already exists in the selected period.']
                     }
                 })
             
@@ -1332,24 +1306,10 @@ def api_reorder_categories(request):
 def transactions(request):
     """View for the transactions page with filtering and monthly view"""
     
-    # Get current date
+    # Get current month and year, defaulting to current date
     current_date = timezone.now().date()
-    
-    # Get month parameter and parse it
-    month_param = request.GET.get('month')
-    if month_param:
-        try:
-            # Parse the YYYY-MM format
-            year, month = map(int, month_param.split('-'))
-            current_month = month
-            current_year = year
-        except (ValueError, AttributeError):
-            # If parsing fails, use current date
-            current_month = current_date.month
-            current_year = current_date.year
-    else:
-        current_month = current_date.month
-        current_year = current_date.year
+    current_month = int(request.GET.get('month', current_date.month))
+    current_year = int(request.GET.get('year', current_date.year))
     
     # Get start and end date for the selected month
     start_date = timezone.datetime(current_year, current_month, 1).date()
@@ -1396,7 +1356,7 @@ def transactions(request):
     context = {
         'transactions': transactions,
         'categories': categories,
-        'accounts': accounts,
+        'accounts': accounts,  # Add accounts to context
         'current_month': current_month,
         'current_year': current_year,
         'current_month_name': current_month_name,
@@ -1896,7 +1856,6 @@ def charts_data_future(request):
     try:
         # Get query parameters
         period = request.GET.get('period', 'month')
-        chart_type = request.GET.get('chartType', 'line')
         
         today = timezone.now().date()
         data = {
@@ -1914,19 +1873,17 @@ def charts_data_future(request):
             date_points = [(today + timedelta(days=x)) for x in range(31)]
             date_format = '%d %b'
         elif period == 'quarter':
-            # For quarter, we'll use monthly points instead of daily
             end_date = today + timedelta(days=90)
             current_month = today.replace(day=1)
             date_points = []
-            for i in range(3):  # Next 3 months
-                date_points.append(current_month + timedelta(days=32*i))  # Using 32 to ensure we get to next month
+            for i in range(3):
+                date_points.append(current_month + timedelta(days=32*i))
             date_format = '%b %Y'
         else:  # year
-            # For year, we'll use monthly points
             end_date = today + timedelta(days=365)
             current_month = today.replace(day=1)
             date_points = []
-            for i in range(12):  # Next 12 months
+            for i in range(12):
                 date_points.append(current_month + timedelta(days=32*i))
             date_format = '%b %Y'
 
@@ -1944,67 +1901,54 @@ def charts_data_future(request):
             debts_credits_amount = 0
             credit_card_amount = 0
 
-            try:
-                # For quarter and year, get all transactions for the whole month
-                if period in ['quarter', 'year']:
-                    month_end = (current_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-                    date_range = [current_date, month_end]
-                else:
-                    date_range = [current_date, current_date]
+            # For quarter and year, get all transactions for the whole month
+            if period in ['quarter', 'year']:
+                month_end = (current_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+                date_range = [current_date, month_end]
+            else:
+                date_range = [current_date, current_date]
 
-                # Get scheduled transactions for this period
-                scheduled = ScheduledTransaction.objects.filter(
-                    user=request.user,
-                    date_scheduled__range=date_range
-                )
-                for transaction in scheduled:
-                    amount = float(transaction.amount)
-                    if transaction.transaction_type == 'expense':
-                        amount = -amount
-                    scheduled_amount += amount
-            except Exception as e:
-                print(f"Error processing scheduled transactions: {str(e)}")
-                scheduled_amount = 0
+            # Get scheduled transactions for this period
+            scheduled_transactions = ScheduledTransaction.objects.filter(
+                user=request.user,
+                date_scheduled__range=date_range
+            )
+            for transaction in scheduled_transactions:
+                amount = float(transaction.amount)
+                if transaction.transaction_type == 'expense':
+                    amount = -amount
+                scheduled_amount += amount
 
-            try:
-                # Get debt payments due in this period
-                debts = Debt.objects.filter(
-                    user=request.user,
-                    due_date__range=date_range
-                )
-                for debt in debts:
-                    if debt.debt_type == 'debt':
-                        debts_credits_amount -= float(debt.residual_amount)
-                    else:  # credit
-                        debts_credits_amount += float(debt.residual_amount)
-            except Exception as e:
-                print(f"Error processing debts: {str(e)}")
-                debts_credits_amount = 0
+            # Get debt payments due in this period
+            debts = Debt.objects.filter(
+                user=request.user,
+                date_payback__range=date_range
+            )
+            for debt in debts:
+                if debt.debt_type == 'debt':
+                    debts_credits_amount -= float(debt.residual_amount)
+                else:  # credit
+                    debts_credits_amount += float(debt.residual_amount)
 
-            try:
-                # Get credit card payments due in this period
-                credit_accounts = CreditAccount.objects.filter(
-                    user=request.user
-                )
-                for account in credit_accounts:
-                    if hasattr(account, 'payment_due_date') and account.payment_due_date:
-                        payment_date = account.payment_due_date
-                        if date_range[0] <= payment_date <= date_range[1]:
-                            if hasattr(account, 'minimum_payment'):
-                                credit_card_amount -= float(account.minimum_payment)
-            except Exception as e:
-                print(f"Error processing credit cards: {str(e)}")
-                credit_card_amount = 0
+            # Get credit card payments due in this period
+            credit_accounts = CreditAccount.objects.filter(
+                user=request.user
+            )
+            for account in credit_accounts:
+                if account.payment_due_date:
+                    payment_date = account.payment_due_date
+                    if date_range[0] <= payment_date <= date_range[1]:
+                        credit_card_amount -= float(account.minimum_payment)
 
             # Add the amounts to their respective arrays
-            data['future_transactions'].append(future_amount)
-            data['scheduled_transactions'].append(scheduled_amount)
-            data['debts_credits'].append(debts_credits_amount)
-            data['credit_card_payments'].append(credit_card_amount)
+            data['future_transactions'].append(float(future_amount))
+            data['scheduled_transactions'].append(float(scheduled_amount))
+            data['debts_credits'].append(float(debts_credits_amount))
+            data['credit_card_payments'].append(float(credit_card_amount))
             
             # Calculate total projected amount for this date
             total_projected = future_amount + scheduled_amount + debts_credits_amount + credit_card_amount
-            data['projected'].append(total_projected)
+            data['projected'].append(float(total_projected))
         
         return JsonResponse(data)
         
