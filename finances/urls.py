@@ -18,7 +18,6 @@ urlpatterns = [
     path('scheduled/create/', views.create_scheduled_transaction, name='create_scheduled_transaction'),
     path('scheduled/edit/<int:pk>/', views.edit_scheduled_transaction, name='edit_scheduled_transaction'),
     path('scheduled/delete/<int:pk>/', views.delete_scheduled_transaction, name='delete_scheduled_transaction'),
-    path('summary/', views.monthly_summary, name='monthly_summary'),
     path('categories/', views.categories, name='categories'),
     path('api/categories/', views.api_categories, name='api_categories'),
     path('api/categories/add/', views.api_add_category, name='api_add_category'),

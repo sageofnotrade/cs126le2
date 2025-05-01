@@ -2,6 +2,10 @@
 
 {% block title %}Dashboard - Budget Tracker{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
 {% block content %}
 <header class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -15,223 +19,182 @@
     </div>
 </header>
 
+<div class="row g-3">
+    <!-- Account Balances -->
+    <div class="col-md-4 d-flex">
+        <a href="{% url 'accounts_list' %}" class="text-decoration-none flex-fill">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-3 d-flex flex-column">
+                    <h6 class="text-muted mb-2">Summary</h6>
+                    <div class="flex-grow-1 d-flex flex-column">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-secondary small">Debit Balance ({{ accounts_summary.debit.accounts|length }} account/s)</span>
+                                <span class="fw-medium ms-2 {% if accounts_summary.debit.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    ${{ accounts_summary.debit.balance|floatformat:2 }}
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-secondary small">Credit ({{ accounts_summary.credit.accounts|length }} account/s)</span>
+                                <span class="fw-medium ms-2 {% if accounts_summary.credit.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    ${{ accounts_summary.credit.balance|floatformat:2 }}
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-secondary small">Wallet Balance ({{ accounts_summary.wallet.accounts|length }} account/s)</span>
+                                <span class="fw-medium ms-2 {% if accounts_summary.wallet.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    ${{ accounts_summary.wallet.balance|floatformat:2 }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-2 border-top">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-medium">Total Balance</span>
+                                <span class="h5 mb-0 ms-2 {% if total_balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    ${{ total_balance|floatformat:2 }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Current Month Summary -->
+    <div class="col-md-4 d-flex">
+        <a href="{% url 'transactions' %}?month={{ current_month|date:'Y-m' }}" class="text-decoration-none flex-fill">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-3 d-flex flex-column">
+                    <h6 class="text-muted mb-2">This Month</h6>
+                    <div class="flex-grow-1 d-flex flex-column">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="chart-container me-3" style="width: 80px; height: 80px; position: relative;">
+                                <canvas id="currentMonthChart"></canvas>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-secondary small">Income</span>
+                                    <span class="fw-medium ms-2 income-text">
+                                        ${{ current_month_income|floatformat:2 }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary small">Expenses</span>
+                                    <span class="fw-medium ms-2 expense-text">
+                                        ${{ current_month_expenses|floatformat:2 }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-2 border-top">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-medium">Net</span>
+                                <span class="h5 mb-0 ms-2 {% if current_month_balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    ${{ current_month_balance|floatformat:2 }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Previous Month Summary -->
+    <div class="col-md-4 d-flex">
+        <a href="{% url 'transactions' %}?month={{ prev_month|date:'Y-m' }}" class="text-decoration-none flex-fill">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-3 d-flex flex-column">
+                    <h6 class="text-muted mb-2">Last Month</h6>
+                    <div class="flex-grow-1 d-flex flex-column">
+                        <div class="d-flex justify-items-center align-items-center mb-3">
+                            <div class="chart-container me-3" style="width: 80px; height: 80px; position: relative;">
+                                <canvas id="prevMonthChart"></canvas>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-secondary small">Income</span>
+                                    <span class="fw-medium ms-2 income-text">
+                                        ${{ prev_month_income|floatformat:2 }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary small">Expenses</span>
+                                    <span class="fw-medium ms-2 expense-text">
+                                        ${{ prev_month_expenses|floatformat:2 }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-2 border-top">
+                            <div class="d-flex justify-content-between align-items-end">
+                                <span class="fw-medium">Net</span>
+                                <span class="h5 mb-0 ms-2 {% if prev_month_balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    ${{ prev_month_balance|floatformat:2 }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Rest of the dashboard content -->
 {% if budget_warnings %}
-<section class="budget-warnings mb-4" aria-labelledby="warnings-heading">
+<section class="budget-warnings mt-4" aria-labelledby="warnings-heading">
     <div class="card border-0 shadow-sm">
         <header class="card-header bg-warning text-dark d-flex align-items-center">
-            <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
-            <h2 class="h5 mb-0" id="warnings-heading">Budget Warnings</h2>
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <h2 class="h6 mb-0" id="warnings-heading">Budget Warnings</h2>
         </header>
         <div class="card-body">
             {% for warning in budget_warnings %}
-            <article class="budget-warning mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                    <h3 class="h6 mb-0">{{ warning.category }}</h3>
-                    <span class="badge bg-danger">{{ warning.percentage }}% used</span>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>{{ warning.category }}</strong>
+                    <div class="text-muted small">
+                        Spent ${{ warning.spent|floatformat:2 }} of ${{ warning.budget|floatformat:2 }}
+                    </div>
                 </div>
-                <p class="mb-1 small text-muted">Budget: ${{ warning.budget }} | Spent: ${{ warning.spent }}</p>
-                <div class="progress" style="height: 8px;" role="progressbar" aria-label="{{ warning.category }} budget usage" aria-valuenow="{{ warning.percentage }}" aria-valuemin="0" aria-valuemax="100">
-                    {% with width_style=warning.percentage|stringformat:"i" %}
-                    <div class="progress-bar bg-danger" style="width: {{ width_style }}%"></div>
-                    {% endwith %}
+                <div class="text-end">
+                    <div class="h5 mb-0 {% if warning.percentage >= 100 %}text-danger{% else %}text-warning{% endif %}">
+                        {{ warning.percentage }}%
+                    </div>
                 </div>
-            </article>
+            </div>
             {% endfor %}
         </div>
     </div>
 </section>
 {% endif %}
 
-<!-- Financial Overview Cards -->
-<section class="financial-overview mb-4" aria-labelledby="financial-overview-heading">
-    <h2 class="visually-hidden" id="financial-overview-heading">Financial Overview</h2>
-    <div class="row">
-        <div class="col-md-4 mb-4">
-            <article class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-                    <header class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-success-subtle p-2 me-3">
-                            <i class="bi bi-graph-up-arrow text-success fs-4" aria-hidden="true"></i>
-                        </div>
-                        <h3 class="h5 mb-0">Monthly Income</h3>
-                    </header>
-                    <p class="income-text h2 mb-0" aria-label="Monthly income">${{ income }}</p>
-                    <small class="text-muted">This Month</small>
-                </div>
-            </article>
-        </div>
-        <div class="col-md-4 mb-4">
-            <article class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-                    <header class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-danger-subtle p-2 me-3">
-                            <i class="bi bi-graph-down-arrow text-danger fs-4" aria-hidden="true"></i>
-                        </div>
-                        <h3 class="h5 mb-0">Monthly Expenses</h3>
-                    </header>
-                    <p class="expense-text h2 mb-0" aria-label="Monthly expenses">${{ expenses }}</p>
-                    <small class="text-muted">This Month</small>
-                </div>
-            </article>
-        </div>
-        <div class="col-md-4 mb-4">
-            <article class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-                    <header class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-{% if balance >= 0 %}success{% else %}danger{% endif %}-subtle p-2 me-3">
-                            <i class="bi bi-wallet2 text-{% if balance >= 0 %}success{% else %}danger{% endif %} fs-4" aria-hidden="true"></i>
-                        </div>
-                        <h3 class="h5 mb-0">Monthly Balance</h3>
-                    </header>
-                    <p class="{% if balance >= 0 %}income-text{% else %}expense-text{% endif %} h2 mb-0" aria-label="Monthly balance">
-                        ${{ balance }}
-                    </p>
-                    <small class="text-muted">Savings This Month</small>
-                </div>
-            </article>
-        </div>
-    </div>
-</section>
-
-<div class="row">
-    <!-- Recent Transactions -->
-    <div class="col-lg-7 mb-4">
-        <section class="recent-transactions" aria-labelledby="recent-transactions-heading">
-            <div class="card border-0 shadow-sm">
-                <header class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h2 class="h5 mb-0" id="recent-transactions-heading">Recent Transactions</h2>
-                    <a href="{% url 'monthly_summary' %}" class="btn btn-sm btn-outline-primary">View All</a>
-                </header>
-                <div class="card-body p-0">
-                    {% if recent_transactions %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <caption class="visually-hidden">Recent financial transactions</caption>
-                            <thead class="table-light">
-                                <tr>
-                                    <th scope="col">Date</th>
-                                    <th scope="col">Title</th>
-                                    <th scope="col">Category</th>
-                                    <th scope="col" class="text-end">Amount</th>
-                                    <th scope="col" class="text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for transaction in recent_transactions %}
-                                <tr>
-                                    <td class="text-nowrap">{{ transaction.date }}</td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="rounded-circle p-1 me-2 {% if transaction.type == 'income' %}bg-success-subtle{% else %}bg-danger-subtle{% endif %}">
-                                                <i class="bi {% if transaction.type == 'income' %}bi-arrow-down-circle{% else %}bi-arrow-up-circle{% endif %} 
-                                                    {% if transaction.type == 'income' %}text-success{% else %}text-danger{% endif %}" aria-hidden="true"></i>
-                                            </div>
-                                            {{ transaction.title }}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge rounded-pill bg-light text-dark">
-                                            {{ transaction.category.name|default:"Uncategorized" }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end fw-bold {% if transaction.type == 'income' %}income-text{% else %}expense-text{% endif %}">
-                                        {% if transaction.type == 'income' %}+{% else %}-{% endif %}
-                                        ${{ transaction.amount }}
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group" aria-label="Actions for {{ transaction.title }}">
-                                            <a href="{% url 'edit_transaction' transaction.id %}" class="btn btn-outline-primary" aria-label="Edit transaction">
-                                                <i class="bi bi-pencil" aria-hidden="true"></i>
-                                            </a>
-                                            <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-outline-danger" aria-label="Delete transaction">
-                                                <i class="bi bi-trash" aria-hidden="true"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center p-5">
-                        <div class="mb-3">
-                            <i class="bi bi-receipt fs-1 text-muted" aria-hidden="true"></i>
-                        </div>
-                        <h3 class="h5">No transactions yet</h3>
-                        <p class="text-muted">Start tracking your finances by adding your first transaction</p>
-                        <a href="{% url 'add_transaction' %}" class="btn btn-primary">Add Transaction</a>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </section>
-    </div>
-    
-    <!-- Expense Breakdown -->
-    <div class="col-lg-5 mb-4">
-        <section class="expense-breakdown h-100" aria-labelledby="expense-breakdown-heading">
-            <div class="card border-0 shadow-sm h-100">
-                <header class="card-header bg-white py-3">
-                    <h2 class="h5 mb-0" id="expense-breakdown-heading">Expense Breakdown</h2>
-                </header>
-                <div class="card-body">
-                    <canvas id="expenseChart" aria-label="Expense breakdown chart" role="img"></canvas>
-                </div>
-            </div>
-        </section>
-    </div>
-</div>
-
-<!-- Quick Links -->
-<section class="quick-actions mb-4" aria-labelledby="quick-actions-heading">
+<!-- Recent Transactions -->
+<section class="recent-transactions mt-4" aria-labelledby="recent-transactions-heading">
     <div class="card border-0 shadow-sm">
-        <header class="card-header bg-white py-3">
-            <h2 class="h5 mb-0" id="quick-actions-heading">Quick Actions</h2>
+        <header class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0" id="recent-transactions-heading">Recent Transactions</h2>
+            <a href="{% url 'transactions' %}" class="btn btn-sm btn-outline-primary">View All</a>
         </header>
         <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-3 col-sm-6">
-                    <a href="{% url 'add_transaction' %}" class="card text-center h-100 text-decoration-none border-0 shadow-sm py-3">
-                        <div class="card-body">
-                            <div class="rounded-circle bg-primary-subtle p-3 d-inline-block mb-3">
-                                <i class="bi bi-plus-lg text-primary fs-4" aria-hidden="true"></i>
-                            </div>
-                            <h3 class="h6">Add Transaction</h3>
-                        </div>
-                    </a>
+            {% for transaction in recent_transactions %}
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <strong>{{ transaction.title }}</strong>
+                    <div class="text-muted small">
+                        {{ transaction.date|date:"M d, Y" }}
+                        {% if transaction.category %}
+                        • {{ transaction.category.name }}
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="col-md-3 col-sm-6">
-                    <a href="{% url 'categories' %}" class="card text-center h-100 text-decoration-none border-0 shadow-sm py-3">
-                        <div class="card-body">
-                            <div class="rounded-circle bg-warning-subtle p-3 d-inline-block mb-3">
-                                <i class="bi bi-tags text-warning fs-4" aria-hidden="true"></i>
-                            </div>
-                            <h3 class="h6">Manage Categories</h3>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <a href="{% url 'manage_budget' %}" class="card text-center h-100 text-decoration-none border-0 shadow-sm py-3">
-                        <div class="card-body">
-                            <div class="rounded-circle bg-success-subtle p-3 d-inline-block mb-3">
-                                <i class="bi bi-cash-stack text-success fs-4" aria-hidden="true"></i>
-                            </div>
-                            <h3 class="h6">Set Budgets</h3>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <a href="{% url 'export_csv' %}" class="card text-center h-100 text-decoration-none border-0 shadow-sm py-3">
-                        <div class="card-body">
-                            <div class="rounded-circle bg-info-subtle p-3 d-inline-block mb-3">
-                                <i class="bi bi-download text-info fs-4" aria-hidden="true"></i>
-                            </div>
-                            <h3 class="h6">Export Data</h3>
-                        </div>
-                    </a>
-                </div>
+                <span class="{% if transaction.type == 'income' %}income-text{% else %}expense-text{% endif %}">
+                    {% if transaction.type == 'expense' %}-{% endif %}${{ transaction.amount|floatformat:2 }}
+                </span>
             </div>
+            {% endfor %}
         </div>
     </div>
 </section>
@@ -240,52 +203,55 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var expenseData = {{ expenses_by_category|safe }};
-    
-    if (expenseData && expenseData.length > 0) {
-        const ctx = document.getElementById('expenseChart').getContext('2d');
-        
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: expenseData.map(item => item.category),
-                datasets: [{
-                    data: expenseData.map(item => item.amount),
-                    backgroundColor: [
-                        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#6f42c1',
-                        '#5a5c69', '#858796', '#d1d3e2', '#28a745'
-                    ],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 12,
-                            padding: 15
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                var label = context.label || '';
-                                var value = context.raw || 0;
-                                var total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                var percentage = Math.round(value / total * 100);
-                                return `${label}: $${value} (${percentage}%)`;
-                            }
-                        }
-                    }
+    const chartConfig = {
+        type: 'doughnut',
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false  // Disable tooltips/hover functionality
                 }
-            }
-        });
-    } else {
-        document.getElementById('expenseChart').innerHTML = '<div class="text-center p-5 text-muted">No expense data to display</div>';
-    }
+            },
+            events: []  // Disable all events including hover
+        }
+    };
+
+    // Current Month Chart
+    const currentMonthCtx = document.getElementById('currentMonthChart').getContext('2d');
+    new Chart(currentMonthCtx, {
+        ...chartConfig,
+        data: {
+            labels: ['Income', 'Expenses'],
+            datasets: [{
+                data: [{{ current_month_income }}, {{ current_month_expenses }}],
+                backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'],
+                borderColor: ['rgb(40, 167, 69)', 'rgb(220, 53, 69)'],
+                borderWidth: 0,
+                hoverOffset: 0  // Disable hover offset effect
+            }]
+        }
+    });
+
+    // Previous Month Chart
+    const prevMonthCtx = document.getElementById('prevMonthChart').getContext('2d');
+    new Chart(prevMonthCtx, {
+        ...chartConfig,
+        data: {
+            labels: ['Income', 'Expenses'],
+            datasets: [{
+                data: [{{ prev_month_income }}, {{ prev_month_expenses }}],
+                backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'],
+                borderColor: ['rgb(40, 167, 69)', 'rgb(220, 53, 69)'],
+                borderWidth: 0,
+                hoverOffset: 0  // Disable hover offset effect
+            }]
+        }
+    });
 });
 </script>
-{% endblock %} 
+{% endblock %}
