@@ -185,15 +185,6 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="filter-group">
-                            <label for="future-type">Chart Type</label>
-                            <select class="form-select" id="future-type">
-                                <option value="line" selected>Line Chart</option>
-                                <option value="bar">Bar Chart</option>
-                            </select>
-                        </div>
-                    </div>
                 </div>
             </div>
             <div class="chart-section">
@@ -265,7 +256,6 @@
     document.getElementById('time-range').addEventListener('change', updateTimeChart);
     document.getElementById('time-interval').addEventListener('change', updateTimeChart);
     document.getElementById('future-period').addEventListener('change', updateFutureChart);
-    document.getElementById('future-type').addEventListener('change', updateFutureChart);
 
     function initializeCategoryChart() {
         updateCategoryChart();
@@ -299,7 +289,6 @@
     const timeRangeSelect = document.getElementById('time-range');
     const timeIntervalSelect = document.getElementById('time-interval');
     const futurePeriodSelect = document.getElementById('future-period');
-    const futureTypeSelect = document.getElementById('future-type');
 
     function updateTimeIntervalOptions() {
         const range = timeRangeSelect.value;
@@ -330,15 +319,7 @@
         const period = futurePeriodSelect.value;
         
         // Reset chart type options
-        for (let opt of futureTypeSelect.options) opt.disabled = false;
-        
-        if (period === 'year') {
-            // For yearly projections, only allow line charts
-            futureTypeSelect.value = 'line';
-            for (let opt of futureTypeSelect.options) {
-                if (opt.value !== 'line') opt.disabled = true;
-            }
-        }
+        for (let opt of futurePeriodSelect.options) opt.disabled = false;
     }
 
     // Function to fetch updated chart data
@@ -370,15 +351,14 @@
 
     async function updateFutureChart() {
         const filters = {
-            period: futurePeriodSelect.value,
-            chartType: futureTypeSelect.value
+            period: futurePeriodSelect.value
         };
 
         const newData = await fetchChartData('future', filters);
         if (newData) {
             if (futureChart) futureChart.destroy();
-            futureData = newData; // Update the global futureData
-            futureChart = createFutureChart('futureChart', futureData, futureTypeSelect.value);
+            futureData = newData;
+            futureChart = createFutureChart('futureChart', futureData);
         }
     }
 
@@ -398,7 +378,6 @@
         updateFuturePeriodOptions();
         updateFutureChart();
     });
-    futureTypeSelect.addEventListener('change', updateFutureChart);
 
     function createPieChart(elementId, data) {
         const ctx = document.getElementById(elementId).getContext('2d');
@@ -522,51 +501,70 @@
                 '</div>';
             return null;
         }
+
+        // Process data to handle zero values for line charts
+        function processLineData(dataArray) {
+            return dataArray.map((value, index) => {
+                if (value === 0) {
+                    // Check adjacent points
+                    const prevHasValue = index > 0 && dataArray[index - 1] !== 0;
+                    const nextHasValue = index < dataArray.length - 1 && dataArray[index + 1] !== 0;
+                    // Only keep zero if there's an adjacent non-zero value
+                    return (prevHasValue || nextHasValue) ? 0 : null;
+                }
+                return value;
+            });
+        }
         
         return new Chart(ctx, {
-            type: 'line',  // Always use line chart for future projections
+            type: 'line',
             data: {
                 labels: data.labels,
                 datasets: [
                     {
                         label: 'Future Transactions',
-                        data: data.future_transactions,
+                        data: processLineData(data.future_transactions),
                         borderColor: '#4BC0C0',
-                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                        borderWidth: 2,
-                        fill: true
+                        backgroundColor: 'rgba(75, 192, 192, 0.05)',
+                        borderWidth: 1,
+                        fill: true,
+                        order: 4
                     },
                     {
                         label: 'Scheduled Transactions',
-                        data: data.scheduled_transactions,
+                        data: processLineData(data.scheduled_transactions),
                         borderColor: '#36A2EB',
                         backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                        borderWidth: 2,
-                        fill: true
+                        borderWidth: 1,
+                        fill: true,
+                        order: 3
                     },
                     {
                         label: 'Debts/Credits',
-                        data: data.debts_credits,
+                        data: processLineData(data.debts_credits),
                         borderColor: '#FF6384',
-                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                        borderWidth: 2,
-                        fill: true
+                        backgroundColor: 'rgba(255, 99, 132, 0.15)',
+                        borderWidth: 1,
+                        fill: true,
+                        order: 2
                     },
                     {
                         label: 'Credit Card Payments',
-                        data: data.credit_card_payments,
+                        data: processLineData(data.credit_card_payments),
                         borderColor: '#FFCE56',
-                        backgroundColor: 'rgba(255, 206, 86, 0.1)',
-                        borderWidth: 2,
-                        fill: true
+                        backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                        borderWidth: 1,
+                        fill: true,
+                        order: 1
                     },
                     {
                         label: 'Total Projected',
-                        data: data.projected,
+                        data: processLineData(data.projected),
                         borderColor: '#9966FF',
-                        backgroundColor: 'rgba(153, 102, 255, 0.1)',
-                        borderWidth: 3,
-                        fill: true
+                        backgroundColor: 'rgba(153, 102, 255, 0.25)',
+                        borderWidth: 2,
+                        fill: true,
+                        order: 0
                     }
                 ]
             },
@@ -574,8 +572,7 @@
                 responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: true,
-                        stacked: false
+                        beginAtZero: true
                     }
                 },
                 plugins: {
@@ -588,7 +585,22 @@
                     },
                     tooltip: {
                         mode: 'index',
-                        intersect: false
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('en-US', {
+                                        style: 'currency',
+                                        currency: 'USD'
+                                    }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
                     }
                 },
                 interaction: {

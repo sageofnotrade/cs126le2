@@ -502,10 +502,6 @@
             <i class="bi bi-speedometer2 sidebar-icon"></i>
             <span class="sidebar-text">Overview</span>
         </a>
-        <a href="{% url 'monthly_summary' %}" class="sidebar-item {% if '/monthly_summary/' in request.path %}active{% endif %}">
-            <i class="bi bi-list-ul sidebar-icon"></i>
-            <span class="sidebar-text">Transactions Summary</span>
-        </a>
         <a href="{% url 'transactions' %}" class="sidebar-item {% if '/transactions/' in request.path %}active{% endif %}">
             <i class="bi bi-list-check sidebar-icon"></i>
             <span class="sidebar-text">Transactions</span>
@@ -529,10 +525,6 @@
         <a href="{% url 'charts' %}" class="sidebar-item {% if '/charts/' in request.path %}active{% endif %}">
             <i class="bi bi-graph-up sidebar-icon"></i>
             <span class="sidebar-text">Charts</span>
-        </a>
-        <a href="#" class="sidebar-item">
-            <i class="bi bi-calendar3 sidebar-icon"></i>
-            <span class="sidebar-text">Calendar</span>
         </a>
         <div class="sidebar-divider"></div>
         <a href="{% url 'export_csv' %}" class="sidebar-item {% if '/export_csv/' in request.path %}active{% endif %}">
@@ -590,22 +582,6 @@
                             <i class="bi bi-person-circle"></i> {{ user.username }}
                         </a>
                         <div class="dropdown-menu dropdown-menu-end">
-                            <a class="dropdown-item" href="{% url 'monthly_summary' %}">
-                                <i class="bi bi-bar-chart"></i> Monthly Summary
-                            </a>
-                            <a class="dropdown-item" href="{% url 'transactions' %}">
-                                <i class="bi bi-list-check"></i> Transactions
-                            </a>
-                            <a class="dropdown-item" href="{% url 'categories' %}">
-                                <i class="bi bi-tags"></i> Categories
-                            </a>
-                            <a class="dropdown-item" href="{% url 'manage_budget' %}">
-                                <i class="bi bi-cash-stack"></i> Manage Budget
-                            </a>
-                            <a class="dropdown-item" href="{% url 'export_csv' %}">
-                                <i class="bi bi-file-earmark-arrow-down"></i> Export Data
-                            </a>
-                            <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="{% url 'logout' %}">
                                 <i class="bi bi-box-arrow-right"></i> Logout
                             </a>

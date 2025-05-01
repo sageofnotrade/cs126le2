@@ -7,22 +7,9 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'budget_tracker.settings')
 django.setup()
 
-from finances.models import Debt, Transaction, Budget, Wallet, CreditAccount, DebitAccount, Account
-from django.db import connection
+from django.apps import apps
 
-# Temporarily disable foreign key constraints in SQLite
-with connection.cursor() as cursor:
-    cursor.execute("PRAGMA foreign_keys = OFF;")
-
-    # Delete your objects
-    Debt.objects.all().delete()
-    Transaction.objects.all().delete()
-    Budget.objects.all().delete()
-    Wallet.objects.all().delete()
-    CreditAccount.objects.all().delete()
-    DebitAccount.objects.all().delete()
-    Account.objects.all().delete()
-
-    cursor.execute("PRAGMA foreign_keys = ON;")
-
-print("Database cleared successfully.")
+# Loop through all models except auth.User
+for model in apps.get_models():
+    if model.__name__ != "User":
+        model.objects.all().delete()

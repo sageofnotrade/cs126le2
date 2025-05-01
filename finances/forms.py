@@ -225,15 +225,28 @@ class SubCategoryForm(forms.ModelForm):
 class BudgetForm(forms.ModelForm):
     duration = forms.ChoiceField(choices=[('1 week', '1 Week'), ('1 month', '1 Month')])
     account = forms.ModelChoiceField(queryset=Account.objects.all(), required=True)
+    subcategory = forms.ModelChoiceField(queryset=SubCategory.objects.none(), required=True)
 
     class Meta:
         model = Budget
-        fields = ['category', 'account', 'amount', 'duration']
+        fields = ['subcategory', 'account', 'amount', 'duration']
 
     def __init__(self, *args, user=None, **kwargs):
         super(BudgetForm, self).__init__(*args, **kwargs)
         if user:
-            self.fields['category'].queryset = Category.objects.filter(user=user)
+            # Get all categories for the user
+            user_categories = Category.objects.filter(user=user)
+            # Get all subcategories for those categories
+            self.fields['subcategory'].queryset = SubCategory.objects.filter(parent_category__in=user_categories)
+            self.fields['account'].queryset = Account.objects.filter(user=user)
+
+    def save(self, commit=True):
+        budget = super().save(commit=False)
+        # Set the category based on the selected subcategory's parent
+        budget.category = self.cleaned_data['subcategory'].parent_category
+        if commit:
+            budget.save()
+        return budget
 
 class DateRangeForm(forms.Form):
     start_date = forms.DateField(

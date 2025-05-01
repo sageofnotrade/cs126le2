@@ -6,6 +6,7 @@
 {% block navbar_title %}Manage Budget{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/budget_category_selector.css' %}">
 <style>
     .budgets-list {
         max-width: 800px;
@@ -40,13 +41,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
                         <div class="budget-icon me-3">
-                            {% if budget.category.icon %}
-                            <img src="{{ budget.category.icon.url }}" alt="{{ budget.category.name }}" class="rounded-circle" width="40" height="40">
-                            {% else %}
-                            <div class="rounded-circle bg-primary p-2" style="width: 40px; height: 40px;">
-                                <i class="bi bi-tag text-white"></i>
-                            </div>
-                            {% endif %}
+                            <i class="bi {{ budget.category.icon }} fs-4"></i>
                         </div>
                         <div>
                             <h3 class="h5 mb-0">{{ budget.category.name }}</h3>
@@ -76,7 +71,7 @@
                         <div class="d-flex justify-content-end">
                             <button class="btn btn-sm btn-link me-2" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
                                     data-id="{{ budget.id }}"
-                                    data-category="{{ budget.category.id }}"
+                                    data-subcategory="{{ budget.subcategory.id }}"
                                     data-amount="{{ budget.amount }}"
                                     data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
                                     data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
@@ -110,13 +105,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
                         <div class="budget-icon me-3">
-                            {% if budget.category.icon %}
-                            <img src="{{ budget.category.icon.url }}" alt="{{ budget.category.name }}" class="rounded-circle" width="40" height="40">
-                            {% else %}
-                            <div class="rounded-circle bg-primary p-2" style="width: 40px; height: 40px;">
-                                <i class="bi bi-tag text-white"></i>
-                            </div>
-                            {% endif %}
+                            <i class="bi {{ budget.category.icon }} fs-4"></i>
                         </div>
                         <div>
                             <h3 class="h5 mb-0">{{ budget.category.name }}</h3>
@@ -146,7 +135,7 @@
                         <div class="d-flex justify-content-end">
                             <button class="btn btn-sm btn-link me-2" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
                                     data-id="{{ budget.id }}"
-                                    data-category="{{ budget.category.id }}"
+                                    data-subcategory="{{ budget.subcategory.id }}"
                                     data-amount="{{ budget.amount }}"
                                     data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
                                     data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
@@ -189,7 +178,56 @@
             <div class="modal-body">
                 <form id="addBudgetForm" method="POST">
                     {% csrf_token %}
-                    {{ form|crispy }}
+                    
+                    <!-- Category Selector -->
+                    <div class="mb-3">
+                        <label class="form-label">Select Category</label>
+                        <div class="category-selector">
+                            <div class="category-search">
+                                <input type="text" class="form-control" id="category-search" placeholder="Search categories...">
+                            </div>
+                            <ul class="category-list" id="category-list">
+                                {% for category in categories %}
+                                <li class="category-item">
+                                    <div class="d-flex align-items-center">
+                                        <div class="category-icon">
+                                            <i class="bi {{ category.icon }}"></i>
+                                        </div>
+                                        <span class="category-name">
+                                            {{ category.name }}
+                                            {% if category.subcategories.exists %}
+                                            <i class="bi bi-chevron-right ms-2"></i>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if category.subcategories.exists %}
+                                    <div class="subcategories-container">
+                                        <ul class="list-unstyled">
+                                            {% for subcategory in category.subcategories.all %}
+                                            <li class="subcategory-item" data-subcategory-id="{{ subcategory.id }}">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="subcategory-icon">
+                                                        <i class="bi {{ subcategory.icon }}"></i>
+                                                    </div>
+                                                    <span>{{ subcategory.name }}</span>
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {{ form.subcategory }}
+                    </div>
+                    
+                    <!-- Other form fields -->
+                    {{ form.account|as_crispy_field }}
+                    {{ form.amount|as_crispy_field }}
+                    {{ form.duration|as_crispy_field }}
+                    
                     <button type="submit" class="btn btn-primary w-100">Save Budget</button>
                 </form>
             </div>
@@ -209,7 +247,56 @@
                 <form id="editBudgetForm" method="POST">
                     {% csrf_token %}
                     <input type="hidden" id="budget_id" name="budget_id">
-                    {{ form|crispy }}
+                    
+                    <!-- Category Selector -->
+                    <div class="mb-3">
+                        <label class="form-label">Select Category</label>
+                        <div class="category-selector">
+                            <div class="category-search">
+                                <input type="text" class="form-control" id="edit-category-search" placeholder="Search categories...">
+                            </div>
+                            <ul class="category-list" id="edit-category-list">
+                                {% for category in categories %}
+                                <li class="category-item">
+                                    <div class="d-flex align-items-center">
+                                        <div class="category-icon">
+                                            <i class="bi {{ category.icon }}"></i>
+                                        </div>
+                                        <span class="category-name">
+                                            {{ category.name }}
+                                            {% if category.subcategories.exists %}
+                                            <i class="bi bi-chevron-right ms-2"></i>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if category.subcategories.exists %}
+                                    <div class="subcategories-container">
+                                        <ul class="list-unstyled">
+                                            {% for subcategory in category.subcategories.all %}
+                                            <li class="subcategory-item" data-subcategory-id="{{ subcategory.id }}">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="subcategory-icon">
+                                                        <i class="bi {{ subcategory.icon }}"></i>
+                                                    </div>
+                                                    <span>{{ subcategory.name }}</span>
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {{ form.subcategory }}
+                    </div>
+                    
+                    <!-- Other form fields -->
+                    {{ form.account|as_crispy_field }}
+                    {{ form.amount|as_crispy_field }}
+                    {{ form.duration|as_crispy_field }}
+                    
                     <button type="submit" class="btn btn-primary w-100">Save Changes</button>
                 </form>
             </div>
@@ -243,4 +330,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/budget_modal.js' %}"></script>
+<script src="{% static 'js/budget_category_selector.js' %}"></script>
 {% endblock %}
