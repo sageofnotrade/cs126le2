@@ -37,6 +37,15 @@ class Account(models.Model):
     def __str__(self):
         return f"{self.__class__.__name__}: {self.name}"
 
+    def get_account_type(self):
+        if hasattr(self, 'creditaccount'):
+            return 'credit'
+        elif hasattr(self, 'debitaccount'):
+            return 'debit'
+        elif hasattr(self, 'wallet'):
+            return 'wallet'
+        return 'unknown'
+
 class DebitAccount(Account):
     balance = models.DecimalField(max_digits=10, decimal_places=2)
     maintaining_balance = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

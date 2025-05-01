@@ -1,12 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Sum, Q, F, ExpressionWrapper, DecimalField, Avg
+from django.db.models import Sum, Q, F, ExpressionWrapper, DecimalField, Avg, Count, Case, When, Value, IntegerField
+from django.db.models.functions import TruncMonth, TruncDay, ExtractMonth
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 import calendar
 import csv
 import json
@@ -17,6 +18,8 @@ from django.contrib.auth.models import User
 import logging
 from django.db import models
 from decimal import Decimal
+import uuid
+from django.utils.timezone import make_aware
 
 def home(request):
     return render(request, 'finances/home.html')
@@ -59,38 +62,6 @@ def signup(request):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            
-            # Create default income categories
-            income_categories = [
-                {'name': 'Salary/Wages', 'icon': 'bi-cash-coin', 'type': 'income'},
-                {'name': 'Business Income', 'icon': 'bi-shop', 'type': 'income'},
-                {'name': 'Investments', 'icon': 'bi-graph-up-arrow', 'type': 'income'},
-                {'name': 'Other Income', 'icon': 'bi-wallet2', 'type': 'income'},
-            ]
-            
-            # Create default expense categories
-            expense_categories = [
-                {'name': 'Housing', 'icon': 'bi-house', 'type': 'expense'},
-                {'name': 'Utilities', 'icon': 'bi-lightning', 'type': 'expense'},
-                {'name': 'Food', 'icon': 'bi-cup-hot', 'type': 'expense'},
-                {'name': 'Transportation', 'icon': 'bi-truck', 'type': 'expense'},
-                {'name': 'Insurance', 'icon': 'bi-shield', 'type': 'expense'},
-                {'name': 'Entertainment', 'icon': 'bi-music-note-beamed', 'type': 'expense'},
-                {'name': 'Healthcare', 'icon': 'bi-heart-pulse', 'type': 'expense'},
-                {'name': 'Debt Payments', 'icon': 'bi-credit-card', 'type': 'expense'},
-                {'name': 'Savings/Investments', 'icon': 'bi-piggy-bank', 'type': 'expense'},
-                {'name': 'Miscellaneous', 'icon': 'bi-three-dots', 'type': 'expense'},
-            ]
-            
-            # Create all categories
-            for category_data in income_categories + expense_categories:
-                Category.objects.create(
-                    name=category_data['name'],
-                    icon=category_data['icon'],
-                    type=category_data['type'],
-                    user=user
-                )
-            
             login(request, user)
             messages.success(request, f'Account created successfully! Welcome to Budget Tracker.')
             return redirect('dashboard')
@@ -562,7 +533,7 @@ def dashboard(request):
         spent = Transaction.objects.filter(
             user=request.user,
             type='expense',
-            subcategory=budget.subcategory,
+            category=budget.category,
             date__gte=first_day,
             date__lte=last_day,
             transaction_account=budget.account
@@ -570,7 +541,7 @@ def dashboard(request):
         
         if spent > budget.amount:
             budget_warnings.append({
-                'category': budget.subcategory.name,
+                'category': budget.category.name,
                 'budget': float(budget.amount),
                 'spent': float(spent),
                 'percentage': round((spent / budget.amount) * 100)
@@ -814,26 +785,21 @@ def manage_budget(request):
     form = BudgetForm(user=request.user)
     
     today = timezone.now().date()
-    
-    # Renew expired budgets
-    Budget.renew_expired_budgets()
-    
-    # Get budgets that include today's date
-    budgets = Budget.objects.select_related('subcategory', 'account').filter(
+    budgets = Budget.objects.select_related('category').filter(
         user=request.user,
-        start_date__lte=today,
-        end_date__gte=today
+        start_date__year=today.year,
+        start_date__month=today.month
     )
     
     budget_data = []
     for budget in budgets:
-        # Calculate the amount spent in this category for the current period
+        # Calculate the amount spent in this category for the current month
         spent = Transaction.objects.filter(
             user=request.user,
             type='expense',
-            subcategory=budget.subcategory,
-            date__gte=budget.start_date,
-            date__lte=budget.end_date,
+            category=budget.category,
+            date__year=today.year,
+            date__month=today.month,
             transaction_account=budget.account
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         
@@ -844,7 +810,7 @@ def manage_budget(request):
         # Prepare the budget data to display
         budget_data.append({
             'id': budget.id,
-            'subcategory': budget.subcategory,  # Pass the entire subcategory object
+            'category': budget.category,  # Pass the entire category object
             'budget': budget.amount,
             'spent': spent,
             'remaining': remaining,
@@ -852,8 +818,7 @@ def manage_budget(request):
             'start_date': budget.start_date,
             'end_date': budget.end_date,
             'duration': budget.duration,
-            'amount': budget.amount,
-            'account': budget.account  # Include the account object
+            'amount': budget.amount
         })
     
     return render(request, 'finances/manage_budget.html', {
@@ -866,41 +831,31 @@ def manage_budget(request):
 def update_budget(request):
     if request.method == 'POST':
         budget_id = request.POST['budget_id']  # Get the budget ID from the form
-        budget = get_object_or_404(Budget, id=budget_id, user=request.user)
+        budget = get_object_or_404(Budget, id=budget_id)
 
         # Get form data
-        subcategory = SubCategory.objects.get(id=request.POST['subcategory'])
-        amount = Decimal(request.POST['amount'])  # Convert amount to Decimal
-        start_date = datetime.strptime(request.POST['start_date'], '%Y-%m-%d').date()  # Convert to date object
+        category = Category.objects.get(id=request.POST['category'])
+        amount = request.POST['amount']
+        start_date = request.POST['start_date']
+        end_date = request.POST['end_date']
         duration = request.POST['duration']
-        account = Account.objects.get(id=request.POST['account'])
 
         # Update the budget with new values
-        budget.subcategory = subcategory
+        budget.category = category
         budget.amount = amount
         budget.start_date = start_date
+        budget.end_date = end_date
         budget.duration = duration
-        budget.account = account
-        
-        # Calculate end date based on duration
-        if duration == '1 week':
-            budget.end_date = start_date + timedelta(days=6)
-        else:  # 1 month
-            if start_date.month == 12:
-                next_month = start_date.replace(year=start_date.year + 1, month=1, day=1)
-            else:
-                next_month = start_date.replace(month=start_date.month + 1, day=1)
-            budget.end_date = next_month - timedelta(days=1)
 
         budget.save()
 
         # Return the updated budget data as JSON
         updated_budget = {
-            'subcategory': budget.subcategory.name,
-            'amount': float(budget.amount),
-            'spent': float(budget.spent),
-            'remaining': float(budget.remaining),
-            'percentage_used': budget.percentage_used,
+            'category': budget.category.name,
+            'amount': budget.amount,
+            'spent': budget.spent,
+            'remaining': budget.remaining,
+            'percentage': budget.percentage,
             'start_date': budget.start_date.strftime('%Y-%m-%d'),
             'end_date': budget.end_date.strftime('%Y-%m-%d')
         }
@@ -910,7 +865,7 @@ def update_budget(request):
 
 def get_budgets(request):
     budgets = Budget.objects.all().values(
-        'subcategory', 'amount', 'spent', 'start_date', 'end_date', 'duration'
+        'category', 'amount', 'spent', 'start_date', 'end_date', 'duration'
     )
     
     # Calculate 'remaining' dynamically for each budget
@@ -937,7 +892,7 @@ def add_budget(request):
             # Check for existing budget in the same period
             existing_budget = Budget.objects.filter(
                 user=request.user,
-                subcategory=budget.subcategory,
+                category=budget.category,
                 start_date__year=budget.start_date.year,
                 start_date__month=budget.start_date.month,
                 account=budget.account
@@ -947,7 +902,7 @@ def add_budget(request):
                 return JsonResponse({
                     'success': False, 
                     'errors': {
-                        'subcategory': ['A budget for this subcategory already exists in the selected period.']
+                        'category': ['A budget for this category already exists in the selected period.']
                     }
                 })
             
@@ -1068,7 +1023,12 @@ def api_categories(request):
     if expense_categories:
         logger.info(f"Sample expense category: {expense_categories[0]['name']} with {len(expense_categories[0]['subcategories'])} subcategories")
     
-    return JsonResponse(response_data)
+    # Set cache headers to ensure fresh data is fetched regularly
+    response = JsonResponse(response_data)
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 def api_add_category(request):
     """API endpoint to add a category"""
@@ -1093,7 +1053,7 @@ def api_add_category(request):
             if category_type == 'income':
                 category.type = 'income'
                 print("Setting category type to income")
-            elif category_type == 'expense':
+            elif category_type == 'expense' or category_type == 'expenses':
                 category.type = 'expense'
                 print("Setting category type to expense")
             else:
@@ -1107,48 +1067,74 @@ def api_add_category(request):
         
         print(f"Category saved with type: {category.type}")
         
-        return JsonResponse({
+        # Create response with complete category data
+        category_data = {
+            'id': category.id,
+            'name': category.name,
+            'icon': category.icon,
+            'type': category.type,
+            'order': category.order,
+            'subcategories': []
+        }
+        
+        # Return success response with complete category data
+        response = JsonResponse({
             'success': True,
-            'category': {
-                'id': category.id,
-                'name': category.name,
-                'icon': category.icon,
-                'type': category.type,  # Include type in response
-                'subcategories': []
-            }
+            'category': category_data
         })
+        
+        # Set cache control headers to prevent caching
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
     else:
         print(f"Form validation errors: {form.errors}")
         return JsonResponse({'error': 'Invalid form data', 'errors': form.errors}, status=400)
+
+# API endpoint for deleting a subcategory
+def api_delete_subcategory(request, subcategory_id):
+    """API endpoint to delete a subcategory"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
     
+    if request.method != 'DELETE':
+        return JsonResponse({'error': 'DELETE request required'}, status=400)
+    
+    try:
+        subcategory = SubCategory.objects.get(id=subcategory_id, parent_category__user=request.user)
+        subcategory.delete()
+        return JsonResponse({'success': True})
+    except SubCategory.DoesNotExist:
+        return JsonResponse({'error': 'Subcategory not found'}, status=404)
+
+# API endpoint for getting subcategories of a specific category
+@login_required
 def api_subcategories(request, category_id):
-    """API endpoint to get subcategories for a category"""
+    """API endpoint to get subcategories for a specific category"""
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Authentication required'}, status=401)
     
     try:
         category = Category.objects.get(id=category_id, user=request.user)
-        subcategories = SubCategory.objects.filter(parent_category=category)
-        
-        # Debug info
-        print(f"User {request.user.username} requested subcategories for category {category.name} (ID: {category_id})")
-        print(f"Found {subcategories.count()} subcategories")
-        
-        subcategories_data = []
-        for subcategory in subcategories:
-            subcategories_data.append({
-                'id': subcategory.id,
-                'name': subcategory.name,
-                'icon': subcategory.icon
-            })
-            print(f"  - Subcategory: {subcategory.name} (ID: {subcategory.id})")
-        
-        return JsonResponse(subcategories_data, safe=False)
     except Category.DoesNotExist:
-        print(f"Category with ID {category_id} not found for user {request.user.username}")
         return JsonResponse({'error': 'Category not found'}, status=404)
+    
+    subcategories = list(SubCategory.objects.filter(parent_category=category).values('id', 'name', 'icon'))
+    
+    response = JsonResponse({
+        'subcategories': subcategories
+    })
+    
+    # Add no-cache headers
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    
+    return response
 
 # API endpoint for adding a subcategory
+@login_required
 def api_add_subcategory(request, category_id):
     """API endpoint to add a subcategory to a category"""
     if not request.user.is_authenticated:
@@ -1178,22 +1164,6 @@ def api_add_subcategory(request, category_id):
         })
     else:
         return JsonResponse({'error': 'Invalid form data', 'errors': form.errors}, status=400)
-
-# API endpoint for deleting a subcategory
-def api_delete_subcategory(request, subcategory_id):
-    """API endpoint to delete a subcategory"""
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'Authentication required'}, status=401)
-    
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'DELETE request required'}, status=400)
-    
-    try:
-        subcategory = SubCategory.objects.get(id=subcategory_id, parent_category__user=request.user)
-        subcategory.delete()
-        return JsonResponse({'success': True})
-    except SubCategory.DoesNotExist:
-        return JsonResponse({'error': 'Subcategory not found'}, status=404)
 
 # API endpoint for updating a subcategory
 def api_update_subcategory(request, subcategory_id):
@@ -1244,45 +1214,6 @@ def api_delete_category(request, category_id):
         # Delete the category (this will also delete all subcategories due to CASCADE)
         category.delete()
         return JsonResponse({'success': True})
-    except Category.DoesNotExist:
-        return JsonResponse({'error': 'Category not found'}, status=404)
-
-# API endpoint for updating a category
-def api_update_category(request, category_id):
-    """API endpoint to update a category"""
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'Authentication required'}, status=401)
-    
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST request required'}, status=400)
-    
-    try:
-        category = Category.objects.get(id=category_id, user=request.user)
-        
-        # Update category fields
-        name = request.POST.get('name', '').strip()
-        icon = request.POST.get('icon', category.icon)
-        
-        if not name:
-            return JsonResponse({'error': 'Category name cannot be empty'}, status=400)
-        
-        # Check if the name is already used by another category
-        if Category.objects.filter(user=request.user, name=name).exclude(id=category_id).exists():
-            return JsonResponse({'error': 'A category with this name already exists'}, status=400)
-        
-        category.name = name
-        category.icon = icon
-        category.save()
-        
-        return JsonResponse({
-            'success': True,
-            'category': {
-                'id': category.id,
-                'name': category.name,
-                'icon': category.icon,
-                'type': category.type
-            }
-        })
     except Category.DoesNotExist:
         return JsonResponse({'error': 'Category not found'}, status=404)
 
@@ -1465,13 +1396,13 @@ def transactions_api(request):
     else:
         end_date = timezone.datetime(current_year, current_month + 1, 1).date() - timedelta(days=1)
     
-    # Filter transactions and use select_related to fetch category and subcategory in a single query
+    # Filter transactions
     transactions = Transaction.objects.filter(
         user=request.user,
         date__gte=start_date,
         date__lte=end_date,
         type__in=types
-    ).select_related('category', 'subcategory', 'transaction_account')
+    )
     
     # Additional filters
     if category_id:
@@ -1494,20 +1425,8 @@ def transactions_api(request):
     # Prepare data for JSON response
     transactions_data = []
     for transaction in transactions:
-        # Get category information
         category_name = transaction.category.name if transaction.category else None
         category_icon = transaction.category.icon if transaction.category else 'bi bi-tag'
-        
-        # Get subcategory information
-        subcategory_name = None
-        subcategory_icon = None
-        if transaction.subcategory:
-            subcategory_name = transaction.subcategory.name
-            subcategory_icon = transaction.subcategory.icon or category_icon
-        
-        # Use subcategory info if it exists, otherwise use category info
-        display_name = subcategory_name or category_name or 'Uncategorized'
-        display_icon = subcategory_icon or category_icon or 'bi bi-tag'
         
         transactions_data.append({
             'id': transaction.id,
@@ -1519,10 +1438,6 @@ def transactions_api(request):
             'subcategory': transaction.subcategory_id if transaction.subcategory else None,
             'category_name': category_name,
             'category_icon': category_icon,
-            'subcategory_name': subcategory_name,
-            'subcategory_icon': subcategory_icon,
-            'display_name': display_name,
-            'display_icon': display_icon,
             'notes': transaction.notes or '',
         })
     
@@ -1537,36 +1452,14 @@ def transaction_detail_api(request, transaction_id):
     """API endpoint for getting a single transaction's details"""
     transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
     
-    # Load the related objects to ensure they're available
-    if transaction.category:
-        category_name = transaction.category.name
-        category_icon = transaction.category.icon
-    else:
-        category_name = None
-        category_icon = 'bi bi-tag'
-        
-    # Load subcategory info if available
-    if transaction.subcategory:
-        subcategory_name = transaction.subcategory.name
-        subcategory_icon = transaction.subcategory.icon or category_icon
-    else:
-        subcategory_name = None
-        subcategory_icon = None
-    
     data = {
         'id': transaction.id,
         'title': transaction.title,
         'amount': float(transaction.amount),
         'date': transaction.date.isoformat(),
-        'time': transaction.time.strftime('%H:%M') if transaction.time else None,
         'type': transaction.type,
         'category': transaction.category_id if transaction.category else None,
         'subcategory': transaction.subcategory_id if transaction.subcategory else None,
-        'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
-        'category_name': category_name,
-        'category_icon': category_icon,
-        'subcategory_name': subcategory_name,
-        'subcategory_icon': subcategory_icon,
         'notes': transaction.notes or '',
     }
     
@@ -1574,68 +1467,60 @@ def transaction_detail_api(request, transaction_id):
 
 @login_required
 def create_transaction_api(request):
-    """API endpoint for creating a transaction"""
     if request.method == 'POST':
         try:
-            # Debug: Print out all POST data
-            print("Creating transaction with POST data:", request.POST)
+            # Detailed logging for all form data
+            print("==== Transaction Form Data ====")
+            for key, value in request.POST.items():
+                print(f"{key}: {value}")
+            print("===============================")
             
+            # Get form data
             title = request.POST.get('title')
             amount = request.POST.get('amount')
             date_str = request.POST.get('date')
             transaction_type = request.POST.get('type')
-            category_id = request.POST.get('category') or None
-            subcategory_id = request.POST.get('subcategory') or None
-            transaction_account_id = request.POST.get('transaction_account') or None
-            notes = request.POST.get('notes', '')
+            category_id = request.POST.get('category')
             
-            # Debug: Print all parameters
-            print(f"Title: {title}, Amount: {amount}, Date: {date_str}, Type: {transaction_type}")
-            print(f"Category ID: {category_id}, Subcategory ID: {subcategory_id}, Notes: {notes}")
+            print(f"Extracted category_id: '{category_id}'")
             
-            # Validate required fields
-            if not title or not amount or not date_str or not transaction_type:
-                return JsonResponse({'success': False, 'error': 'Missing required fields'})
+            # Process category with detailed logging
+            category = None
+            if category_id and category_id not in ['null', '']:
+                try:
+                    category = Category.objects.get(id=category_id, user=request.user)
+                    print(f"Found category: {category.name} (ID: {category.id})")
+                except Category.DoesNotExist:
+                    print(f"Category with ID {category_id} not found")
+                    # Try to find categories for this user
+                    user_categories = Category.objects.filter(user=request.user)
+                    print(f"User has {user_categories.count()} categories:")
+                    for cat in user_categories[:5]:  # Show first 5 for debugging
+                        print(f" - {cat.id}: {cat.name}")
+                except Exception as e:
+                    print(f"Unexpected error finding category: {e}")
+            else:
+                print(f"No valid category ID provided: '{category_id}'")
             
-            # Convert amount to float
-            try:
-                amount = float(amount)
-            except ValueError:
-                return JsonResponse({'success': False, 'error': 'Invalid amount format'})
-            
-            # Create the transaction
+            # Continue with your transaction creation...
             transaction = Transaction(
                 title=title,
                 amount=amount,
                 date=date_str,
                 type=transaction_type,
                 user=request.user,
-                notes=notes
+                notes=request.POST.get('notes', '')
             )
             
-            if category_id and category_id != 'null' and category_id != '':
-                try:
-                    category = get_object_or_404(Category, id=category_id, user=request.user)
-                    transaction.category = category
-                except Exception as e:
-                    print(f"Error getting category: {e}")
-            
-            if subcategory_id and subcategory_id != 'null' and subcategory_id != '':
-                try:
-                    subcategory = get_object_or_404(SubCategory, id=subcategory_id, parent_category__user=request.user)
-                    transaction.subcategory = subcategory
-                except Exception as e:
-                    print(f"Error getting subcategory: {e}")
-            
-            if transaction_account_id and transaction_account_id != 'null' and transaction_account_id != '':
-                try:
-                    account = get_object_or_404(Account, id=transaction_account_id, user=request.user)
-                    transaction.transaction_account = account
-                except Exception as e:
-                    print(f"Error getting account: {e}")
+            # Explicitly set the category
+            if category:
+                transaction.category = category
+                print(f"Set transaction.category to {category.name}")
+            else:
+                print("No category set for transaction")
             
             transaction.save()
-            print(f"Transaction created successfully with ID: {transaction.id}")
+            print(f"Transaction saved with ID: {transaction.id}, Category: {transaction.category}")
             
             return JsonResponse({'success': True, 'transaction_id': transaction.id})
         except Exception as e:
@@ -1651,22 +1536,17 @@ def update_transaction_api(request, transaction_id):
     
     if request.method == 'POST':
         try:
-            # Debug: Print out all POST data
+            # Debug output
             print(f"Updating transaction {transaction_id} with POST data:", request.POST)
+            print("Category ID:", request.POST.get('category'))
             
             title = request.POST.get('title')
             amount = request.POST.get('amount')
             date_str = request.POST.get('date')
             transaction_type = request.POST.get('type')
-            category_id = request.POST.get('category') or None
-            subcategory_id = request.POST.get('subcategory') or None
-            transaction_account_id = request.POST.get('transaction_account') or None
+            category_id = request.POST.get('category')
+            subcategory_id = request.POST.get('subcategory')
             notes = request.POST.get('notes', '')
-            
-            # Debug: Print all parameters
-            print(f"Title: {title}, Amount: {amount}, Date: {date_str}, Type: {transaction_type}")
-            print(f"Category ID: {category_id}, Subcategory ID: {subcategory_id}, Notes: {notes}")
-            print(f"Transaction Account ID: {transaction_account_id}")
             
             # Validate required fields
             if not title or not amount or not date_str or not transaction_type:
@@ -1685,40 +1565,36 @@ def update_transaction_api(request, transaction_id):
             transaction.type = transaction_type
             transaction.notes = notes
             
-            # Update category
+            # Set category if provided
             if category_id and category_id != 'null' and category_id != '':
                 try:
-                    category = get_object_or_404(Category, id=category_id, user=request.user)
+                    category = Category.objects.get(id=category_id, user=request.user)
                     transaction.category = category
+                    print(f"Set category: {category.name} (ID: {category.id})")
+                except Category.DoesNotExist:
+                    print(f"Category with ID {category_id} not found")
                 except Exception as e:
-                    print(f"Error updating category: {e}")
+                    print(f"Error setting category: {e}")
             else:
+                print("No category ID provided or category set to null")
                 transaction.category = None
             
-            # Update subcategory
+            # Set subcategory if provided
             if subcategory_id and subcategory_id != 'null' and subcategory_id != '':
                 try:
-                    subcategory = get_object_or_404(SubCategory, id=subcategory_id, parent_category__user=request.user)
+                    subcategory = SubCategory.objects.get(id=subcategory_id, parent_category__user=request.user)
                     transaction.subcategory = subcategory
+                    print(f"Set subcategory: {subcategory.name} (ID: {subcategory.id})")
                 except Exception as e:
-                    print(f"Error updating subcategory: {e}")
+                    print(f"Error setting subcategory: {e}")
             else:
                 transaction.subcategory = None
-            
-            # Update account
-            if transaction_account_id and transaction_account_id != 'null' and transaction_account_id != '':
-                try:
-                    account = get_object_or_404(Account, id=transaction_account_id, user=request.user)
-                    transaction.transaction_account = account
-                except Exception as e:
-                    print(f"Error updating account: {e}")
-            else:
-                transaction.transaction_account = None
+                print("No subcategory ID provided or subcategory set to null")
             
             transaction.save()
-            print(f"Transaction updated successfully with ID: {transaction.id}")
+            print(f"Transaction updated successfully: {transaction.id}")
             
-            return JsonResponse({'success': True, 'transaction_id': transaction.id})
+            return JsonResponse({'success': True})
         except Exception as e:
             print(f"Error updating transaction: {e}")
             return JsonResponse({'success': False, 'error': str(e)})
@@ -1997,6 +1873,7 @@ def charts_data_future(request):
     try:
         # Get query parameters
         period = request.GET.get('period', 'month')
+        chart_type = request.GET.get('chartType', 'line')
         
         today = timezone.now().date()
         data = {
@@ -2008,32 +1885,20 @@ def charts_data_future(request):
             'credit_card_payments': []
         }
         
-        # Determine the end date and date points based on period
+        # Determine the end date based on period
         if period == 'month':
             end_date = today + timedelta(days=30)
-            date_points = [(today + timedelta(days=x)) for x in range(31)]
             date_format = '%d %b'
         elif period == 'quarter':
             end_date = today + timedelta(days=90)
-            current_month = today.replace(day=1)
-            date_points = []
-            for i in range(3):
-                date_points.append(current_month + timedelta(days=32*i))
-            date_format = '%b %Y'
+            date_format = '%b'
         else:  # year
             end_date = today + timedelta(days=365)
-            current_month = today.replace(day=1)
-            date_points = []
-            for i in range(12):
-                date_points.append(current_month + timedelta(days=32*i))
             date_format = '%b %Y'
 
-        # Process each date point
-        for current_date in date_points:
-            # Ensure we're always using the 1st of the month for quarter and year periods
-            if period in ['quarter', 'year']:
-                current_date = current_date.replace(day=1)
-            
+        # Generate dates for the x-axis
+        current_date = today
+        while current_date <= end_date:
             data['labels'].append(current_date.strftime(date_format))
             
             # Initialize amounts for this date
@@ -2042,54 +1907,61 @@ def charts_data_future(request):
             debts_credits_amount = 0
             credit_card_amount = 0
 
-            # For quarter and year, get all transactions for the whole month
-            if period in ['quarter', 'year']:
-                month_end = (current_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-                date_range = [current_date, month_end]
-            else:
-                date_range = [current_date, current_date]
+            try:
+                # Get scheduled transactions for this date
+                scheduled = ScheduledTransaction.objects.filter(
+                    user=request.user,
+                    date_scheduled=current_date
+                )
+                for transaction in scheduled:
+                    amount = float(transaction.amount)
+                    if transaction.transaction_type == 'expense':
+                        amount = -amount
+                    scheduled_amount += amount
+            except Exception as e:
+                print(f"Error processing scheduled transactions: {str(e)}")
+                scheduled_amount = 0
 
-            # Get scheduled transactions for this period
-            scheduled_transactions = ScheduledTransaction.objects.filter(
-                user=request.user,
-                date_scheduled__range=date_range
-            )
-            for transaction in scheduled_transactions:
-                amount = float(transaction.amount)
-                if transaction.transaction_type == 'expense':
-                    amount = -amount
-                scheduled_amount += amount
+            try:
+                # Get debt payments due on this date
+                debts = Debt.objects.filter(
+                    user=request.user,
+                    due_date=current_date
+                )
+                for debt in debts:
+                    if debt.debt_type == 'debt':
+                        debts_credits_amount -= float(debt.residual_amount)
+                    else:  # credit
+                        debts_credits_amount += float(debt.residual_amount)
+            except Exception as e:
+                print(f"Error processing debts: {str(e)}")
+                debts_credits_amount = 0
 
-            # Get debt payments due in this period
-            debts = Debt.objects.filter(
-                user=request.user,
-                date_payback__range=date_range
-            )
-            for debt in debts:
-                if debt.debt_type == 'debt':
-                    debts_credits_amount -= float(debt.residual_amount)
-                else:  # credit
-                    debts_credits_amount += float(debt.residual_amount)
-
-            # Get credit card payments due in this period
-            credit_accounts = CreditAccount.objects.filter(
-                user=request.user
-            )
-            for account in credit_accounts:
-                if account.payment_due_date:
-                    payment_date = account.payment_due_date
-                    if date_range[0] <= payment_date <= date_range[1]:
-                        credit_card_amount -= float(account.minimum_payment)
+            try:
+                # Get credit card payments due on this date
+                credit_accounts = CreditAccount.objects.filter(
+                    user=request.user
+                )
+                for account in credit_accounts:
+                    if hasattr(account, 'payment_due_date') and account.payment_due_date and account.payment_due_date == current_date:
+                        if hasattr(account, 'minimum_payment'):
+                            credit_card_amount -= float(account.minimum_payment)
+            except Exception as e:
+                print(f"Error processing credit cards: {str(e)}")
+                credit_card_amount = 0
 
             # Add the amounts to their respective arrays
-            data['future_transactions'].append(float(future_amount))
-            data['scheduled_transactions'].append(float(scheduled_amount))
-            data['debts_credits'].append(float(debts_credits_amount))
-            data['credit_card_payments'].append(float(credit_card_amount))
+            data['future_transactions'].append(future_amount)
+            data['scheduled_transactions'].append(scheduled_amount)
+            data['debts_credits'].append(debts_credits_amount)
+            data['credit_card_payments'].append(credit_card_amount)
             
             # Calculate total projected amount for this date
             total_projected = future_amount + scheduled_amount + debts_credits_amount + credit_card_amount
-            data['projected'].append(float(total_projected))
+            data['projected'].append(total_projected)
+
+            # Move to next date
+            current_date += timedelta(days=1)
         
         return JsonResponse(data)
         
@@ -2104,3 +1976,164 @@ def charts_data_future(request):
             'debts_credits': [],
             'credit_card_payments': []
         }, status=500)
+
+# Get transactions for a month/year
+@login_required
+def api_transactions(request):
+    """API endpoint to get transactions for a specific month and year"""
+    month = request.GET.get('month', datetime.now().month)
+    year = request.GET.get('year', datetime.now().year)
+    
+    try:
+        month = int(month)
+        year = int(year)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid month or year'}, status=400)
+    
+    # Get transactions for this month
+    start_date = make_aware(datetime(year, month, 1))
+    if month == 12:
+        end_date = make_aware(datetime(year + 1, 1, 1))
+    else:
+        end_date = make_aware(datetime(year, month + 1, 1))
+    
+    transactions = Transaction.objects.filter(
+        user=request.user,
+        date__gte=start_date,
+        date__lt=end_date
+    ).order_by('-date', '-id')
+    
+    # Calculate total
+    income_total = transactions.filter(type='income').aggregate(Sum('amount'))['amount__sum'] or 0
+    expense_total = transactions.filter(type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
+    total_balance = income_total - expense_total
+    
+    # Serialize transactions
+    transactions_data = []
+    for transaction in transactions:
+        transactions_data.append({
+            'id': transaction.id,
+            'title': transaction.title,
+            'amount': float(transaction.amount),
+            'date': transaction.date.strftime('%Y-%m-%d'),
+            'time': transaction.date.strftime('%H:%M'),
+            'type': transaction.type,
+            'category': transaction.category.id if transaction.category else None,
+            'category_name': transaction.category.name if transaction.category else 'Uncategorized',
+            'category_icon': transaction.category.icon if transaction.category else 'bi bi-question-circle',
+            'subcategory': transaction.subcategory.id if transaction.subcategory else None,
+            'subcategory_name': transaction.subcategory.name if transaction.subcategory else None,
+            'subcategory_icon': transaction.subcategory.icon if transaction.subcategory else None,
+            'notes': transaction.notes,
+            'transaction_account': transaction.transaction_account.id if transaction.transaction_account else None,
+            'account_name': transaction.transaction_account.name if transaction.transaction_account else 'No Account'
+        })
+    
+    return JsonResponse({
+        'transactions': transactions_data,
+        'income_total': float(income_total),
+        'expense_total': float(expense_total),
+        'total_balance': float(total_balance),
+        'transaction_count': len(transactions_data)
+    })
+
+# API endpoint for filtered transactions
+@login_required
+def api_filtered_transactions(request):
+    """API endpoint to get transactions with advanced filtering"""
+    # Get base month/year parameters
+    month = request.GET.get('month', datetime.now().month)
+    year = request.GET.get('year', datetime.now().year)
+    
+    try:
+        month = int(month)
+        year = int(year)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid month or year'}, status=400)
+    
+    # Get date range for the month
+    start_date = make_aware(datetime(year, month, 1))
+    if month == 12:
+        end_date = make_aware(datetime(year + 1, 1, 1))
+    else:
+        end_date = make_aware(datetime(year, month + 1, 1))
+    
+    # Start with base query for this user and month
+    transactions = Transaction.objects.filter(
+        user=request.user,
+        date__gte=start_date,
+        date__lt=end_date
+    )
+    
+    # Apply category filters
+    category_ids = request.GET.get('category_ids', '')
+    if category_ids:
+        category_id_list = [int(id) for id in category_ids.split(',') if id.isdigit()]
+        if category_id_list:
+            transactions = transactions.filter(category_id__in=category_id_list)
+    
+    # Apply subcategory filters
+    subcategory_ids = request.GET.get('subcategory_ids', '')
+    if subcategory_ids:
+        subcategory_id_list = [int(id) for id in subcategory_ids.split(',') if id.isdigit()]
+        if subcategory_id_list:
+            transactions = transactions.filter(subcategory_id__in=subcategory_id_list)
+    
+    # Apply from/to text search
+    from_to = request.GET.get('from_to', '')
+    if from_to:
+        transactions = transactions.filter(
+            Q(title__icontains=from_to) | 
+            Q(notes__icontains=from_to) |
+            Q(transaction_account__name__icontains=from_to)
+        )
+    
+    # Apply transaction type filters
+    types = request.GET.get('types', '')
+    if types:
+        type_list = types.split(',')
+        transactions = transactions.filter(type__in=type_list)
+    
+    # Order by date (newest first)
+    transactions = transactions.order_by('-date', '-id')
+    
+    # Calculate totals
+    income_total = transactions.filter(type='income').aggregate(Sum('amount'))['amount__sum'] or 0
+    expense_total = transactions.filter(type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
+    total_balance = income_total - expense_total
+    
+    # Serialize transactions
+    transactions_data = []
+    for transaction in transactions:
+        transactions_data.append({
+            'id': transaction.id,
+            'title': transaction.title,
+            'amount': float(transaction.amount),
+            'date': transaction.date.strftime('%Y-%m-%d'),
+            'time': transaction.date.strftime('%H:%M'),
+            'type': transaction.type,
+            'category': transaction.category.id if transaction.category else None,
+            'category_name': transaction.category.name if transaction.category else 'Uncategorized',
+            'category_icon': transaction.category.icon if transaction.category else 'bi bi-question-circle',
+            'subcategory': transaction.subcategory.id if transaction.subcategory else None,
+            'subcategory_name': transaction.subcategory.name if transaction.subcategory else None,
+            'subcategory_icon': transaction.subcategory.icon if transaction.subcategory else None,
+            'notes': transaction.notes,
+            'transaction_account': transaction.transaction_account.id if transaction.transaction_account else None,
+            'account_name': transaction.transaction_account.name if transaction.transaction_account else 'No Account'
+        })
+    
+    return JsonResponse({
+        'transactions': transactions_data,
+        'income_total': float(income_total),
+        'expense_total': float(expense_total),
+        'total_balance': float(total_balance),
+        'transaction_count': len(transactions_data),
+        'filters_applied': {
+            'category_ids': category_ids,
+            'subcategory_ids': subcategory_ids,
+            'from_to': from_to,
+            'types': types
+        }
+    })
+

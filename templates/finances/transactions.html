@@ -3,6 +3,78 @@
 
 {% block title %}Transactions - Budget Tracker{% endblock %}
 
+{% block navbar_title %}Transactions{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Custom checkbox styling */
+    .custom-checkbox {
+        position: relative;
+        min-width: 24px;
+        height: 24px;
+    }
+    
+    .custom-checkbox input[type="checkbox"] {
+        opacity: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        cursor: pointer;
+    }
+    
+    .custom-checkbox-label {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 24px;
+        height: 24px;
+        background-color: #f8f9fa;
+        border: 2px solid #dee2e6;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .custom-checkbox input[type="checkbox"]:checked + .custom-checkbox-label {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    
+    .custom-checkbox input[type="checkbox"]:checked + .custom-checkbox-label::after {
+        content: '';
+        position: absolute;
+        top: 5px;
+        left: 8px;
+        width: 6px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+    
+    .custom-checkbox input[type="checkbox"]:focus + .custom-checkbox-label {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    /* Improve transaction list item */
+    .transaction-item {
+        transition: background-color 0.2s ease;
+    }
+    
+    .transaction-item:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    .icon-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <header class="page-header mb-4 d-flex justify-content-between align-items-center">
     <h1 class="h2">Transactions</h1>
@@ -36,7 +108,7 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="from-to-filter" class="form-label">From/To</label>
+                        <label for="from-to-filter" class="form-label">Title or Notes</label>
                         <input type="text" id="from-to-filter" class="form-control" placeholder="Search by title or notes">
                     </div>
                     
@@ -49,10 +121,6 @@
                         <div class="form-check form-check-inline">
                             <input class="form-check-input" type="checkbox" id="income-check" value="income" checked>
                             <label class="form-check-label" for="income-check">Income</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="transfer-check" value="transfer">
-                            <label class="form-check-label" for="transfer-check">Transfer between accounts</label>
                         </div>
                     </div>
                     
@@ -91,6 +159,23 @@
                         </span>
                     </div>
                 </div>
+                <!-- Add select all option -->
+                <div class="mt-3 d-flex justify-content-between align-items-center border-bottom pb-2">
+                    <div class="d-flex align-items-center">
+                        <div class="custom-checkbox me-2" style="min-width: 24px;">
+                            <input class="select-all-transactions" type="checkbox" id="select-all-transactions">
+                            <label class="custom-checkbox-label" for="select-all-transactions"></label>
+                        </div>
+                        <label class="form-check-label ms-1" for="select-all-transactions">
+                            Select All
+                        </label>
+                    </div>
+                    <div class="batch-actions invisible">
+                        <button class="btn btn-sm btn-danger batch-delete" type="button">
+                            Delete Selected (<span class="selected-count">0</span>)
+                        </button>
+                    </div>
+                </div>
             </div>
             
             <!-- Transactions List -->
@@ -98,30 +183,25 @@
                 {% if transactions %}
                     {% for transaction in transactions %}
                     <div class="list-group-item d-flex justify-content-between align-items-center transaction-item position-relative">
-                        <div class="form-check">
-                            <input class="form-check-input transaction-check" type="checkbox" value="{{ transaction.id }}" id="check-{{ transaction.id }}">
-                            <label class="form-check-label" for="check-{{ transaction.id }}">
-                                <div class="d-flex align-items-center">
-                                    <div class="transaction-icon me-3">
-                                        {% if transaction.category %}
-                                        <span class="icon-wrapper rounded-circle bg-{% if transaction.type == 'income' %}success{% else %}danger{% endif %} p-2">
-                                            <i class="{{ transaction.category.icon }} text-white"></i>
-                                        </span>
-                                        {% else %}
-                                        <span class="icon-wrapper rounded-circle bg-secondary p-2">
-                                            <i class="bi bi-question-circle text-white"></i>
-                                        </span>
-                                        {% endif %}
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold">{{ transaction.title }}</div>
-                                        <small class="text-muted">
-                                            {% if transaction.category %}{{ transaction.category.name }}{% else %}Uncategorized{% endif %}
-                                            {% if transaction.notes %}- {{ transaction.notes }}{% endif %}
-                                        </small>
-                                    </div>
+                        <div class="d-flex align-items-center">
+                            <div class="custom-checkbox me-2">
+                                <input class="transaction-check" type="checkbox" value="{{ transaction.id }}" id="check-{{ transaction.id }}">
+                                <label class="custom-checkbox-label" for="check-{{ transaction.id }}"></label>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="transaction-icon me-3">
+                                    <span class="icon-wrapper rounded-circle bg-{% if transaction.type == 'income' %}success{% else %}danger{% endif %} p-2">
+                                        <i class="{% if transaction.subcategory %}{{ transaction.subcategory.icon }}{% elif transaction.category %}{{ transaction.category.icon }}{% else %}bi bi-tag{% endif %} text-white"></i>
+                                    </span>
                                 </div>
-                            </label>
+                                <div>
+                                    <div class="fw-bold">{{ transaction.title }}</div>
+                                    <small class="text-muted">
+                                        {% if transaction.subcategory %}{{ transaction.subcategory.name }}{% elif transaction.category %}{{ transaction.category.name }}{% else %}Uncategorized{% endif %}
+                                        {% if transaction.notes %}- {{ transaction.notes }}{% endif %}
+                                    </small>
+                                </div>
+                            </div>
                         </div>
                         <div class="d-flex align-items-center">
                             <div class="text-end me-3">
@@ -177,24 +257,12 @@
                     </div>
                     
                     <div class="row mb-3">
-                        <div class="col-md-8">
+                        <div class="col-md-12">
                             <label for="transaction-amount" class="form-label">Amount</label>
                             <div class="input-group">
                                 <span class="input-group-text" id="currency-symbol">₱</span>
                                 <input type="number" class="form-control" id="transaction-amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="transaction-currency" class="form-label">Currency</label>
-                            <select class="form-select" id="transaction-currency" name="currency">
-                                <option value="PHP" selected>₱ PHP</option>
-                                <option value="USD">$ USD</option>
-                                <option value="EUR">€ EUR</option>
-                                <option value="GBP">£ GBP</option>
-                                <option value="JPY">¥ JPY</option>
-                                <option value="CNY">¥ CNY</option>
-                                <option value="KRW">₩ KRW</option>
-                            </select>
                         </div>
                     </div>
                     
@@ -212,10 +280,13 @@
                     <div class="mb-3">
                         <label for="transaction-account" class="form-label">Account</label>
                         <div class="input-group">
-                            <select class="form-select" id="transaction-account" name="transaction_account">
-                                <option value="">-- Select Account --</option>
+                            <select class="form-select account-select w-100" id="transaction-account" name="transaction_account" style="height: 46px;">
+                                <option value="" data-icon="bi-bank">Choose your account</option>
                                 {% for account in accounts %}
-                                <option value="{{ account.id }}">{{ account.name }}</option>
+                                <option value="{{ account.id }}" data-account-type="{{ account.get_account_type }}" 
+                                        data-icon="{% if account.get_account_type == 'credit' %}bi-credit-card{% elif account.get_account_type == 'wallet' %}bi-wallet2{% else %}bi-piggy-bank{% endif %}">
+                                    {{ account.name }}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -224,36 +295,20 @@
                     <div class="mb-3">
                         <label for="transaction-category" class="form-label">Category</label>
                         <div class="input-group">
-                            <select class="form-select" id="transaction-category" name="category">
-                                <option value="">-- Select Category --</option>
+                            <select class="form-select category-select w-100" id="transaction-category" name="category" style="height: 46px;">
+                                <option value="" data-icon="bi-bookmark">Choose a category</option>
                                 {% for category in categories %}
-                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-type="{{ category.type }}" data-is-category="true">{{ category.name }}</option>
                                 {% endfor %}
                             </select>
-                            <a href="{% url 'categories' %}" class="btn btn-outline-secondary" target="_blank" title="Add new category">
-                                <i class="bi bi-plus-lg"></i>
-                            </a>
-                        </div>
-                        <div class="mt-2">
-                            <input type="text" class="form-control form-control-sm" id="category-search" placeholder="Search categories...">
                         </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="transaction-subcategory" class="form-label">Subcategory</label>
-                        <select class="form-select" id="transaction-subcategory" name="subcategory" disabled>
-                            <option value="">-- Select Subcategory --</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="transaction-subcategory" name="subcategory" value="">
                     
                     <div class="mb-3">
                         <label for="transaction-notes" class="form-label">Notes (Optional)</label>
                         <textarea class="form-control" id="transaction-notes" name="notes" rows="2" placeholder="Add notes about this transaction"></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="transaction-photo" class="form-label">Photo (Optional)</label>
-                        <input type="file" class="form-control" id="transaction-photo" name="photo" accept="image/*">
                     </div>
                 </form>
             </div>
@@ -274,7 +329,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete this transaction? This action cannot be undone.</p>
+                <p id="delete-confirmation-message">Are you sure you want to delete this transaction? This action cannot be undone.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -288,6 +343,37 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Test if subcategories exist in the database - add this at the very top after DOMContentLoaded
+        console.log("Checking if subcategories exist in the database...");
+        
+        // Get all category IDs
+        const categorySelect = document.getElementById('transaction-category');
+        if (categorySelect) {
+            const categories = Array.from(categorySelect.options)
+                .filter(opt => opt.getAttribute('data-is-category') === 'true')
+                .map(opt => opt.value);
+            
+            console.log(`Found ${categories.length} categories to check for subcategories`);
+            
+            // Check each category for subcategories
+            categories.forEach(categoryId => {
+                if (!categoryId) return;
+                
+                fetch(`/finances/api/categories/${categoryId}/subcategories/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(`Category ID ${categoryId} has ${data.length} subcategories:`, data);
+                    })
+                    .catch(error => {
+                        console.error(`Error checking subcategories for category ${categoryId}:`, error);
+                    });
+            });
+        }
+        
+        // Initialize styled account select
+        initAccountSelect();
+        initCategorySelect();
+        
         // Current selected month/year (initialize with displayed values)
         let currentMonth = {% if current_month %}{{ current_month }}{% else %}new Date().getMonth() + 1{% endif %};
         let currentYear = {% if current_year %}{{ current_year }}{% else %}new Date().getFullYear(){% endif %};
@@ -307,9 +393,11 @@
         const addExpenseBtn = document.getElementById('add-expense-btn');
         const saveTransactionBtn = document.getElementById('save-transaction-btn');
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const batchDeleteBtn = document.querySelector('.batch-delete');
         
         // Add event listeners for month navigation
         prevMonthBtn.addEventListener('click', () => {
+            resetSelection();
             currentMonth--;
             if (currentMonth < 1) {
                 currentMonth = 12;
@@ -319,6 +407,7 @@
         });
         
         nextMonthBtn.addEventListener('click', () => {
+            resetSelection();
             currentMonth++;
             if (currentMonth > 12) {
                 currentMonth = 1;
@@ -329,59 +418,45 @@
         
         // Apply filters event
         applyFiltersBtn.addEventListener('click', () => {
+            resetSelection();
             loadTransactionsForMonth();
         });
         
         // Clear filters event
-        clearFiltersBtn.addEventListener('click', () => {
+        clearFiltersBtn.addEventListener('click', function() {
+            // Reset filters
             document.getElementById('category-filter').value = '';
             document.getElementById('from-to-filter').value = '';
             document.getElementById('expense-check').checked = true;
             document.getElementById('income-check').checked = true;
-            document.getElementById('transfer-check').checked = false;
+            resetSelection();
             loadTransactionsForMonth();
         });
         
         // Add transaction buttons
         addIncomeBtn.addEventListener('click', () => {
+            resetSelection();
             openTransactionModal('income');
         });
         
         addExpenseBtn.addEventListener('click', () => {
+            resetSelection();
             openTransactionModal('expense');
         });
         
-        // Currency change event to update the currency symbol
-        document.getElementById('transaction-currency').addEventListener('change', function() {
-            const currencySymbol = document.getElementById('currency-symbol');
-            switch(this.value) {
-                case 'PHP': currencySymbol.textContent = '₱'; break;
-                case 'USD': currencySymbol.textContent = '$'; break;
-                case 'EUR': currencySymbol.textContent = '€'; break;
-                case 'GBP': currencySymbol.textContent = '£'; break;
-                case 'JPY': currencySymbol.textContent = '¥'; break;
-                case 'CNY': currencySymbol.textContent = '¥'; break;
-                case 'KRW': currencySymbol.textContent = '₩'; break;
-                default: currencySymbol.textContent = '₱';
+        // Implement global click handler to reset selection when clicking elsewhere
+        document.addEventListener('click', function(e) {
+            // Don't reset if clicking on checkboxes, delete button, or elements inside the transaction item
+            if (e.target.closest('.custom-checkbox') || 
+                e.target.closest('.batch-delete') ||
+                e.target.closest('.transaction-item') ||
+                e.target.closest('.batch-actions') ||
+                e.target.closest('#deleteModal')) {
+                return;
             }
-        });
-        
-        // Search categories
-        document.getElementById('category-search').addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const categorySelect = document.getElementById('transaction-category');
-            const options = categorySelect.querySelectorAll('option');
             
-            options.forEach(option => {
-                if (option.value === '') return; // Skip the default option
-                
-                const text = option.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    option.style.display = '';
-                } else {
-                    option.style.display = 'none';
-                }
-            });
+            // Reset selection for clicks outside of selection-related elements
+            resetSelection();
         });
         
         // Save transaction
@@ -426,10 +501,200 @@
         
         // Handle category change for subcategories
         document.getElementById('transaction-category').addEventListener('change', function() {
-            loadSubcategories(this.value);
+            loadSubcategoriesInCategoryDropdown(this.value);
+        });
+        
+        // Filter accounts when transaction type changes
+        document.getElementById('transaction-type').addEventListener('change', function() {
+            filterAccountsByTransactionType(this.value);
+            filterCategoriesByTransactionType(this.value);
         });
         
         // Functions
+        function initAccountSelect() {
+            const accountSelect = document.getElementById('transaction-account');
+            
+            // Initialize select with icon
+            setTimeout(updateAccountSelectIcon, 0);
+            
+            // Listen for changes to update the icon
+            accountSelect.addEventListener('change', updateAccountSelectIcon);
+        }
+        
+        function updateAccountSelectIcon() {
+            const accountSelect = document.getElementById('transaction-account');
+            const selectedOption = accountSelect.options[accountSelect.selectedIndex];
+            const iconClass = selectedOption ? selectedOption.getAttribute('data-icon') : null;
+            const selectedValue = accountSelect.value;
+            
+            // Clear the input group first
+            const inputGroup = accountSelect.closest('.input-group');
+            if (inputGroup) {
+                // Store original select
+                const originalSelect = accountSelect.cloneNode(true);
+                
+                // Clear all contents
+                inputGroup.innerHTML = '';
+                
+                // Re-add the select
+                inputGroup.appendChild(originalSelect);
+                
+                // Update the reference to the select
+                const newSelect = inputGroup.querySelector('select');
+                
+                // Set the selected value (important for showing the right option)
+                if (selectedValue) {
+                    newSelect.value = selectedValue;
+                }
+                
+                if (iconClass) {
+                    // Create a wrapper to hold both the select and icon
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'position-relative w-100';
+                    
+                    // Create the icon element
+                    const iconElement = document.createElement('i');
+                    iconElement.className = `bi ${iconClass} position-absolute`;
+                    iconElement.style.left = '15px';
+                    iconElement.style.top = '50%';
+                    iconElement.style.transform = 'translateY(-50%)';
+                    iconElement.style.zIndex = '10';
+                    iconElement.style.color = '#6c757d';
+                    iconElement.style.fontSize = '1.1rem';
+                    iconElement.style.width = '20px';
+                    iconElement.style.textAlign = 'center';
+                    
+                    // Set styles for the select
+                    newSelect.style.paddingLeft = '40px';
+                    
+                    // Add icon and select to wrapper
+                    wrapper.appendChild(iconElement);
+                    wrapper.appendChild(newSelect);
+                    
+                    // Replace select with wrapper
+                    inputGroup.innerHTML = '';
+                    inputGroup.appendChild(wrapper);
+                    
+                    // Re-add event listeners
+                    newSelect.addEventListener('change', function() {
+                        filterAccountsByTransactionType(document.getElementById('transaction-type').value);
+                        updateAccountSelectIcon();
+                    });
+                } else {
+                    // No icon needed
+                    newSelect.style.paddingLeft = '';
+                }
+            }
+        }
+        
+        function initCategorySelect() {
+            const categorySelect = document.getElementById('transaction-category');
+            
+            // Initialize select with icon
+            setTimeout(updateCategorySelectIcon, 0);
+            
+            // Preload all subcategories based on current transaction type
+            setTimeout(() => {
+                const transactionType = document.getElementById('transaction-type').value;
+                preloadAllSubcategories(transactionType);
+            }, 100);
+            
+            // Listen for changes to update the icon
+            categorySelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                
+                // Check if the selected option is a subcategory
+                if (selectedOption && selectedOption.hasAttribute('data-subcategory-id')) {
+                    // Set the subcategory ID in the hidden field
+                    document.getElementById('transaction-subcategory').value = selectedOption.getAttribute('data-subcategory-id');
+                    
+                    // Also mark the parent category as the selected category (for processing)
+                    const parentCategoryId = selectedOption.getAttribute('data-parent-category');
+                    if (parentCategoryId) {
+                        // We're just setting the internal value for form submission, not changing the visible selection
+                        document.getElementById('transaction-category').setAttribute('data-selected-category', parentCategoryId);
+                    }
+                } else {
+                    // It's a main category, clear subcategory selection
+                    document.getElementById('transaction-subcategory').value = '';
+                    
+                    // If it's a category, load its subcategories
+                    if (selectedOption && selectedOption.getAttribute('data-is-category') === 'true') {
+                        loadSubcategoriesInCategoryDropdown(this.value);
+                    }
+                }
+                
+                // Update the icon
+                updateCategorySelectIcon();
+            });
+        }
+        
+        function updateCategorySelectIcon() {
+            const categorySelect = document.getElementById('transaction-category');
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            const iconClass = selectedOption ? selectedOption.getAttribute('data-icon') : null;
+            const selectedValue = categorySelect.value;
+            
+            // Clear the input group first
+            const inputGroup = categorySelect.closest('.input-group');
+            if (inputGroup) {
+                // Store original select
+                const originalSelect = categorySelect.cloneNode(true);
+                
+                // Clear all contents
+                inputGroup.innerHTML = '';
+                
+                // Re-add the select
+                inputGroup.appendChild(originalSelect);
+                
+                // Update the reference to the select
+                const newSelect = inputGroup.querySelector('select');
+                
+                // Set the selected value (important for showing the right option)
+                if (selectedValue) {
+                    newSelect.value = selectedValue;
+                }
+                
+                if (iconClass) {
+                    // Create a wrapper to hold both the select and icon
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'position-relative w-100';
+                    
+                    // Create the icon element
+                    const iconElement = document.createElement('i');
+                    iconElement.className = `bi ${iconClass} position-absolute`;
+                    iconElement.style.left = '15px';
+                    iconElement.style.top = '50%';
+                    iconElement.style.transform = 'translateY(-50%)';
+                    iconElement.style.zIndex = '10';
+                    iconElement.style.color = '#6c757d';
+                    iconElement.style.fontSize = '1.1rem';
+                    iconElement.style.width = '20px';
+                    iconElement.style.textAlign = 'center';
+                    
+                    // Set styles for the select
+                    newSelect.style.paddingLeft = '40px';
+                    
+                    // Add icon and select to wrapper
+                    wrapper.appendChild(iconElement);
+                    wrapper.appendChild(newSelect);
+                    
+                    // Replace select with wrapper
+                    inputGroup.innerHTML = '';
+                    inputGroup.appendChild(wrapper);
+                    
+                    // Re-add event listeners
+                    newSelect.addEventListener('change', function() {
+                        loadSubcategoriesInCategoryDropdown(this.value);
+                        updateCategorySelectIcon();
+                    });
+                } else {
+                    // No icon needed
+                    newSelect.style.paddingLeft = '';
+                }
+            }
+        }
+        
         function loadTransactionsForMonth() {
             // Format the month name to display
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
@@ -441,18 +706,17 @@
             const searchTerm = document.getElementById('from-to-filter').value;
             const includeExpenses = document.getElementById('expense-check').checked;
             const includeIncome = document.getElementById('income-check').checked;
-            const includeTransfers = document.getElementById('transfer-check').checked;
             
             // Build transaction types array
             const types = [];
             if (includeExpenses) types.push('expense');
             if (includeIncome) types.push('income');
-            // Note: Transfer is not implemented in current model, but we include for future
             
             // AJAX call to get filtered transactions
             fetch(`/finances/transactions/api/?month=${currentMonth}&year=${currentYear}&category=${categoryId}&search=${searchTerm}&types=${types.join(',')}`)
                 .then(response => response.json())
                 .then(data => {
+                    console.log("Received transactions data:", data.transactions);
                     updateTransactionsList(data.transactions);
                     document.getElementById('transaction-count').textContent = data.count;
                     document.getElementById('transaction-total').textContent = `$${data.total.toFixed(2)}`;
@@ -485,26 +749,31 @@
             let html = '';
             
             transactions.forEach(transaction => {
+                // Determine which icon to use - prioritize subcategory if available
+                const iconToUse = transaction.subcategory_icon || transaction.category_icon || 'bi bi-tag';
+                const nameToDisplay = transaction.subcategory_name || transaction.category_name || 'Uncategorized';
+                
                 html += `
                 <div class="list-group-item d-flex justify-content-between align-items-center transaction-item position-relative">
-                    <div class="form-check">
-                        <input class="form-check-input transaction-check" type="checkbox" value="${transaction.id}" id="check-${transaction.id}">
-                        <label class="form-check-label" for="check-${transaction.id}">
-                            <div class="d-flex align-items-center">
-                                <div class="transaction-icon me-3">
-                                    <span class="icon-wrapper rounded-circle bg-${transaction.type === 'income' ? 'success' : 'danger'} p-2">
-                                        <i class="${transaction.category_icon || 'bi bi-tag'} text-white"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <div class="fw-bold">${transaction.title}</div>
-                                    <small class="text-muted">
-                                        ${transaction.category_name || 'Uncategorized'}
-                                        ${transaction.notes ? '- ' + transaction.notes : ''}
-                                    </small>
-                                </div>
+                    <div class="d-flex align-items-center">
+                        <div class="custom-checkbox me-2">
+                            <input class="transaction-check" type="checkbox" value="${transaction.id}" id="check-${transaction.id}">
+                            <label class="custom-checkbox-label" for="check-${transaction.id}"></label>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="transaction-icon me-3">
+                                <span class="icon-wrapper rounded-circle bg-${transaction.type === 'income' ? 'success' : 'danger'} p-2">
+                                    <i class="${iconToUse} text-white"></i>
+                                </span>
                             </div>
-                        </label>
+                            <div>
+                                <div class="fw-bold">${transaction.title}</div>
+                                <small class="text-muted">
+                                    ${nameToDisplay}
+                                    ${transaction.notes ? '- ' + transaction.notes : ''}
+                                </small>
+                            </div>
+                        </div>
                     </div>
                     <div class="d-flex align-items-center">
                         <div class="text-end me-3">
@@ -551,9 +820,18 @@
             document.getElementById('transaction-date').value = formatDateForInput(now);
             document.getElementById('transaction-time').value = formatTimeForInput(now);
             
-            // Set currency to PHP by default
-            document.getElementById('transaction-currency').value = 'PHP';
-            document.getElementById('currency-symbol').textContent = '₱';
+            // Filter accounts based on transaction type
+            filterAccountsByTransactionType(type);
+            
+            // Filter categories based on transaction type
+            filterCategoriesByTransactionType(type);
+            
+            // Update icons for select dropdowns
+            updateAccountSelectIcon();
+            updateCategorySelectIcon();
+            
+            // Load subcategories for all visible categories (Pre-load subcategories)
+            preloadAllSubcategories(type);
             
             // Update modal title based on transaction type
             const modalTitle = type === 'income' ? 'Add Income' : 'Add Expense';
@@ -563,11 +841,105 @@
             new bootstrap.Modal(document.getElementById('transactionModal')).show();
         }
         
+        // Function to preload subcategories for all visible categories
+        function preloadAllSubcategories(transactionType) {
+            const categorySelect = document.getElementById('transaction-category');
+            const categories = Array.from(categorySelect.options)
+                .filter(opt => opt.getAttribute('data-is-category') === 'true' && 
+                              (!opt.getAttribute('data-type') || opt.getAttribute('data-type') === transactionType));
+            
+            // Load subcategories for each visible category
+            if (categories.length > 0) {
+                // Process categories one by one
+                let index = 0;
+                
+                function processNextCategory() {
+                    if (index < categories.length) {
+                        const categoryId = categories[index].value;
+                        
+                        // Fetch subcategories for this category
+                        fetch(`/finances/api/categories/${categoryId}/subcategories/`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.length > 0) {
+                                    // Remove any existing subcategory options for this category
+                                    const existingSubcats = Array.from(categorySelect.options)
+                                        .filter(opt => opt.getAttribute('data-parent-category') === categoryId);
+                                    existingSubcats.forEach(opt => opt.remove());
+                                    
+                                    // Add subcategory options after the parent category
+                                    const categoryOption = Array.from(categorySelect.options)
+                                        .find(opt => opt.value === categoryId);
+                                    const categoryIndex = Array.from(categorySelect.options).indexOf(categoryOption);
+                                    
+                                    // Add subcategories
+                                    data.forEach((subcategory, subIndex) => {
+                                        const option = document.createElement('option');
+                                        option.value = `subcat-${subcategory.id}`;
+                                        option.setAttribute('data-icon', subcategory.icon || 'bi-tag-fill');
+                                        option.setAttribute('data-parent-category', categoryId);
+                                        option.setAttribute('data-subcategory-id', subcategory.id);
+                                        option.setAttribute('data-type', categoryOption.getAttribute('data-type'));
+                                        option.style.paddingLeft = '25px';
+                                        option.textContent = `↳ ${subcategory.name}`;
+                                        
+                                        // Insert after parent category and any previously added subcategories
+                                        categorySelect.insertBefore(option, categorySelect.options[categoryIndex + subIndex + 1]);
+                                    });
+                                }
+                                
+                                // Process the next category
+                                index++;
+                                processNextCategory();
+                            })
+                            .catch(error => {
+                                console.error('Error loading subcategories:', error);
+                                index++;
+                                processNextCategory();
+                            });
+                    } else {
+                        // All categories processed, update category icon
+                        updateCategorySelectIcon();
+                    }
+                }
+                
+                // Start processing categories
+                processNextCategory();
+            }
+        }
+        
+        function filterAccountsByTransactionType(transactionType) {
+            const accountSelect = document.getElementById('transaction-account');
+            const options = accountSelect.querySelectorAll('option');
+            
+            options.forEach(option => {
+                // Skip the default empty option
+                if (!option.value) return;
+                
+                const accountType = option.getAttribute('data-account-type');
+                
+                // For income transactions, hide credit accounts
+                if (transactionType === 'income' && accountType === 'credit') {
+                    option.style.display = 'none';
+                } else {
+                    option.style.display = '';
+                }
+            });
+            
+            // Reset selection to default if the currently selected account is now hidden
+            const selectedOption = accountSelect.options[accountSelect.selectedIndex];
+            if (selectedOption && selectedOption.style.display === 'none') {
+                accountSelect.value = '';
+            }
+        }
+        
         function editTransaction(transactionId) {
             // Fetch transaction details
             fetch(`/finances/transactions/api/${transactionId}/`)
                 .then(response => response.json())
                 .then(transaction => {
+                    console.log("Transaction details for editing:", transaction);
+                    
                     // Fill form with transaction data
                     document.getElementById('transaction-id').value = transaction.id;
                     document.getElementById('transaction-title').value = transaction.title;
@@ -581,25 +953,7 @@
                         document.getElementById('transaction-time').value = formatTimeForInput(new Date());
                     }
                     
-                    // Set currency and update symbol
-                    if (transaction.currency) {
-                        document.getElementById('transaction-currency').value = transaction.currency;
-                        // Update the currency symbol
-                        const currencySymbol = document.getElementById('currency-symbol');
-                        switch(transaction.currency) {
-                            case 'PHP': currencySymbol.textContent = '₱'; break;
-                            case 'USD': currencySymbol.textContent = '$'; break;
-                            case 'EUR': currencySymbol.textContent = '€'; break;
-                            case 'GBP': currencySymbol.textContent = '£'; break;
-                            case 'JPY': currencySymbol.textContent = '¥'; break;
-                            case 'CNY': currencySymbol.textContent = '¥'; break;
-                            case 'KRW': currencySymbol.textContent = '₩'; break;
-                            default: currencySymbol.textContent = '₱';
-                        }
-                    }
-                    
                     document.getElementById('transaction-type').value = transaction.type;
-                    document.getElementById('transaction-category').value = transaction.category || '';
                     document.getElementById('transaction-notes').value = transaction.notes || '';
                     
                     // Set account if available
@@ -607,10 +961,50 @@
                         document.getElementById('transaction-account').value = transaction.transaction_account;
                     }
                     
-                    // Load subcategories if category is selected
+                    // Filter accounts based on transaction type
+                    filterAccountsByTransactionType(transaction.type);
+                    
+                    // Filter categories based on transaction type
+                    filterCategoriesByTransactionType(transaction.type);
+                    
+                    // Load category and subcategory
                     if (transaction.category) {
-                        loadSubcategories(transaction.category, transaction.subcategory);
+                        // First set the main category
+                        document.getElementById('transaction-category').value = transaction.category;
+                        
+                        // Load subcategories for this category and select the right one if present
+                        if (transaction.subcategory) {
+                            // Set the hidden subcategory field
+                            document.getElementById('transaction-subcategory').value = transaction.subcategory;
+                            
+                            // We need to load all subcategories first to ensure proper selection
+                            const transactionType = document.getElementById('transaction-type').value;
+                            preloadAllSubcategories(transactionType);
+                            
+                            // Give it a moment to load, then try to select the subcategory
+                            setTimeout(() => {
+                                // Find the subcategory option
+                                const subcategoryOption = Array.from(document.getElementById('transaction-category').options)
+                                    .find(opt => opt.getAttribute('data-subcategory-id') === transaction.subcategory.toString());
+                                
+                                // Select it if found
+                                if (subcategoryOption) {
+                                    document.getElementById('transaction-category').value = subcategoryOption.value;
+                                    console.log("Selected subcategory option:", subcategoryOption.textContent);
+                                }
+                                
+                                // Update the icon
+                                updateCategorySelectIcon();
+                            }, 300);
+                        } else {
+                            // Just load subcategories for the selected category
+                            loadSubcategoriesInCategoryDropdown(transaction.category);
+                        }
                     }
+                    
+                    // Update the icons for select dropdowns
+                    updateAccountSelectIcon();
+                    updateCategorySelectIcon();
                     
                     // Update modal title
                     const modalTitle = transaction.type === 'income' ? 'Edit Income' : 'Edit Expense';
@@ -633,13 +1027,51 @@
                     document.getElementById('transaction-amount').value = transaction.amount;
                     document.getElementById('transaction-date').value = formatDateForInput(new Date()); // Current date
                     document.getElementById('transaction-type').value = transaction.type;
-                    document.getElementById('transaction-category').value = transaction.category || '';
                     document.getElementById('transaction-notes').value = transaction.notes || '';
                     
-                    // Load subcategories if category is selected
+                    // Filter accounts based on transaction type
+                    filterAccountsByTransactionType(transaction.type);
+                    
+                    // Filter categories based on transaction type
+                    filterCategoriesByTransactionType(transaction.type);
+                    
+                    // Load category and subcategory
                     if (transaction.category) {
-                        loadSubcategories(transaction.category, transaction.subcategory);
+                        // First set the main category
+                        document.getElementById('transaction-category').value = transaction.category;
+                        
+                        // Load subcategories for this category and select the right one if present
+                        if (transaction.subcategory) {
+                            // Set the hidden subcategory field
+                            document.getElementById('transaction-subcategory').value = transaction.subcategory;
+                            
+                            // We need to load all subcategories first to ensure proper selection
+                            const transactionType = document.getElementById('transaction-type').value;
+                            preloadAllSubcategories(transactionType);
+                            
+                            // Give it a moment to load, then try to select the subcategory
+                            setTimeout(() => {
+                                // Find the subcategory option
+                                const subcategoryOption = Array.from(document.getElementById('transaction-category').options)
+                                    .find(opt => opt.getAttribute('data-subcategory-id') === transaction.subcategory.toString());
+                                
+                                // Select it if found
+                                if (subcategoryOption) {
+                                    document.getElementById('transaction-category').value = subcategoryOption.value;
+                                }
+                                
+                                // Update the icon
+                                updateCategorySelectIcon();
+                            }, 300);
+                        } else {
+                            // Just load subcategories for the selected category
+                            loadSubcategoriesInCategoryDropdown(transaction.category);
+                        }
                     }
+                    
+                    // Update the icons for select dropdowns
+                    updateAccountSelectIcon();
+                    updateCategorySelectIcon();
                     
                     // Update modal title (Duplicate)
                     const modalTitle = transaction.type === 'income' ? 'Duplicate Income' : 'Duplicate Expense';
@@ -657,6 +1089,20 @@
             const form = document.getElementById('transaction-form');
             const formData = new FormData(form);
             
+            // Handle the category and subcategory
+            const categorySelect = document.getElementById('transaction-category');
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            
+            // Check if the selected option is a subcategory
+            if (selectedOption && selectedOption.hasAttribute('data-subcategory-id')) {
+                // For subcategories, we need to set the correct category ID and subcategory ID
+                formData.set('category', selectedOption.getAttribute('data-parent-category'));
+                formData.set('subcategory', selectedOption.getAttribute('data-subcategory-id'));
+            } else if (selectedOption && selectedOption.getAttribute('data-is-category') === 'true') {
+                // For main categories, make sure subcategory is empty
+                formData.set('subcategory', '');
+            }
+            
             // Get CSRF token
             const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
             
@@ -669,7 +1115,6 @@
                 id: transactionId,
                 title: formData.get('title'),
                 amount: formData.get('amount'),
-                currency: formData.get('currency'),
                 date: formData.get('date'),
                 time: formData.get('time'),
                 type: formData.get('type'),
@@ -706,52 +1151,185 @@
         }
         
         function deleteTransaction(transactionId) {
-            fetch(`/finances/transactions/api/${transactionId}/delete/`, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Close modal and reload transactions
-                    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
-                    loadTransactionsForMonth();
-                } else {
-                    // Display error message
-                    alert(data.error || 'An error occurred while deleting the transaction.');
-                }
-            })
-            .catch(error => {
-                console.error('Error deleting transaction:', error);
-                alert('An error occurred while deleting the transaction.');
-            });
+            // Handle both single and batch deletions
+            const isArray = Array.isArray(transactionId);
+            
+            if (isArray) {
+                // For batch deletions, we'll handle each transaction individually
+                let successCount = 0;
+                let errorCount = 0;
+                let processedCount = 0;
+                
+                // Process each transaction one by one
+                transactionId.forEach(id => {
+                    fetch(`/finances/transactions/api/${id}/delete/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        processedCount++;
+                        
+                        if (data.success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                        
+                        // When all transactions are processed, show results and refresh
+                        if (processedCount === transactionId.length) {
+                            // Close modal
+                            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+                            
+                            // Show results
+                            if (errorCount > 0) {
+                                alert(`Deleted ${successCount} transaction(s). Failed to delete ${errorCount} transaction(s).`);
+                            }
+                            
+                            // Refresh the list and reset selection
+                            loadTransactionsForMonth();
+                            resetSelection();
+                        }
+                    })
+                    .catch(error => {
+                        processedCount++;
+                        errorCount++;
+                        
+                        console.error(`Error deleting transaction ${id}:`, error);
+                        
+                        // When all transactions are processed, show results and refresh
+                        if (processedCount === transactionId.length) {
+                            // Close modal
+                            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+                            
+                            // Show results
+                            alert(`Deleted ${successCount} transaction(s). Failed to delete ${errorCount} transaction(s).`);
+                            
+                            // Refresh the list and reset selection
+                            loadTransactionsForMonth();
+                            resetSelection();
+                        }
+                    });
+                });
+            } else {
+                // Single transaction deletion - original code
+                fetch(`/finances/transactions/api/${transactionId}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Close modal and reload transactions
+                        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+                        loadTransactionsForMonth();
+                    } else {
+                        // Display error message
+                        alert(data.error || 'An error occurred while deleting the transaction.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting transaction:', error);
+                    alert('An error occurred while deleting the transaction.');
+                });
+            }
         }
         
-        function loadSubcategories(categoryId, selectedSubcategoryId = null) {
-            const subcategorySelect = document.getElementById('transaction-subcategory');
-            
+        function loadSubcategoriesInCategoryDropdown(categoryId, selectedSubcategoryId = null) {
             if (!categoryId) {
-                subcategorySelect.innerHTML = '<option value="">-- Select Subcategory --</option>';
-                subcategorySelect.disabled = true;
+                // Reset hidden subcategory field
+                document.getElementById('transaction-subcategory').value = '';
+                updateCategorySelectIcon();
                 return;
             }
+            
+            console.log(`Loading subcategories for category ID: ${categoryId}, selectedSubcategory: ${selectedSubcategoryId}`);
             
             // Fetch subcategories for selected category
             fetch(`/finances/api/categories/${categoryId}/subcategories/`)
                 .then(response => response.json())
                 .then(data => {
-                    let options = '<option value="">-- Select Subcategory --</option>';
+                    console.log('Received subcategories data:', data);
                     
-                    data.forEach(subcategory => {
-                        const selected = selectedSubcategoryId && subcategory.id == selectedSubcategoryId ? 'selected' : '';
-                        options += `<option value="${subcategory.id}" ${selected}>${subcategory.name}</option>`;
+                    const categorySelect = document.getElementById('transaction-category');
+                    const categoryOption = Array.from(categorySelect.options).find(opt => opt.value === categoryId);
+                    
+                    if (!categoryOption) {
+                        console.warn('Category option not found in dropdown');
+                        return;
+                    }
+                    
+                    // Get all subcategory options
+                    const subcategoryOptions = Array.from(categorySelect.options).filter(opt => 
+                        opt.getAttribute('data-parent-category') === categoryId);
+                    
+                    // Remove any existing subcategory options for this category
+                    console.log(`Removing ${subcategoryOptions.length} existing subcategory options`);
+                    subcategoryOptions.forEach(opt => opt.remove());
+                    
+                    if (data.length === 0) {
+                        console.log('No subcategories found for this category');
+                        updateCategorySelectIcon();
+                        return;
+                    }
+                    
+                    // Add subcategory options after the parent category
+                    const categoryIndex = Array.from(categorySelect.options).indexOf(categoryOption);
+                    console.log(`Adding ${data.length} subcategories after category at index ${categoryIndex}`);
+                    
+                    // Store original selected value
+                    const originalSelectedValue = categorySelect.value;
+                    
+                    data.forEach((subcategory, index) => {
+                        const option = document.createElement('option');
+                        option.value = `subcat-${subcategory.id}`; // Prefix to identify as subcategory
+                        option.setAttribute('data-icon', subcategory.icon || 'bi-tag-fill');
+                        option.setAttribute('data-parent-category', categoryId);
+                        option.setAttribute('data-subcategory-id', subcategory.id);
+                        option.setAttribute('data-type', categoryOption.getAttribute('data-type'));
+                        option.style.paddingLeft = '25px'; // Indent to show hierarchy
+                        option.textContent = `↳ ${subcategory.name}`;
+                        
+                        // Set as selected if it matches the selected subcategory ID
+                        if (selectedSubcategoryId && subcategory.id == selectedSubcategoryId) {
+                            option.selected = true;
+                            console.log(`Selected subcategory: ${subcategory.name}`);
+                        }
+                        
+                        // Insert after parent category
+                        categorySelect.insertBefore(option, categorySelect.options[categoryIndex + index + 1]);
                     });
                     
-                    subcategorySelect.innerHTML = options;
-                    subcategorySelect.disabled = data.length === 0;
+                    // Restore selection if no subcategory was selected
+                    if (!selectedSubcategoryId) {
+                        categorySelect.value = originalSelectedValue;
+                    }
+                    
+                    // Update the icon
+                    updateCategorySelectIcon();
+                    
+                    console.log('Subcategories added successfully');
+                    
+                    // If a subcategory was selected, update the hidden field
+                    if (selectedSubcategoryId) {
+                        document.getElementById('transaction-subcategory').value = selectedSubcategoryId;
+                        
+                        // Find and select the subcategory option
+                        const subcatOption = Array.from(categorySelect.options).find(
+                            opt => opt.getAttribute('data-subcategory-id') == selectedSubcategoryId
+                        );
+                        
+                        if (subcatOption) {
+                            categorySelect.value = subcatOption.value;
+                            console.log(`Selected subcategory with value: ${subcatOption.value}`);
+                        }
+                    }
                 })
                 .catch(error => console.error('Error loading subcategories:', error));
         }
@@ -767,6 +1345,150 @@
             const hours = String(date.getHours()).padStart(2, '0');
             const minutes = String(date.getMinutes()).padStart(2, '0');
             return `${hours}:${minutes}`;
+        }
+        
+        function filterCategoriesByTransactionType(transactionType) {
+            const categorySelect = document.getElementById('transaction-category');
+            const options = categorySelect.querySelectorAll('option');
+            
+            options.forEach(option => {
+                // Skip the default empty option
+                if (!option.value) return;
+                
+                const categoryType = option.getAttribute('data-type');
+                
+                // Show only categories matching the current transaction type
+                if (categoryType && categoryType !== transactionType) {
+                    option.style.display = 'none';
+                } else {
+                    option.style.display = '';
+                }
+            });
+            
+            // Reset selection to default if the currently selected category is now hidden
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            if (selectedOption && selectedOption.style.display === 'none') {
+                categorySelect.value = '';
+                
+                // Clear subcategories since the category changed
+                document.getElementById('transaction-subcategory').innerHTML = '<option value="" data-icon="bi-tags">Choose a subcategory</option>';
+                document.getElementById('transaction-subcategory').disabled = true;
+                updateSubcategorySelectIcon();
+            }
+            
+            // Update the category icon (directly call to ensure it updates)
+            setTimeout(updateCategorySelectIcon, 0);
+        }
+        
+        // Checkbox and batch actions handling
+        const selectAllCheckbox = document.getElementById('select-all-transactions');
+        const batchActionsMenu = document.querySelector('.batch-actions');
+        const selectedCountDisplay = document.querySelector('.selected-count');
+        
+        // Event listener for select all checkbox
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.transaction-check');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                
+                updateBatchActionsVisibility();
+            });
+        }
+        
+        // Event delegation for individual checkboxes
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('transaction-check')) {
+                updateBatchActionsVisibility();
+                
+                // If any checkbox is unchecked, uncheck the "Select All" checkbox
+                if (!e.target.checked && selectAllCheckbox.checked) {
+                    selectAllCheckbox.checked = false;
+                }
+                
+                // If all checkboxes are checked, check the "Select All" checkbox
+                if (areAllTransactionsSelected()) {
+                    selectAllCheckbox.checked = true;
+                }
+            }
+        });
+        
+        // Batch actions event handlers
+        document.querySelector('.batch-delete')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            const selectedIds = getSelectedTransactionIds();
+            if (selectedIds.length > 0) {
+                // Update delete confirmation message
+                const message = selectedIds.length === 1 
+                    ? 'Are you sure you want to delete this transaction? This action cannot be undone.'
+                    : `Are you sure you want to delete these ${selectedIds.length} transactions? This action cannot be undone.`;
+                
+                document.getElementById('delete-confirmation-message').textContent = message;
+                
+                // Store selected IDs for deletion
+                deleteTransactionId = selectedIds;
+                
+                // Show delete confirmation modal
+                new bootstrap.Modal(document.getElementById('deleteModal')).show();
+            }
+        });
+        
+        document.querySelector('.batch-export')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            const selectedIds = getSelectedTransactionIds();
+            if (selectedIds.length > 0) {
+                // In a production app, you would implement export functionality
+                alert(`Feature not implemented: Would export transaction IDs: ${selectedIds.join(', ')}`);
+            }
+        });
+        
+        document.querySelector('.batch-cancel')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            resetSelection();
+        });
+        
+        // Helper functions for batch actions
+        function updateBatchActionsVisibility() {
+            const selectedCount = getSelectedTransactionIds().length;
+            const selectedCountDisplay = document.querySelector('.selected-count');
+            const batchActionsMenu = document.querySelector('.batch-actions');
+            
+            if (selectedCountDisplay) {
+                selectedCountDisplay.textContent = selectedCount;
+            }
+            
+            if (batchActionsMenu) {
+                if (selectedCount > 0) {
+                    batchActionsMenu.classList.remove('invisible');
+                } else {
+                    batchActionsMenu.classList.add('invisible');
+                }
+            }
+        }
+        
+        function getSelectedTransactionIds() {
+            const checkboxes = document.querySelectorAll('.transaction-check:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+        
+        function areAllTransactionsSelected() {
+            const allCheckboxes = document.querySelectorAll('.transaction-check');
+            const checkedCheckboxes = document.querySelectorAll('.transaction-check:checked');
+            return allCheckboxes.length > 0 && allCheckboxes.length === checkedCheckboxes.length;
+        }
+        
+        function resetSelection() {
+            const checkboxes = document.querySelectorAll('.transaction-check');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+            }
+            
+            updateBatchActionsVisibility();
         }
     });
 </script>

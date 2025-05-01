@@ -28,7 +28,10 @@ const Categories = () => {
   const [deleteItemId, setDeleteItemId] = useState(null);
   const [deleteItemName, setDeleteItemName] = useState('');
   // Track the current category type separately
-  const [categoryType, setCategoryType] = useState('income'); 
+  const [categoryType, setCategoryType] = useState('income');
+  // New state for editing category name
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
   
   // Initialize data from Django
   useEffect(() => {
@@ -56,6 +59,25 @@ const Categories = () => {
     // Convert activeTab to proper category type
     setCategoryType(activeTab === 'expenses' ? 'expense' : 'income');
   }, [activeTab]);
+  
+  // Add effect to update localStorage when categories change
+  useEffect(() => {
+    if (categories.income.length > 0 || categories.expenses.length > 0) {
+      localStorage.setItem('budgetTrackerCategories', JSON.stringify(categories));
+      
+      // Log the updated categories (using current state, not stale closure)
+      console.log('Categories state after update:');
+      console.log(`Income categories: ${categories.income.length}`);
+      categories.income.forEach(cat => {
+        console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
+      });
+      
+      console.log(`Expense categories: ${categories.expenses.length}`);
+      categories.expenses.forEach(cat => {
+        console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
+      });
+    }
+  }, [categories]);
   
   const showNotification = (message, type = 'success') => {
     setNotification({
@@ -99,29 +121,11 @@ const Categories = () => {
         console.log('Sample expense category:', data.expenses[0]);
       }
       
-      // Set categories from API response
+      // Set categories from API response (the useEffect will handle logging)
       setCategories({
         income: data.income || [],
         expenses: data.expenses || []
       });
-      
-      // Debug info for subcategories
-      setTimeout(() => {
-        // Log subcategories after state update
-        console.log('Categories state after update:');
-        const incomeCats = [...categories.income];
-        const expenseCats = [...categories.expenses];
-        
-        console.log(`Income categories: ${incomeCats.length}`);
-        incomeCats.forEach(cat => {
-          console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
-        });
-        
-        console.log(`Expense categories: ${expenseCats.length}`);
-        expenseCats.forEach(cat => {
-          console.log(`  - ${cat.name}: ${cat.subcategories ? cat.subcategories.length : 0} subcategories`);
-        });
-      }, 100);
       
       if (data.availableIcons && data.availableIcons.length > 0) {
         setAvailableIcons(data.availableIcons);
@@ -179,6 +183,23 @@ const Categories = () => {
       setNewCategoryName('');
       setSelectedIcon('bi-tag');
       setShowAddModal(false);
+      
+      // Immediately update local state with the new category
+      // This ensures we see the updated count right away
+      const newCategory = {
+        ...data.category,
+        subcategories: [] // Ensure it has the subcategories array
+      };
+      
+      setCategories(prevCategories => {
+        // Figure out which array to update (income or expenses)
+        const listType = type === 'income' ? 'income' : 'expenses';
+        
+        return {
+          ...prevCategories,
+          [listType]: [...prevCategories[listType], newCategory]
+        };
+      });
       
       // Refresh categories to get the updated list
       await fetchCategories();
@@ -314,6 +335,28 @@ const Categories = () => {
           };
         });
         
+        // Also update the main categories state
+        setCategories(prevCategories => {
+          // Determine if this is an income or expense category
+          const listType = selectedCategory.type === 'income' ? 'income' : 'expenses';
+          
+          // Update the specific category within the list
+          const updatedList = prevCategories[listType].map(cat => {
+            if (cat.id === selectedCategory.id) {
+              return {
+                ...cat,
+                subcategories: [...(cat.subcategories || []), newSubcategory]
+              };
+            }
+            return cat;
+          });
+          
+          return {
+            ...prevCategories,
+            [listType]: updatedList
+          };
+        });
+        
         // Reset form
         setNewSubcategoryName('');
         setSelectedSubcategoryIcon('bi-tag-fill');
@@ -382,6 +425,28 @@ const Categories = () => {
         return {
           ...prevCategory,
           subcategories: prevCategory.subcategories.filter(sub => sub.id !== subcategoryId)
+        };
+      });
+      
+      // Also update the main categories state
+      setCategories(prevCategories => {
+        // Determine if this is an income or expense category
+        const listType = selectedCategory.type === 'income' ? 'income' : 'expenses';
+        
+        // Update the specific category within the list
+        const updatedList = prevCategories[listType].map(cat => {
+          if (cat.id === selectedCategory.id) {
+            return {
+              ...cat,
+              subcategories: cat.subcategories.filter(sub => sub.id !== subcategoryId)
+            };
+          }
+          return cat;
+        });
+        
+        return {
+          ...prevCategories,
+          [listType]: updatedList
         };
       });
       
@@ -455,6 +520,28 @@ const Categories = () => {
           subcategories: updatedSubcategories
         });
         
+        // Also update the main categories state
+        setCategories(prevCategories => {
+          // Determine if this is an income or expense category
+          const listType = selectedCategory.type === 'income' ? 'income' : 'expenses';
+          
+          // Update the specific category within the list
+          const updatedList = prevCategories[listType].map(cat => {
+            if (cat.id === selectedCategory.id) {
+              return {
+                ...cat,
+                subcategories: updatedSubcategories
+              };
+            }
+            return cat;
+          });
+          
+          return {
+            ...prevCategories,
+            [listType]: updatedList
+          };
+        });
+        
         // Now refresh categories in the background to ensure data consistency
         await fetchCategories();
         
@@ -488,6 +575,7 @@ const Categories = () => {
     // Prevent triggering the list item click event when clicking on the edit button
     e.stopPropagation();
     setSelectedCategory(category);
+    setEditCategoryName(category.name); // Initialize with current name
     setShowEditModal(true);
   };
 
@@ -714,6 +802,60 @@ const Categories = () => {
     );
   };
 
+  const handleUpdateCategoryName = async () => {
+    if (!selectedCategory || !editCategoryName.trim() || editCategoryName === selectedCategory.name) {
+      return;
+    }
+    
+    try {
+      setIsSavingCategory(true);
+      
+      // Create form data
+      const formData = new FormData();
+      formData.append('name', editCategoryName);
+      formData.append('icon', selectedCategory.icon);
+      formData.append('csrfmiddlewaretoken', window.csrfToken);
+      
+      // Submit the update request
+      const response = await fetch(`/finances/api/categories/${selectedCategory.id}/update/`, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': window.csrfToken,
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update category');
+      }
+      
+      const data = await response.json();
+      
+      // Update local state
+      const listType = selectedCategory.type === 'income' ? 'income' : 'expenses';
+      setCategories(prev => ({
+        ...prev,
+        [listType]: prev[listType].map(cat => 
+          cat.id === selectedCategory.id 
+            ? { ...cat, name: editCategoryName } 
+            : cat
+        )
+      }));
+      
+      // Update selected category
+      setSelectedCategory({ ...selectedCategory, name: editCategoryName });
+      
+      showNotification('Category updated successfully');
+    } catch (err) {
+      console.error('Error updating category:', err);
+      showNotification('Failed to update category. Please try again.', 'danger');
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
   return (
     <div className="container py-4">
       {/* Notification */}
@@ -923,7 +1065,7 @@ const Categories = () => {
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title" id="editCategoryModalLabel">
-                Edit Category: {selectedCategory ? selectedCategory.name : ''}
+                Edit Category
               </h5>
               <button 
                 type="button" 
@@ -936,6 +1078,33 @@ const Categories = () => {
               {selectedCategory && (
                 <div className="row">
                   <div className="col-md-12 mb-4">
+                    {/* Add category name edit field */}
+                    <div className="mb-4">
+                      <h6 className="fw-bold mb-3">Category Name</h6>
+                      <div className="input-group">
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          value={editCategoryName} 
+                          onChange={(e) => setEditCategoryName(e.target.value)}
+                          placeholder="Enter category name"
+                        />
+                        <button 
+                          className="btn btn-primary" 
+                          type="button" 
+                          onClick={handleUpdateCategoryName}
+                          disabled={!editCategoryName.trim() || editCategoryName === selectedCategory.name || isSavingCategory}
+                        >
+                          {isSavingCategory ? (
+                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                          ) : (
+                            <i className="bi bi-check" aria-hidden="true"></i>
+                          )} 
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                    <hr/>
                     <h6 className="fw-bold mb-3">Subcategories</h6>
                     {selectedCategory.subcategories && selectedCategory.subcategories.length > 0 ? (
                       <ul className="list-group mb-3">
