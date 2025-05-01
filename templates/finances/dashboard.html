@@ -63,7 +63,7 @@
 
     <!-- Current Month Summary -->
     <div class="col-md-4 d-flex">
-        <a href="{% url 'transactions' %}" class="text-decoration-none flex-fill">
+        <a href="{% url 'transactions' %}?month={{ current_month|date:'Y-m' }}" class="text-decoration-none flex-fill">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3 d-flex flex-column">
                     <h6 class="text-muted mb-2">This Month</h6>
@@ -103,7 +103,7 @@
 
     <!-- Previous Month Summary -->
     <div class="col-md-4 d-flex">
-        <a href="{% url 'transactions' %}" class="text-decoration-none flex-fill">
+        <a href="{% url 'transactions' %}?month={{ prev_month|date:'Y-m' }}" class="text-decoration-none flex-fill">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3 d-flex flex-column">
                     <h6 class="text-muted mb-2">Last Month</h6>

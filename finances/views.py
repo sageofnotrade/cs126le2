@@ -611,7 +611,9 @@ def dashboard(request):
         'total_balance': total_balance,
         'recent_transactions': recent_transactions,
         'expenses_by_category': json.dumps(expenses_by_category),
-        'budget_warnings': budget_warnings
+        'budget_warnings': budget_warnings,
+        'current_month': today,  # Add current month date object
+        'prev_month': prev_month,  # Add previous month date object
     }
     
     return render(request, 'finances/dashboard.html', context)
@@ -1280,10 +1282,24 @@ def api_reorder_categories(request):
 def transactions(request):
     """View for the transactions page with filtering and monthly view"""
     
-    # Get current month and year, defaulting to current date
+    # Get current date
     current_date = timezone.now().date()
-    current_month = int(request.GET.get('month', current_date.month))
-    current_year = int(request.GET.get('year', current_date.year))
+    
+    # Get month parameter and parse it
+    month_param = request.GET.get('month')
+    if month_param:
+        try:
+            # Parse the YYYY-MM format
+            year, month = map(int, month_param.split('-'))
+            current_month = month
+            current_year = year
+        except (ValueError, AttributeError):
+            # If parsing fails, use current date
+            current_month = current_date.month
+            current_year = current_date.year
+    else:
+        current_month = current_date.month
+        current_year = current_date.year
     
     # Get start and end date for the selected month
     start_date = timezone.datetime(current_year, current_month, 1).date()
@@ -1330,7 +1346,7 @@ def transactions(request):
     context = {
         'transactions': transactions,
         'categories': categories,
-        'accounts': accounts,  # Add accounts to context
+        'accounts': accounts,
         'current_month': current_month,
         'current_year': current_year,
         'current_month_name': current_month_name,
