@@ -2,6 +2,8 @@ from datetime import timedelta
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
 
 class Debt(models.Model):
     DEBT_TYPES = (
@@ -186,18 +188,75 @@ class ScheduledTransaction(models.Model):
         return self.amount * len(occurrences)
 
 class Budget(models.Model):
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    spent = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    account = models.ForeignKey(Account, on_delete=models.CASCADE)  # The account from which the budget comes
-    duration = models.CharField(max_length=20, choices=[('1 week', '1 Week'), ('1 month', '1 Month')])  # Duration (1 week or 1 month)
+    DURATION_CHOICES = [
+        ('1 week', '1 Week'),
+        ('1 month', '1 Month')
+    ]
 
-    start_date = models.DateField(default=timezone.now)  # Default to current date
-    end_date = models.DateField()  # Calculated based on duration
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.CASCADE, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, db_index=True)
+    duration = models.CharField(max_length=20, choices=DURATION_CHOICES)
+    start_date = models.DateField(default=timezone.now, db_index=True)
+    end_date = models.DateField(db_index=True)
 
     def __str__(self):
-        return f"{self.category.name} - {self.amount} ({self.duration})"
+        return f"{self.subcategory.name} - {self.amount} ({self.duration})"
+
+    @classmethod
+    def get_default_start_date(cls):
+        """Get the default start date for a new budget (start of current period)"""
+        today = timezone.now().date()
+        # For weekly budgets, start from the beginning of the current week (Monday)
+        return today - timedelta(days=today.weekday())
+
+    def calculate_end_date(self):
+        """Calculate the end date based on start date and duration"""
+        if self.duration == '1 week':
+            return self.start_date + timedelta(days=6)  # End on Sunday
+        elif self.duration == '1 month':
+            # Start from the first day of the next month
+            next_month = self.start_date.replace(day=1)
+            if self.start_date.month == 12:
+                next_month = next_month.replace(year=next_month.year + 1, month=1)
+            else:
+                next_month = next_month.replace(month=next_month.month + 1)
+            # Return the last day of the current month
+            return next_month - timedelta(days=1)
+        return None
+
+    @classmethod
+    def get_current_period_dates(cls, duration='1 month'):
+        """Get the start and end dates for the current budget period"""
+        today = timezone.now().date()
+        if duration == '1 week':
+            # Get Monday of current week
+            start_date = today - timedelta(days=today.weekday())
+            # Get Sunday of current week
+            end_date = start_date + timedelta(days=6)
+        else:  # month
+            # Get first day of current month
+            start_date = today.replace(day=1)
+            # Get last day of current month
+            if today.month == 12:
+                next_month = today.replace(year=today.year + 1, month=1, day=1)
+            else:
+                next_month = today.replace(month=today.month + 1, day=1)
+            end_date = next_month - timedelta(days=1)
+        return start_date, end_date
+
+    @property
+    def spent(self):
+        """Calculate total spent from transactions within the budget period"""
+        return Transaction.objects.filter(
+            user=self.user,
+            type='expense',
+            subcategory=self.subcategory,
+            date__gte=self.start_date,
+            date__lte=self.end_date,
+            transaction_account=self.account
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
 
     @property
     def remaining(self):
@@ -210,13 +269,22 @@ class Budget(models.Model):
         return 0
 
     def save(self, *args, **kwargs):
-        # Calculate the end_date based on the start_date and duration
-        if not self.end_date:  # Only calculate if end_date is not set (to avoid overriding)
-            if self.duration == '1 week':
-                self.end_date = self.start_date + timedelta(weeks=1)
-            elif self.duration == '1 month':
-                self.end_date = self.start_date.replace(month=self.start_date.month + 1)
+        # Set default start date for new budgets
+        if not self.pk and not self.start_date:
+            self.start_date = self.get_default_start_date()
+        
+        # Calculate end date if not set
+        if not self.end_date:
+            self.end_date = self.calculate_end_date()
+        
+        # Validate the model
+        self.clean()
+        
         super().save(*args, **kwargs)
 
     class Meta:
-        unique_together = ('category', 'user', 'start_date', 'account')  
+        unique_together = ('subcategory', 'user', 'start_date', 'account')
+        indexes = [
+            models.Index(fields=['start_date', 'end_date']),
+            models.Index(fields=['user', 'subcategory']),
+        ]  

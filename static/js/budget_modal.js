@@ -5,18 +5,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Function to display form errors
 function displayFormErrors(form, errors) {
-    // Clear previous errors
+    // Clear existing errors
     form.find('.invalid-feedback').remove();
     form.find('.is-invalid').removeClass('is-invalid');
     
-    // Display new errors
-    Object.keys(errors).forEach(function(field) {
-        const input = form.find(`#id_${field}`);
+    // Add new errors
+    for (var field in errors) {
+        var input = form.find(`[name="${field}"]`);
         input.addClass('is-invalid');
-        const errorDiv = $('<div class="invalid-feedback"></div>');
-        errorDiv.text(errors[field].join(' '));
+        
+        var errorDiv = $('<div>')
+            .addClass('invalid-feedback')
+            .text(errors[field].join(' '));
+        
         input.after(errorDiv);
-    });
+    }
 }
 
 // Function to clear form errors
@@ -69,7 +72,7 @@ $('#addBudgetForm').submit(function(e) {
 $('#editBudgetModal').on('show.bs.modal', function (event) {
     var button = $(event.relatedTarget);
     var budgetId = button.data('id');
-    var category = button.data('category');
+    var subcategoryId = button.data('subcategory');
     var amount = button.data('amount');
     var startDate = button.data('start_date');
     var endDate = button.data('end_date');
@@ -79,11 +82,21 @@ $('#editBudgetModal').on('show.bs.modal', function (event) {
     clearFormErrors(modal.find('form'));
     
     modal.find('#budget_id').val(budgetId);
-    modal.find('#id_category').val(category);
+    modal.find('#id_subcategory').val(subcategoryId);
     modal.find('#id_amount').val(amount);
     modal.find('#id_start_date').val(startDate);
     modal.find('#id_end_date').val(endDate);
     modal.find('#id_duration').val(duration);
+    
+    // Select the subcategory in the visual selector
+    modal.find('.subcategory-item').removeClass('selected');
+    modal.find(`.subcategory-item[data-subcategory-id="${subcategoryId}"]`).addClass('selected');
+    
+    // Expand the parent category
+    var selectedSubcategory = modal.find(`.subcategory-item[data-subcategory-id="${subcategoryId}"]`);
+    var parentCategory = selectedSubcategory.closest('.category-item');
+    parentCategory.find('.subcategories-container').addClass('show');
+    parentCategory.find('.bi-chevron-right').removeClass('bi-chevron-right').addClass('bi-chevron-down');
 });
 
 // Handle Edit Budget Form Submission
@@ -134,14 +147,20 @@ $('#deleteBudgetForm').submit(function(e) {
         data: formData,
         success: function(response) {
             if (response.success) {
-                // Reload the page to show the budget has been deleted
+                // Reload the page to show the updated budgets
                 window.location.reload();
             } else {
-                alert(response.error || 'There was an error deleting the budget');
+                alert('There was an error deleting the budget');
             }
         },
         error: function() {
             alert('There was an error connecting to the server');
         }
     });
+});
+
+// Hide subcategory select and show custom selector
+$(document).ready(function() {
+    // Hide the original subcategory select
+    $('#id_subcategory').hide();
 });

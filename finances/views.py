@@ -777,26 +777,76 @@ def export_csv(request):
     
     return render(request, 'finances/export_csv.html', {'form': form})
 
+def renew_expired_budgets():
+    """Automatically renew budgets that have reached their end date"""
+    today = timezone.now().date()
+    
+    # Get budgets that ended yesterday
+    expired_budgets = Budget.objects.filter(
+        end_date=today - timedelta(days=1)
+    )
+    
+    for budget in expired_budgets:
+        # Calculate new start and end dates based on duration
+        if budget.duration == '1 week':
+            new_start_date = budget.end_date + timedelta(days=1)
+            new_end_date = new_start_date + timedelta(days=6)
+        elif budget.duration == '1 month':
+            new_start_date = budget.end_date + timedelta(days=1)
+            # Get the last day of the next month
+            if new_start_date.month == 12:
+                next_month = new_start_date.replace(year=new_start_date.year + 1, month=1, day=1)
+            else:
+                next_month = new_start_date.replace(month=new_start_date.month + 1, day=1)
+            new_end_date = next_month - timedelta(days=1)
+        
+        # Create new budget with same details but new dates
+        new_budget = Budget.objects.create(
+            user=budget.user,
+            category=budget.category,
+            amount=budget.amount,
+            start_date=new_start_date,
+            end_date=new_end_date,
+            duration=budget.duration,
+            account=budget.account
+        )
+        new_budget.save()
+
+def cleanup_expired_budgets():
+    """Remove budgets that are more than 7 days past their end date"""
+    today = timezone.now().date()
+    cutoff_date = today - timedelta(days=7)
+    
+    # Delete budgets that ended more than 7 days ago
+    Budget.objects.filter(
+        end_date__lt=cutoff_date
+    ).delete()
+
 @login_required
 def manage_budget(request):
+    # Run cleanup and renewal before showing the page
+    cleanup_expired_budgets()
+    renew_expired_budgets()
+    
     form = BudgetForm(user=request.user)
     
     today = timezone.now().date()
-    budgets = Budget.objects.select_related('category').filter(
+    # Get all active budgets (those that include today's date)
+    budgets = Budget.objects.select_related('subcategory').filter(
         user=request.user,
-        start_date__year=today.year,
-        start_date__month=today.month
+        start_date__lte=today,
+        end_date__gte=today
     )
     
     budget_data = []
     for budget in budgets:
-        # Calculate the amount spent in this category for the current month
+        # Calculate the amount spent in this subcategory for the current period
         spent = Transaction.objects.filter(
             user=request.user,
             type='expense',
-            category=budget.category,
-            date__year=today.year,
-            date__month=today.month,
+            subcategory=budget.subcategory,
+            date__gte=budget.start_date,
+            date__lte=budget.end_date,
             transaction_account=budget.account
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         
@@ -807,7 +857,7 @@ def manage_budget(request):
         # Prepare the budget data to display
         budget_data.append({
             'id': budget.id,
-            'category': budget.category,  # Pass the entire category object
+            'subcategory': budget.subcategory,  # Pass the entire subcategory object
             'budget': budget.amount,
             'spent': spent,
             'remaining': remaining,

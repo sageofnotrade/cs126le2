@@ -18,8 +18,8 @@ class SubCategoryAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 class BudgetAdmin(admin.ModelAdmin):
-    list_display = ('category', 'amount', 'start_date', 'end_date', 'user')  # Show start_date and end_date
-    list_filter = ('category', 'user', 'start_date', 'end_date')  # Filter by start_date and end_date
+    list_display = ('subcategory', 'amount', 'start_date', 'end_date', 'user')  # Show start_date and end_date
+    list_filter = ('subcategory', 'user', 'start_date', 'end_date')  # Filter by start_date and end_date
 
 class AccountAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'user')
