@@ -483,21 +483,65 @@ def dashboard(request):
     first_day = today.replace(day=1)
     last_day = today.replace(day=calendar.monthrange(today.year, today.month)[1])
     
-    income = Transaction.objects.filter(
+    # Get current month's transactions
+    current_month_income = Transaction.objects.filter(
         user=request.user,
         type='income',
         date__gte=first_day,
         date__lte=last_day
     ).aggregate(Sum('amount'))['amount__sum'] or 0
     
-    expenses = Transaction.objects.filter(
+    current_month_expenses = Transaction.objects.filter(
         user=request.user,
         type='expense',
         date__gte=first_day,
         date__lte=last_day
     ).aggregate(Sum('amount'))['amount__sum'] or 0
     
-    balance = income - expenses
+    current_month_balance = current_month_income - current_month_expenses
+    
+    # Get previous month's transactions
+    if today.month == 1:
+        prev_month = today.replace(year=today.year - 1, month=12)
+    else:
+        prev_month = today.replace(month=today.month - 1)
+    
+    prev_first_day = prev_month.replace(day=1)
+    prev_last_day = prev_month.replace(day=calendar.monthrange(prev_month.year, prev_month.month)[1])
+    
+    prev_month_income = Transaction.objects.filter(
+        user=request.user,
+        type='income',
+        date__gte=prev_first_day,
+        date__lte=prev_last_day
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    
+    prev_month_expenses = Transaction.objects.filter(
+        user=request.user,
+        type='expense',
+        date__gte=prev_first_day,
+        date__lte=prev_last_day
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    
+    prev_month_balance = prev_month_income - prev_month_expenses
+    
+    # Get account balances
+    total_balance = debit_balance = credit_balance = wallet_balance = 0
+    
+    debit_accounts = DebitAccount.objects.filter(user=request.user)
+    credit_accounts = CreditAccount.objects.filter(user=request.user)
+    wallet_accounts = Wallet.objects.filter(user=request.user)
+    
+    for account in list(debit_accounts):
+        debit_balance += account.balance - account.maintaining_balance
+    
+    for account in list(credit_accounts):
+        credit_balance += account.credit_limit - account.current_usage
+    
+    for account in list(wallet_accounts):
+        wallet_balance += account.balance
+
+    total_balance = debit_balance + credit_balance + wallet_balance
     
     recent_transactions = Transaction.objects.filter(
         user=request.user
@@ -531,23 +575,40 @@ def dashboard(request):
             user=request.user,
             type='expense',
             category=budget.category,
-            date__gte=first_day,
-            date__lte=last_day,
-            transaction_account=budget.account
+            date__year=today.year,
+            date__month=today.month
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         
-        if spent > budget.amount:
+        if spent > float(budget.amount) * 0.8:  # Warning at 80% of budget
             budget_warnings.append({
                 'category': budget.category.name,
-                'budget': float(budget.amount),
-                'spent': float(spent),
+                'budget': budget.amount,
+                'spent': spent,
                 'percentage': round((spent / budget.amount) * 100)
             })
     
     context = {
-        'income': income,
-        'expenses': expenses,
-        'balance': balance,
+        'current_month_income': current_month_income,
+        'current_month_expenses': current_month_expenses,
+        'current_month_balance': current_month_balance,
+        'prev_month_income': prev_month_income,
+        'prev_month_expenses': prev_month_expenses,
+        'prev_month_balance': prev_month_balance,
+        'accounts_summary': {
+            'debit': {
+                'accounts': list(debit_accounts),
+                'balance': debit_balance
+            },
+            'credit': {
+                'accounts': list(credit_accounts),
+                'balance': credit_balance
+            },
+            'wallet': {
+                'accounts': list(wallet_accounts),
+                'balance': wallet_balance
+            },
+        },
+        'total_balance': total_balance,
         'recent_transactions': recent_transactions,
         'expenses_by_category': json.dumps(expenses_by_category),
         'budget_warnings': budget_warnings
@@ -600,77 +661,6 @@ def delete_transaction(request, pk):
 def reports_view(request):
     return render(request, 'reports.html')
     
-@login_required
-def monthly_summary(request):
-    if request.method == 'POST':
-        form = DateRangeForm(request.POST)
-        if form.is_valid():
-            start_date = form.cleaned_data['start_date']
-            end_date = form.cleaned_data['end_date']
-        else:
-            today = timezone.now().date()
-            start_date = today.replace(day=1)
-            end_date = today
-    else:
-        today = timezone.now().date()
-        start_date = today.replace(day=1)
-        end_date = today
-        form = DateRangeForm(initial={'start_date': start_date, 'end_date': end_date})
-    
-    # Get all transactions within the date range
-    transactions = Transaction.objects.filter(
-        user=request.user,
-        date__gte=start_date,
-        date__lte=end_date
-    ).order_by('-date')
-    
-    # Calculate totals
-    income = Transaction.objects.filter(
-        user=request.user,
-        type='income',
-        date__gte=start_date,
-        date__lte=end_date
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    
-    expenses = Transaction.objects.filter(
-        user=request.user,
-        type='expense',
-        date__gte=start_date,
-        date__lte=end_date
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    
-    # Get expenses by category for pie chart
-    categories = Category.objects.filter(user=request.user)
-    expenses_by_category = []
-    
-    for category in categories:
-        amount = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            category=category,
-            date__gte=start_date,
-            date__lte=end_date
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        if amount > 0:
-            expenses_by_category.append({
-                'category': category.name,
-                'amount': float(amount)
-            })
-    
-    context = {
-        'form': form,
-        'transactions': transactions,
-        'income': income,
-        'expenses': expenses,
-        'balance': income - expenses,
-        'expenses_by_category': json.dumps(expenses_by_category),
-        'start_date': start_date,
-        'end_date': end_date
-    }
-    
-    return render(request, 'finances/monthly_summary.html', context)
-
 @login_required
 def categories(request):
     """View to manage categories, works with both Django forms and React frontend"""
