@@ -11,12 +11,13 @@ import calendar
 import csv
 import json
 from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory, Debt, ScheduledTransaction
-from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, SubCategoryForm, DebtForm, ScheduledTransactionForm
+from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, SubCategoryForm, DebtForm, ScheduledTransactionForm, ExportForm, ImportForm
 from django import forms
 from django.contrib.auth.models import User
 import logging
 from django.db import models
 from decimal import Decimal
+import openpyxl
 
 def home(request):
     return render(request, 'finances/home.html')
@@ -582,7 +583,8 @@ def dashboard(request):
         'balance': balance,
         'recent_transactions': recent_transactions,
         'expenses_by_category': json.dumps(expenses_by_category),
-        'budget_warnings': budget_warnings
+        'budget_warnings': budget_warnings,
+        'import_export_url': 'import-export'  # Add this line to provide the correct URL
     }
     
     return render(request, 'finances/dashboard.html', context)
@@ -2104,3 +2106,525 @@ def charts_data_future(request):
             'debts_credits': [],
             'credit_card_payments': []
         }, status=500)
+
+@login_required
+def export_data(request):
+    if request.method == 'POST':
+        form = ExportForm(request.POST)
+        if form.is_valid():
+            start_date = form.cleaned_data['start_date']
+            end_date = form.cleaned_data['end_date']
+            format = form.cleaned_data['format']
+            include_fields = form.cleaned_data['include_fields']
+            
+            # Get transactions with related fields
+            transactions = Transaction.objects.filter(
+                user=request.user,
+                date__gte=start_date,
+                date__lte=end_date
+            ).select_related('category', 'subcategory', 'transaction_account').order_by('-date')
+            
+            if format == 'csv':
+                response = HttpResponse(content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename="transactions_{start_date}_{end_date}.csv"'
+                
+                writer = csv.writer(response)
+                writer.writerow(include_fields)  # Write header row
+                
+                for transaction in transactions:
+                    row = []
+                    for field in include_fields:
+                        if field == 'id':
+                            row.append(transaction.id)
+                        elif field == 'title':
+                            row.append(transaction.title)
+                        elif field == 'amount':
+                            row.append(transaction.amount)
+                        elif field == 'currency':
+                            row.append(transaction.currency)
+                        elif field == 'date':
+                            row.append(transaction.date)
+                        elif field == 'time':
+                            row.append(transaction.time)
+                        elif field == 'type':
+                            row.append(transaction.type)
+                        elif field == 'category':
+                            row.append(transaction.category.name if transaction.category else '')
+                        elif field == 'subcategory':
+                            row.append(transaction.subcategory.name if transaction.subcategory else '')
+                        elif field == 'account':
+                            row.append(transaction.transaction_account.name if transaction.transaction_account else '')
+                        elif field == 'notes':
+                            row.append(transaction.notes or '')
+                        elif field == 'photo':
+                            row.append(request.build_absolute_uri(transaction.photo.url) if transaction.photo else '')
+                    writer.writerow(row)
+                
+                return response
+            
+            elif format == 'json':
+                data = []
+                for transaction in transactions:
+                    transaction_data = {}
+                    for field in include_fields:
+                        if field == 'id':
+                            transaction_data['id'] = transaction.id
+                        elif field == 'title':
+                            transaction_data['title'] = transaction.title
+                        elif field == 'amount':
+                            transaction_data['amount'] = float(transaction.amount)
+                        elif field == 'currency':
+                            transaction_data['currency'] = transaction.currency
+                        elif field == 'date':
+                            transaction_data['date'] = transaction.date.isoformat()
+                        elif field == 'time':
+                            transaction_data['time'] = transaction.time.strftime('%H:%M:%S')
+                        elif field == 'type':
+                            transaction_data['type'] = transaction.type
+                        elif field == 'category':
+                            transaction_data['category'] = transaction.category.name if transaction.category else None
+                        elif field == 'subcategory':
+                            transaction_data['subcategory'] = transaction.subcategory.name if transaction.subcategory else None
+                        elif field == 'account':
+                            transaction_data['account'] = transaction.transaction_account.name if transaction.transaction_account else None
+                        elif field == 'notes':
+                            transaction_data['notes'] = transaction.notes
+                        elif field == 'photo':
+                            transaction_data['photo'] = request.build_absolute_uri(transaction.photo.url) if transaction.photo else None
+                    data.append(transaction_data)
+                
+                response = HttpResponse(json.dumps(data, indent=2), content_type='application/json')
+                response['Content-Disposition'] = f'attachment; filename="transactions_{start_date}_{end_date}.json"'
+                return response
+            
+            elif format == 'xlsx':
+                import openpyxl
+                from openpyxl.styles import Font, PatternFill
+                
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = 'Transactions'
+                
+                # Write header row with styling
+                header_font = Font(bold=True)
+                header_fill = PatternFill(start_color='CCCCCC', end_color='CCCCCC', fill_type='solid')
+                
+                for col, field in enumerate(include_fields, 1):
+                    cell = ws.cell(row=1, column=col, value=field)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                
+                # Write data rows
+                for row, transaction in enumerate(transactions, 2):
+                    for col, field in enumerate(include_fields, 1):
+                        if field == 'id':
+                            value = transaction.id
+                        elif field == 'title':
+                            value = transaction.title
+                        elif field == 'amount':
+                            value = float(transaction.amount)
+                        elif field == 'currency':
+                            value = transaction.currency
+                        elif field == 'date':
+                            value = transaction.date
+                        elif field == 'time':
+                            value = transaction.time
+                        elif field == 'type':
+                            value = transaction.type
+                        elif field == 'category':
+                            value = transaction.category.name if transaction.category else ''
+                        elif field == 'subcategory':
+                            value = transaction.subcategory.name if transaction.subcategory else ''
+                        elif field == 'account':
+                            value = transaction.transaction_account.name if transaction.transaction_account else ''
+                        elif field == 'notes':
+                            value = transaction.notes or ''
+                        elif field == 'photo':
+                            value = request.build_absolute_uri(transaction.photo.url) if transaction.photo else ''
+                        ws.cell(row=row, column=col, value=value)
+                
+                # Auto-adjust column widths
+                for col in ws.columns:
+                    max_length = 0
+                    column = col[0].column_letter
+                    for cell in col:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = (max_length + 2)
+                    ws.column_dimensions[column].width = adjusted_width
+                
+                response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = f'attachment; filename="transactions_{start_date}_{end_date}.xlsx"'
+                wb.save(response)
+                return response
+    else:
+        today = timezone.now().date()
+        start_date = today.replace(day=1)
+        end_date = today
+        form = ExportForm(initial={'start_date': start_date, 'end_date': end_date})
+    
+    return render(request, 'finances/export_data.html', {'form': form})
+
+@login_required
+def import_data(request):
+    if request.method == 'POST':
+        form = ImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            file = request.FILES['file']
+            format = form.cleaned_data['format']
+            duplicate_handling = form.cleaned_data['duplicate_handling']
+            date_format = form.cleaned_data['date_format'] or '%Y-%m-%d'
+            
+            try:
+                if format == 'csv':
+                    decoded_file = file.read().decode('utf-8')
+                    csv_data = csv.reader(decoded_file.splitlines(), delimiter=',')
+                    headers = next(csv_data)  # Skip header row
+                    
+                    # Process each row
+                    for row in csv_data:
+                        if len(row) >= 5:  # Ensure minimum required fields
+                            title = row[0]
+                            amount = float(row[1])
+                            date = datetime.strptime(row[2], date_format).date()
+                            transaction_type = row[3]
+                            category_name = row[4]
+                            notes = row[5] if len(row) > 5 else ''
+                            
+                            # Get or create category
+                            category = None
+                            if category_name:
+                                category, _ = Category.objects.get_or_create(
+                                    user=request.user,
+                                    name=category_name,
+                                    type=transaction_type
+                                )
+                            
+                            # Handle duplicates based on user preference
+                            if duplicate_handling == 'skip':
+                                if Transaction.objects.filter(
+                                    user=request.user,
+                                    title=title,
+                                    amount=amount,
+                                    date=date,
+                                    type=transaction_type
+                                ).exists():
+                                    continue
+                            
+                            # Create transaction
+                            Transaction.objects.create(
+                                user=request.user,
+                                title=title,
+                                amount=amount,
+                                date=date,
+                                type=transaction_type,
+                                category=category,
+                                notes=notes
+                            )
+                    
+                elif format == 'json':
+                    data = json.loads(file.read().decode('utf-8'))
+                    for item in data:
+                        # Handle duplicates based on user preference
+                        if duplicate_handling == 'skip':
+                            if Transaction.objects.filter(
+                                user=request.user,
+                                title=item['title'],
+                                amount=item['amount'],
+                                date=datetime.strptime(item['date'], date_format).date(),
+                                type=item['type']
+                            ).exists():
+                                continue
+                        
+                        # Get or create category
+                        category = None
+                        if 'category' in item and item['category']:
+                            category, _ = Category.objects.get_or_create(
+                                user=request.user,
+                                name=item['category'],
+                                type=item['type']
+                            )
+                        
+                        # Create transaction
+                        Transaction.objects.create(
+                            user=request.user,
+                            title=item['title'],
+                            amount=item['amount'],
+                            date=datetime.strptime(item['date'], date_format).date(),
+                            time=datetime.strptime(item['time'], '%H:%M:%S').time() if 'time' in item else None,
+                            type=item['type'],
+                            category=category,
+                            notes=item.get('notes', '')
+                        )
+                
+                elif format == 'xlsx':
+                    import openpyxl
+                    wb = openpyxl.load_workbook(file)
+                    ws = wb.active
+                    headers = [cell.value for cell in ws[1]]
+                    
+                    for row in ws.iter_rows(min_row=2):
+                        row_data = {headers[i]: cell.value for i, cell in enumerate(row)}
+                        
+                        # Handle duplicates based on user preference
+                        if duplicate_handling == 'skip':
+                            if Transaction.objects.filter(
+                                user=request.user,
+                                title=row_data['title'],
+                                amount=float(row_data['amount']),
+                                date=datetime.strptime(row_data['date'], date_format).date(),
+                                type=row_data['type']
+                            ).exists():
+                                continue
+                        
+                        # Get or create category
+                        category = None
+                        if 'category' in row_data and row_data['category']:
+                            category, _ = Category.objects.get_or_create(
+                                user=request.user,
+                                name=row_data['category'],
+                                type=row_data['type']
+                            )
+                        
+                        # Create transaction
+                        Transaction.objects.create(
+                            user=request.user,
+                            title=row_data['title'],
+                            amount=float(row_data['amount']),
+                            date=datetime.strptime(row_data['date'], date_format).date(),
+                            time=datetime.strptime(row_data['time'], '%H:%M:%S').time() if 'time' in row_data else None,
+                            type=row_data['type'],
+                            category=category,
+                            notes=row_data.get('notes', '')
+                        )
+                
+                messages.success(request, 'Transactions imported successfully!')
+                return redirect('transactions')
+            
+            except Exception as e:
+                messages.error(request, f'Error importing file: {str(e)}')
+    else:
+        form = ImportForm()
+    
+    return render(request, 'finances/import_data.html', {'form': form})
+
+def import_export_data(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    export_form = ExportForm(user=request.user)
+    import_form = ImportForm()
+    
+    if request.method == 'POST':
+        operation = request.POST.get('operation')
+        
+        if operation == 'export':
+            export_form = ExportForm(request.POST, user=request.user)
+            if export_form.is_valid():
+                start_date = export_form.cleaned_data['start_date']
+                end_date = export_form.cleaned_data['end_date']
+                format = export_form.cleaned_data['format']
+                separator = export_form.cleaned_data['separator']
+                account = export_form.cleaned_data['account']
+                include_income = export_form.cleaned_data['include_income']
+                include_expenses = export_form.cleaned_data['include_expenses']
+                
+                # Build transaction filter
+                transaction_filter = {
+                    'user': request.user,
+                    'date__range': [start_date, end_date]
+                }
+                
+                # Filter by account if specific account selected
+                if account != 'all':
+                    transaction_filter['transaction_account_id'] = account
+                
+                # Filter by transaction type
+                transaction_types = []
+                if include_income:
+                    transaction_types.append('income')
+                if include_expenses:
+                    transaction_types.append('expense')
+                if transaction_types:
+                    transaction_filter['type__in'] = transaction_types
+                
+                transactions = Transaction.objects.filter(**transaction_filter).order_by('date')
+                
+                # Prepare headers and data
+                headers = ['Date', 'Title', 'Amount', 'Type', 'Category', 'Account', 'Notes']
+                
+                if format == 'csv':
+                    response = HttpResponse(content_type='text/csv')
+                    response['Content-Disposition'] = f'attachment; filename="transactions_{start_date}_{end_date}.csv"'
+                    
+                    writer = csv.writer(response, delimiter=separator)
+                    writer.writerow(headers)
+                    
+                    for transaction in transactions:
+                        writer.writerow([
+                            transaction.date,
+                            transaction.title,
+                            transaction.amount,
+                            transaction.type,
+                            transaction.category.name if transaction.category else '',
+                            transaction.transaction_account.name if transaction.transaction_account else '',
+                            transaction.notes or ''
+                        ])
+                    
+                    return response
+                    
+                elif format == 'xlsx':
+                    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    response['Content-Disposition'] = f'attachment; filename="transactions_{start_date}_{end_date}.xlsx"'
+                    
+                    wb = openpyxl.Workbook()
+                    ws = wb.active
+                    ws.title = 'Transactions'
+                    
+                    # Write headers
+                    for col, header in enumerate(headers, 1):
+                        ws.cell(row=1, column=col, value=header)
+                    
+                    # Write data
+                    for row, transaction in enumerate(transactions, 2):
+                        ws.cell(row=row, column=1, value=transaction.date)
+                        ws.cell(row=row, column=2, value=transaction.title)
+                        ws.cell(row=row, column=3, value=float(transaction.amount))
+                        ws.cell(row=row, column=4, value=transaction.type)
+                        ws.cell(row=row, column=5, value=transaction.category.name if transaction.category else '')
+                        ws.cell(row=row, column=6, value=transaction.transaction_account.name if transaction.transaction_account else '')
+                        ws.cell(row=row, column=7, value=transaction.notes or '')
+                    
+                    # Auto-adjust column widths
+                    for column in ws.columns:
+                        max_length = 0
+                        column = [cell for cell in column]
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = (max_length + 2)
+                        ws.column_dimensions[column[0].column_letter].width = adjusted_width
+                    
+                    wb.save(response)
+                    return response
+                    
+        elif operation == 'import':
+            import_form = ImportForm(request.POST, request.FILES)
+            if import_form.is_valid():
+                file = import_form.cleaned_data['file']
+                duplicate_handling = import_form.cleaned_data['duplicate_handling']
+                
+                try:
+                    # Determine file format from extension
+                    file_format = file.name.split('.')[-1].lower()
+                    
+                    if file_format == 'csv':
+                        decoded_file = file.read().decode('utf-8').splitlines()
+                        reader = csv.DictReader(decoded_file)
+                        transactions_data = list(reader)
+                    elif file_format == 'xlsx':
+                        wb = openpyxl.load_workbook(file)
+                        ws = wb.active
+                        headers = [cell.value for cell in ws[1]]
+                        transactions_data = []
+                        for row in ws.iter_rows(min_row=2):
+                            transaction = {}
+                            for header, cell in zip(headers, row):
+                                transaction[header] = cell.value
+                            transactions_data.append(transaction)
+                    
+                    success_count = 0
+                    error_count = 0
+                    errors = []
+                    
+                    expected_headers = ['Date', 'Title', 'Amount', 'Type', 'Category', 'Account', 'Notes']
+                    if not all(header in (transactions_data[0].keys() if transactions_data else []) for header in expected_headers):
+                        raise ValueError('Invalid file format. This file does not match the export format from this system.')
+                    
+                    for data in transactions_data:
+                        try:
+                            # Parse date (our export format uses YYYY-MM-DD)
+                            date_str = str(data['Date'])  # Convert to string first
+                            # Handle both date and datetime formats
+                            try:
+                                date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                            except ValueError:
+                                # If the string includes time, try parsing with time
+                                date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S').date()
+                            
+                            # Get or create category if provided
+                            category = None
+                            if data['Category']:
+                                category, _ = Category.objects.get_or_create(
+                                    user=request.user,
+                                    name=data['Category'],
+                                    defaults={'type': data['Type']}
+                                )
+                            
+                            # Get or create account if provided
+                            account = None
+                            if data['Account']:
+                                account, _ = Account.objects.get_or_create(
+                                    user=request.user,
+                                    name=data['Account']
+                                )
+                            
+                            # Check for duplicates
+                            existing_transaction = Transaction.objects.filter(
+                                user=request.user,
+                                title=data['Title'],
+                                amount=Decimal(str(data['Amount'])),
+                                date=date
+                            ).first()
+                            
+                            if existing_transaction:
+                                if duplicate_handling == 'skip':
+                                    continue
+                                elif duplicate_handling == 'update':
+                                    existing_transaction.type = data['Type']
+                                    existing_transaction.category = category
+                                    existing_transaction.transaction_account = account
+                                    existing_transaction.notes = data['Notes']
+                                    existing_transaction.save()
+                                    success_count += 1
+                                    continue
+                            
+                            # Create new transaction
+                            Transaction.objects.create(
+                                user=request.user,
+                                title=data['Title'],
+                                amount=Decimal(str(data['Amount'])),
+                                date=date,
+                                type=data['Type'],
+                                category=category,
+                                transaction_account=account,
+                                notes=data['Notes']
+                            )
+                            success_count += 1
+                            
+                        except Exception as e:
+                            error_count += 1
+                            errors.append(str(e))
+                    
+                    if error_count > 0:
+                        messages.warning(request, f'Import completed with {success_count} successful imports and {error_count} errors.')
+                        if errors:
+                            messages.error(request, 'Errors: ' + ', '.join(errors))
+                    else:
+                        messages.success(request, f'Successfully imported {success_count} transactions.')
+                    
+                except ValueError as ve:
+                    messages.error(request, str(ve))
+                except Exception as e:
+                    messages.error(request, f'Error processing file: {str(e)}')
+    
+    return render(request, 'finances/import_export.html', {
+        'export_form': export_form,
+        'import_form': import_form
+    })

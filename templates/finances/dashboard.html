@@ -142,6 +142,28 @@
     </div>
 </div>
 
+<!-- Quick Actions -->
+<section class="quick-actions mt-4" aria-labelledby="quick-actions-heading">
+    <div class="card border-0 shadow-sm">
+        <header class="card-header">
+            <h2 class="h5 mb-0" id="quick-actions-heading">Quick Actions</h2>
+        </header>
+        <div class="card-body">
+            <div class="d-grid gap-2">
+                <a href="{% url 'add_transaction' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Add Transaction
+                </a>
+                <a href="{% url 'import_export_data' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-down-up me-2"></i>Import/Export Data
+                </a>
+                <a href="{% url 'manage_budget' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-wallet2 me-2"></i>Manage Budget
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Rest of the dashboard content -->
 {% if budget_warnings %}
 <section class="budget-warnings mt-4" aria-labelledby="warnings-heading">
@@ -214,10 +236,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
-                    enabled: false  // Disable tooltips/hover functionality
+                    enabled: false
                 }
             },
-            events: []  // Disable all events including hover
+            events: []
         }
     };
 
@@ -232,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'],
                 borderColor: ['rgb(40, 167, 69)', 'rgb(220, 53, 69)'],
                 borderWidth: 0,
-                hoverOffset: 0  // Disable hover offset effect
+                hoverOffset: 0
             }]
         }
     });
@@ -248,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'],
                 borderColor: ['rgb(40, 167, 69)', 'rgb(220, 53, 69)'],
                 borderWidth: 0,
-                hoverOffset: 0  // Disable hover offset effect
+                hoverOffset: 0
             }]
         }
     });

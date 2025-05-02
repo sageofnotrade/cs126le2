@@ -527,7 +527,7 @@
             <span class="sidebar-text">Charts</span>
         </a>
         <div class="sidebar-divider"></div>
-        <a href="{% url 'export_csv' %}" class="sidebar-item {% if '/export_csv/' in request.path %}active{% endif %}">
+        <a href="{% url 'import_export_data' %}" class="sidebar-item {% if '/import-export/' in request.path %}active{% endif %}">
             <i class="bi bi-box-arrow-down sidebar-icon"></i>
             <span class="sidebar-text">Import/Export</span>
         </a>

@@ -250,4 +250,83 @@ class DateRangeForm(forms.Form):
     end_date = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'}),
         initial=timezone.now()
-    ) 
+    )
+
+class ExportForm(forms.Form):
+    separator = forms.CharField(
+        max_length=1,
+        initial=';',
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    start_date = forms.DateField(
+        label='From',
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+    end_date = forms.DateField(
+        label='To',
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+    account = forms.ChoiceField(
+        label='Account',
+        choices=[('all', 'All accounts')],
+        initial='all',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    include_income = forms.BooleanField(
+        label='Income',
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    include_expenses = forms.BooleanField(
+        label='Expenses',
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    format = forms.ChoiceField(
+        choices=[
+            ('csv', 'CSV'),
+            ('xlsx', 'Excel')
+        ],
+        initial='csv',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        if user:
+            # Get all accounts for the user
+            from .models import Account
+            account_choices = [('all', 'All accounts')]
+            accounts = Account.objects.filter(user=user)
+            account_choices.extend([(str(acc.id), acc.name) for acc in accounts])
+            self.fields['account'].choices = account_choices
+
+class ImportForm(forms.Form):
+    file = forms.FileField(
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.csv,.xlsx'
+        }),
+        required=True,
+        help_text='Select a file previously exported from this system'
+    )
+    duplicate_handling = forms.ChoiceField(
+        choices=[
+            ('skip', 'Skip duplicates'),
+            ('update', 'Update existing'),
+            ('create_new', 'Create new')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        initial='skip'
+    )
+
+    def clean_file(self):
+        file = self.cleaned_data['file']
+        ext = file.name.split('.')[-1].lower()
+        if ext not in ['csv', 'xlsx']:
+            raise forms.ValidationError('Only CSV and Excel files exported from this system are supported.')
+        return file 
