@@ -47,7 +47,7 @@ class ScheduledTransactionForm(forms.ModelForm):
         model = ScheduledTransaction
         fields = ['name', 'category', 'transaction_type', 'account', 'amount', 'date_scheduled', 'repeat_type', 'repeats', 'note']
         widgets = {
-            'date_scheduled': forms.DateInput(attrs={'type': 'date', 'min': timezone.now().date().isoformat()}),
+            'date_scheduled': forms.DateTimeInput(attrs={'type': 'datetime-local', 'min': timezone.now().strftime('%Y-%m-%dT%H:%M')}),
             'note': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'amount': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
             'repeat_type': forms.Select(attrs={'class': 'form-select'}),
@@ -87,7 +87,7 @@ class ScheduledTransactionForm(forms.ModelForm):
 
     def clean_date_scheduled(self):
         date_scheduled = self.cleaned_data.get('date_scheduled')
-        if date_scheduled < timezone.now().date():
+        if date_scheduled < timezone.now():
             raise forms.ValidationError("The scheduled date cannot be in the past.")
         return date_scheduled
 
