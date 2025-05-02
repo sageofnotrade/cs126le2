@@ -5,6 +5,42 @@
  * It also provides an empty state when there are no transactions.
  */
 
+// Central state management object
+window.transactionState = {
+    month: null,
+    year: null,
+    category: null,
+    subcategory: null,
+    search: null,
+    types: null,
+    getApiQueryString: function() {
+        // Build query string from current state
+        const params = [];
+        
+        if (this.month && this.year) {
+            params.push(`month=${this.year}-${this.month.toString().padStart(2, '0')}`);
+        }
+        
+        if (this.category) {
+            params.push(`category=${this.category}`);
+        }
+        
+        if (this.subcategory) {
+            params.push(`subcategory=${this.subcategory}`);
+        }
+        
+        if (this.search) {
+            params.push(`search=${encodeURIComponent(this.search)}`);
+        }
+        
+        if (this.types && this.types.length > 0 && this.types.length < 2) {
+            params.push(`types=${this.types.join(',')}`);
+        }
+        
+        return params.join('&');
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Get month navigation buttons
     const prevMonthBtn = document.getElementById('prev-month-btn');
@@ -36,7 +72,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Set up event listeners
+    // Initialize state from current data attributes
+    const currentMonthData = document.getElementById('current-month-data');
+    if (currentMonthData) {
+        window.transactionState.month = parseInt(currentMonthData.getAttribute('data-month') || new Date().getMonth() + 1);
+        window.transactionState.year = parseInt(currentMonthData.getAttribute('data-year') || new Date().getFullYear());
+    } else {
+        // Default to current month/year
+        const now = new Date();
+        window.transactionState.month = now.getMonth() + 1;
+        window.transactionState.year = now.getFullYear();
+    }
+    
+    // Initialize transaction types
+    window.transactionState.types = ['expense', 'income']; // Default to both
+    
+    // Set up month navigation button event listeners
     if (prevMonthBtn) {
         prevMonthBtn.addEventListener('click', function() {
             navigateMonth('prev');
@@ -49,73 +100,131 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Track the current month and year
-    window.currentTransactionMonth = {
-        month: parseInt(document.getElementById('current-month-data')?.getAttribute('data-month') || new Date().getMonth() + 1),
-        year: parseInt(document.getElementById('current-month-data')?.getAttribute('data-year') || new Date().getFullYear())
-    };
-    
     // Attach event listeners to transaction checkboxes and actions
     attachTransactionEventListeners();
     
-    // Add event listener for browser back/forward navigation
-    window.addEventListener('popstate', function(event) {
-        console.log('Navigation detected', event);
-        
-        try {
-            const urlParams = new URLSearchParams(window.location.search);
-            const monthParam = urlParams.get('month');
-            
-            if (monthParam && monthParam.includes('-')) {
-                try {
-                    const [year, month] = monthParam.split('-').map(Number);
-                    
-                    // Validate the values
-                    if (!isNaN(year) && !isNaN(month) && year > 2000 && month >= 1 && month <= 12) {
-                        window.currentTransactionMonth = { month, year };
-                        loadTransactionsForMonth(urlParams.toString());
-                    } else {
-                        throw new Error('Invalid month/year values');
-                    }
-                } catch (e) {
-                    console.error('Error parsing month parameter:', e);
-                    // Fall back to current month
-                    const now = new Date();
-                    window.currentTransactionMonth = {
-                        month: now.getMonth() + 1,
-                        year: now.getFullYear()
-                    };
-                    loadTransactionsForMonth('');
-                }
-            } else {
-                // Default to current month if no month parameter is in the URL
-                const now = new Date();
-                window.currentTransactionMonth = {
-                    month: now.getMonth() + 1,
-                    year: now.getFullYear()
-                };
-                loadTransactionsForMonth('');
-            }
-        } catch (error) {
-            console.error('Error handling navigation:', error);
-            // Recover gracefully
-            const now = new Date();
-            window.currentTransactionMonth = {
-                month: now.getMonth() + 1,
-                year: now.getFullYear()
-            };
-            loadTransactionsForMonth('');
-        }
-    });
+    // Set up filter form handlers
+    setupFilterHandlers();
+    
+    // Load initial transactions
+    loadTransactions();
 });
+
+/**
+ * Set up event listeners for the filter form
+ */
+function setupFilterHandlers() {
+    const applyFiltersBtn = document.getElementById('apply-filters-btn');
+    const clearFiltersBtn = document.getElementById('clear-filters-btn');
+    const categoryFilter = document.getElementById('category-filter');
+    const searchFilter = document.getElementById('from-to-filter');
+    const expenseCheck = document.getElementById('expense-check');
+    const incomeCheck = document.getElementById('income-check');
+
+    // Apply filters button click handler
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', function() {
+            applyFilters();
+        });
+    }
+
+    // Clear filters button click handler
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', function() {
+            // Reset all filter form elements
+            if (categoryFilter) categoryFilter.value = '';
+            if (searchFilter) searchFilter.value = '';
+            if (expenseCheck) expenseCheck.checked = true;
+            if (incomeCheck) incomeCheck.checked = true;
+            
+            // Apply the reset filters
+            applyFilters();
+        });
+    }
+
+    // Quick filter changes for transaction types (without clicking Apply)
+    if (expenseCheck) {
+        expenseCheck.addEventListener('change', function() {
+            // If both are unchecked, check the one that was just clicked
+            if (!expenseCheck.checked && !incomeCheck.checked) {
+                expenseCheck.checked = true;
+            } else {
+                applyFilters();
+            }
+        });
+    }
+
+    if (incomeCheck) {
+        incomeCheck.addEventListener('change', function() {
+            // If both are unchecked, check the one that was just clicked
+            if (!expenseCheck.checked && !incomeCheck.checked) {
+                incomeCheck.checked = true;
+            } else {
+                applyFilters();
+            }
+        });
+    }
+
+    // Enable pressing Enter in the search field to apply filters
+    if (searchFilter) {
+        searchFilter.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                applyFilters();
+            }
+        });
+    }
+}
+
+/**
+ * Apply filters and load transactions with AJAX
+ */
+function applyFilters() {
+    // Get filter values
+    const categoryFilter = document.getElementById('category-filter');
+    const searchFilter = document.getElementById('from-to-filter');
+    const expenseCheck = document.getElementById('expense-check');
+    const incomeCheck = document.getElementById('income-check');
+    
+    // Update the state object with filter values
+    
+    // Handle category and subcategory
+    if (categoryFilter && categoryFilter.value) {
+        // Get data attributes for selected category/subcategory
+        const selectedOption = categoryFilter.options[categoryFilter.selectedIndex];
+        
+        if (selectedOption.dataset.subcategoryId) {
+            window.transactionState.subcategory = selectedOption.dataset.subcategoryId;
+            window.transactionState.category = selectedOption.dataset.parentCategory;
+        } else if (selectedOption.dataset.isCategory) {
+            window.transactionState.category = selectedOption.value;
+            window.transactionState.subcategory = null;
+        }
+    } else {
+        // Clear category filters if none selected
+        window.transactionState.category = null;
+        window.transactionState.subcategory = null;
+    }
+    
+    // Handle search filter
+    window.transactionState.search = searchFilter && searchFilter.value.trim() ? searchFilter.value.trim() : null;
+    
+    // Handle transaction types
+    const types = [];
+    if (expenseCheck && expenseCheck.checked) types.push('expense');
+    if (incomeCheck && incomeCheck.checked) types.push('income');
+    window.transactionState.types = types;
+    
+    // Load transactions with the updated state
+    loadTransactions();
+}
 
 /**
  * Navigate to the previous or next month
  * @param {string} direction - 'prev' or 'next'
  */
 function navigateMonth(direction) {
-    // Get current month and year
-    let { month, year } = window.currentTransactionMonth;
+    // Get current month and year from state
+    let { month, year } = window.transactionState;
     
     // Calculate new month and year
     if (direction === 'prev') {
@@ -132,56 +241,40 @@ function navigateMonth(direction) {
         }
     }
     
-    // Update the current month and year
-    window.currentTransactionMonth = { month, year };
+    // Update the state with new month and year
+    window.transactionState.month = month;
+    window.transactionState.year = year;
     
-    // Format the month for the URL
-    const formattedMonth = `${year}-${month.toString().padStart(2, '0')}`;
+    // Update the month display
+    updateMonthDisplay();
     
-    // Get current URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    urlParams.set('month', formattedMonth);
-    
-    // Update URL without reloading the page
-    const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-    window.history.pushState({ path: newUrl }, '', newUrl);
-    
-    // Load transactions for the new month via AJAX
-    loadTransactionsForMonth(urlParams.toString());
+    // Load transactions for the new month via AJAX (preserving filters)
+    loadTransactions();
 }
 
 /**
- * Load transactions for a specific month using AJAX
- * @param {string} queryParams - URL query parameters
- * @param {number} retryCount - Number of retries attempted (default: 0)
+ * Load transactions based on current state
  */
-function loadTransactionsForMonth(queryParams, retryCount = 0) {
-    console.log('Loading transactions with params:', queryParams);
+function loadTransactions() {
+    // Get query string from state object
+    const queryString = window.transactionState.getApiQueryString();
+    console.log('Loading transactions with state:', window.transactionState);
     
     // Show loading state
     const transactionList = document.querySelector('.list-group-flush');
-    const loadingHTML = `
-        <div class="list-group-item py-4 text-center" id="transactions-loading">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2 mb-0">Loading transactions...</p>
-        </div>
-    `;
-    
-    // Save scroll position
-    const scrollPos = window.scrollY;
-    
-    // Replace content with loading indicator if it's not already there
-    if (!document.getElementById('transactions-loading')) {
-        transactionList.innerHTML = loadingHTML;
+    if (!transactionList) {
+        console.error('Transaction list container not found');
+        return;
     }
+    
+    // Show loading indicator
+    showLoadingIndicator();
     
     // Create the URL with cache-busting parameter to prevent browser caching
     const timestamp = new Date().getTime();
-    const fetchUrl = `/finances/transactions/api/?${queryParams}${queryParams ? '&' : ''}cache_bust=${timestamp}`;
+    const fetchUrl = `/finances/transactions/api/?${queryString}${queryString ? '&' : ''}cache_bust=${timestamp}`;
     
-    // Fetch transactions data for the month
+    // Fetch transactions data
     fetch(fetchUrl, {
         method: 'GET',
         headers: {
@@ -204,28 +297,19 @@ function loadTransactionsForMonth(queryParams, retryCount = 0) {
             throw new Error('Invalid response format');
         }
         
-        // Update currentTransactionMonth with the received data
+        // Remove loading indicator
+        hideLoadingIndicator();
+        
+        // Update month/year in state if provided
         if (data.current_month && data.current_year) {
-            window.currentTransactionMonth = {
-                month: data.current_month,
-                year: data.current_year
-            };
+            window.transactionState.month = data.current_month;
+            window.transactionState.year = data.current_year;
         }
         
         // Update UI components
         updateTransactionList(data);
         updateTransactionSummary(data);
         updateMonthDisplay();
-        
-        // Re-initialize filter dropdown if function exists
-        if (typeof initializeCategoryFilter === 'function') {
-            setTimeout(() => {
-                initializeCategoryFilter();
-            }, 100);
-        }
-        
-        // Restore scroll position
-        window.scrollTo(0, scrollPos);
         
         // Re-attach event listeners for transaction actions
         attachTransactionEventListeners();
@@ -249,29 +333,78 @@ function loadTransactionsForMonth(queryParams, retryCount = 0) {
         if (retryCount < 2) {
             console.log(`Retrying (${retryCount + 1}/2)...`);
             setTimeout(() => {
-                loadTransactionsForMonth(queryParams, retryCount + 1);
-            }, 1000); // Wait 1 second before retrying
-            return;
+                loadTransactions(retryCount + 1);
+            }, 1000);
+        } else {
+            // Show error message
+            hideLoadingIndicator();
+            showErrorMessage('Failed to load transactions. Please try again later.');
         }
+    });
+}
+
+/**
+ * Shows a loading indicator in the transaction list
+ */
+function showLoadingIndicator() {
+    // Only add loading indicator if it doesn't already exist
+    if (!document.getElementById('transactions-loading')) {
+        const transactionList = document.querySelector('.list-group-flush');
+        if (!transactionList) return;
         
-        // Show error state with retry button
-        transactionList.innerHTML = `
-            <div class="list-group-item py-4 text-center">
-                <p class="text-danger mb-2">
-                    <i class="bi bi-exclamation-triangle"></i> 
-                    Error loading transactions: ${error.message || 'Network error'}
-                </p>
-                <button type="button" class="btn btn-primary btn-sm" id="retry-load-btn">
-                    <i class="bi bi-arrow-clockwise"></i> Retry
-                </button>
+        // Add a loading overlay instead of replacing content
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'transactions-loading-overlay';
+        loadingOverlay.className = 'position-absolute w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-75';
+        loadingOverlay.style.top = '0';
+        loadingOverlay.style.left = '0';
+        loadingOverlay.style.zIndex = '10';
+        
+        loadingOverlay.innerHTML = `
+            <div class="text-center" id="transactions-loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 mb-0">Loading transactions...</p>
             </div>
         `;
         
-        // Add event listener to retry button
-        document.getElementById('retry-load-btn')?.addEventListener('click', function() {
-            loadTransactionsForMonth(queryParams);
-        });
-    });
+        // Add loading overlay to the transaction list container
+        const listContainer = transactionList.closest('.card-body') || transactionList.parentElement;
+        if (listContainer) {
+            // Make the container relative positioning if not already
+            if (window.getComputedStyle(listContainer).position === 'static') {
+                listContainer.style.position = 'relative';
+            }
+            listContainer.appendChild(loadingOverlay);
+        }
+    }
+}
+
+/**
+ * Hides the loading indicator
+ */
+function hideLoadingIndicator() {
+    const loadingOverlay = document.getElementById('transactions-loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.remove();
+    }
+}
+
+/**
+ * Shows an error message to the user
+ * @param {string} message - The error message to display
+ */
+function showErrorMessage(message) {
+    const transactionList = document.querySelector('.list-group-flush');
+    if (!transactionList) return;
+    
+    const errorElement = document.createElement('div');
+    errorElement.className = 'alert alert-danger mt-3';
+    errorElement.textContent = message;
+    
+    transactionList.innerHTML = '';
+    transactionList.appendChild(errorElement);
 }
 
 /**
@@ -280,6 +413,10 @@ function loadTransactionsForMonth(queryParams, retryCount = 0) {
  */
 function updateTransactionList(data) {
     const transactionList = document.querySelector('.list-group-flush');
+    if (!transactionList) {
+        console.error('Transaction list element not found');
+        return;
+    }
     
     // Check if there are any transactions
     if (!data.transactions || data.transactions.length === 0) {
@@ -304,18 +441,12 @@ function updateTransactionList(data) {
         
         // Add event listeners to empty state buttons
         setTimeout(() => {
-            document.getElementById('empty-add-income-btn')?.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (typeof openTransactionModal === 'function') {
-                    openTransactionModal('income');
-                }
+            document.getElementById('empty-add-income-btn')?.addEventListener('click', function() {
+                document.getElementById('add-income-btn')?.click();
             });
             
-            document.getElementById('empty-add-expense-btn')?.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (typeof openTransactionModal === 'function') {
-                    openTransactionModal('expense');
-                }
+            document.getElementById('empty-add-expense-btn')?.addEventListener('click', function() {
+                document.getElementById('add-expense-btn')?.click();
             });
         }, 100);
         
@@ -341,7 +472,7 @@ function updateTransactionList(data) {
                     <div class="d-flex align-items-center">
                         <div class="transaction-icon me-3">
                             <span class="icon-wrapper rounded-circle bg-${transaction.type === 'income' ? 'success' : 'danger'} p-2">
-                                <i class="bi ${transaction.display_icon || 'bi-tag'} text-white"></i>
+                                <i class="${transaction.display_icon || 'bi bi-tag'} text-white"></i>
                             </span>
                         </div>
                         <div>
@@ -356,7 +487,7 @@ function updateTransactionList(data) {
                 <div class="d-flex align-items-center">
                     <div class="text-end me-3">
                         <div class="text-${transaction.type === 'income' ? 'success' : 'danger'} fw-bold">
-                            ${transaction.type === 'income' ? '+' : '-'}$${transaction.amount.toFixed(2)}
+                            ${transaction.type === 'income' ? '+' : '-'}$${parseFloat(transaction.amount).toFixed(2)}
                         </div>
                         <small class="text-muted">${formattedDate}</small>
                     </div>
@@ -380,65 +511,45 @@ function updateTransactionList(data) {
     
     // Update the transaction list
     transactionList.innerHTML = transactionsHTML;
-    
-    // Re-attach event listeners for transaction actions
-    attachTransactionEventListeners();
-    
-    // If there's a custom global attachDeleteEventHandlers function, use it
-    if (typeof window.attachDeleteEventHandlers === 'function') {
-        console.log('Calling global attachDeleteEventHandlers function after transaction list update');
-        window.attachDeleteEventHandlers();
-    }
-    
-    // Initialize dropdowns on the new transaction items
-    if (typeof window.initializeDropdowns === 'function') {
-        console.log('Initializing dropdowns after transaction list update');
-        setTimeout(window.initializeDropdowns, 10);
-    }
 }
 
 /**
- * Update the transaction summary with new data
+ * Update transaction summary with new data
  * @param {Object} data - Transaction data from API
  */
 function updateTransactionSummary(data) {
-    // Check if data exists and has the expected format
-    if (!data) {
-        console.error('No data provided to updateTransactionSummary');
-        return;
-    }
-    
     // Update transaction count
-    const transactionCount = document.getElementById('transaction-count');
-    if (transactionCount) {
-        const count = data.transactions ? data.transactions.length : 0;
-        transactionCount.textContent = count;
+    const transactionCountElement = document.getElementById('transaction-count');
+    if (transactionCountElement) {
+        transactionCountElement.textContent = data.transactions ? data.transactions.length : 0;
     }
     
     // Update total balance
-    const transactionTotal = document.getElementById('transaction-total');
-    if (transactionTotal) {
-        // Ensure we have a number (default to 0 if not present or invalid)
-        const totalBalance = (data.total !== undefined && !isNaN(parseFloat(data.total))) 
-            ? parseFloat(data.total) 
-            : 0;
+    const transactionTotalElement = document.getElementById('transaction-total');
+    if (transactionTotalElement) {
+        const totalBalance = data.total_balance || 0;
+        const formattedBalance = parseFloat(totalBalance).toFixed(2);
         
-        // Update the color based on the value
-        if (totalBalance >= 0) {
-            transactionTotal.className = 'text-success';
-            transactionTotal.textContent = `+$${totalBalance.toFixed(2)}`;
-        } else {
-            transactionTotal.className = 'text-danger';
-            transactionTotal.textContent = `-$${Math.abs(totalBalance).toFixed(2)}`;
-        }
+        // Format with the appropriate color and sign
+        transactionTotalElement.className = totalBalance >= 0 ? 'text-success' : 'text-danger';
+        transactionTotalElement.textContent = `$${formattedBalance}`;
+        
+        // Add animation for changes
+        transactionTotalElement.classList.add('balance-updated');
+        setTimeout(() => {
+            transactionTotalElement.classList.remove('balance-updated');
+        }, 1000);
     }
+    
+    // Update batch actions visibility based on checked items
+    updateBatchActionVisibility();
 }
 
 /**
  * Update the month display
  */
 function updateMonthDisplay() {
-    const { month, year } = window.currentTransactionMonth;
+    const { month, year } = window.transactionState;
     console.log('Updating month display:', { month, year });
     
     const monthNames = [
@@ -513,6 +624,15 @@ function attachTransactionEventListeners() {
     if (batchDeleteBtn) {
         batchDeleteBtn.addEventListener('click', function() {
             batchDeleteTransactions();
+        });
+    }
+    
+    // Initialize Bootstrap dropdowns if available
+    if (typeof window.initializeDropdowns === 'function') {
+        window.initializeDropdowns();
+    } else if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+        document.querySelectorAll('.dropdown-toggle').forEach(dropdown => {
+            new bootstrap.Dropdown(dropdown);
         });
     }
 }
@@ -884,9 +1004,8 @@ function performDuplicateTransaction(transactionId, modalInstance) {
                 console.log('Transaction duplicated successfully:', data);
                 
                 // Refresh the transaction list
-                if (typeof loadTransactionsForMonth === 'function') {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    loadTransactionsForMonth(urlParams.toString());
+                if (typeof loadTransactions === 'function') {
+                    loadTransactions();
                     
                     // Show success toast
                     if (typeof showToast === 'function') {
@@ -1082,11 +1201,15 @@ function performDeleteTransaction(transactionId, modalInstance) {
         
         if (data.success) {
             // Reload transactions for the current month
-            const urlParams = new URLSearchParams(window.location.search);
-            loadTransactionsForMonth(urlParams.toString());
-            
-            if (typeof showToast === 'function') {
-                showToast('Success', 'Transaction deleted successfully', 'success');
+            if (typeof loadTransactions === 'function') {
+                loadTransactions();
+                
+                if (typeof showToast === 'function') {
+                    showToast('Success', 'Transaction deleted successfully', 'success');
+                }
+            } else {
+                // Fallback to page reload
+                window.location.reload();
             }
         } else {
             throw new Error(data.error || 'Unknown error');
@@ -1274,11 +1397,15 @@ function performBatchDeleteTransactions(transactionIds, modalInstance) {
         
         if (data.success) {
             // Reload transactions for the current month
-            const urlParams = new URLSearchParams(window.location.search);
-            loadTransactionsForMonth(urlParams.toString());
-            
-            if (typeof showToast === 'function') {
-                showToast('Success', `Successfully deleted ${transactionIds.length} transaction(s)`, 'success');
+            if (typeof loadTransactions === 'function') {
+                loadTransactions();
+                
+                if (typeof showToast === 'function') {
+                    showToast('Success', `Successfully deleted ${transactionIds.length} transaction(s)`, 'success');
+                }
+            } else {
+                // Fallback to page reload
+                window.location.reload();
             }
         } else {
             throw new Error(data.error || 'Unknown error');
