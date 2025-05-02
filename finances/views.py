@@ -1659,7 +1659,39 @@ def create_transaction_api(request):
             
             transaction.save()
             print(f"Transaction created successfully with ID: {transaction.id}")
-            
+
+            # --- Update account balance/usage if transaction_account is set ---
+            if transaction.transaction_account:
+                account = transaction.transaction_account
+                amount_decimal = Decimal(str(transaction.amount))
+                # Debit Account
+                if hasattr(account, 'debitaccount'):
+                    debit = account.debitaccount
+                    if transaction.type == 'expense':
+                        debit.balance -= amount_decimal
+                    else:  # income
+                        debit.balance += amount_decimal
+                    debit.save()
+                # Credit Account
+                elif hasattr(account, 'creditaccount'):
+                    credit = account.creditaccount
+                    if transaction.type == 'expense':
+                        credit.current_usage += amount_decimal
+                    else:  # income (rare)
+                        credit.current_usage -= amount_decimal
+                        if credit.current_usage < 0:
+                            credit.current_usage = 0
+                    credit.save()
+                # Wallet
+                elif hasattr(account, 'wallet'):
+                    wallet = account.wallet
+                    if transaction.type == 'expense':
+                        wallet.balance -= amount_decimal
+                    else:  # income
+                        wallet.balance += amount_decimal
+                    wallet.save()
+            # --- End account update logic ---
+
             return JsonResponse({'success': True, 'transaction_id': transaction.id})
         except Exception as e:
             print(f"Error creating transaction: {e}")
