@@ -17,6 +17,7 @@ from django.contrib.auth.models import User
 import logging
 from django.db import models
 from decimal import Decimal
+from .utils import get_transactions_with_scheduled
 
 def home(request):
     return render(request, 'finances/home.html')
@@ -100,144 +101,119 @@ def signup(request):
 
 @login_required
 def scheduled_transactions(request):
-    search_query = request.GET.get('search', '')
-    month_str = request.GET.get('month', '')
+    # Get the selected month from the request, default to current month
+    selected_month_str = request.GET.get('month', timezone.now().strftime('%Y-%m'))
+    selected_month = timezone.make_aware(datetime.strptime(selected_month_str, '%Y-%m'))
     
-    # Parse selected month or use current month
-    if month_str:
-        try:
-            selected_month = datetime.strptime(month_str, '%Y-%m')
-        except ValueError:
-            selected_month = timezone.now()
-    else:
-        selected_month = timezone.now()
-    
-    # Get the first and last day of the selected month
-    first_day = selected_month.replace(day=1)
+    # Calculate first and last day of the selected month
+    first_day = selected_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     if selected_month.month == 12:
-        last_day = selected_month.replace(year=selected_month.year + 1, month=1, day=1) - timezone.timedelta(days=1)
+        last_day = selected_month.replace(year=selected_month.year + 1, month=1, day=1) - timedelta(days=1)
     else:
-        last_day = selected_month.replace(month=selected_month.month + 1, day=1) - timezone.timedelta(days=1)
+        last_day = selected_month.replace(month=selected_month.month + 1, day=1) - timedelta(days=1)
+    last_day = last_day.replace(hour=23, minute=59, second=59, microsecond=999999)
     
-    # Get scheduled transactions
-    scheduled_transactions = ScheduledTransaction.objects.filter(user=request.user)
+    # Get search query
+    search_query = request.GET.get('search', '')
+    
+    # Get all transactions for the month
+    monthly_transactions = get_transactions_with_scheduled(request.user, first_day, last_day)
+    
+    # Apply search filter if provided
     if search_query:
-        scheduled_transactions = scheduled_transactions.filter(
-            Q(name__icontains=search_query) | Q(note__icontains=search_query)
-        )
-
-    # Get actual transactions for the selected month
-    actual_transactions = Transaction.objects.filter(
-        user=request.user,
-        date__range=[first_day, last_day]
-    )
-
-    # Calculate expected amounts for the selected month
-    expected_income = 0
-    expected_expense = 0
-    monthly_transactions = []
-
-    # Add actual transactions
-    for transaction in actual_transactions:
-        if transaction.type == 'income':
-            expected_income += transaction.amount
+        monthly_transactions = [
+            t for t in monthly_transactions 
+            if search_query.lower() in t['name'].lower() or 
+               (t.get('note') and search_query.lower() in t['note'].lower())
+        ]
+    
+    # Calculate totals
+    expected_income = Decimal('0')
+    expected_expense = Decimal('0')
+    
+    for transaction in monthly_transactions:
+        if transaction['type'] == 'income':
+            expected_income += transaction['amount']
         else:
-            expected_expense += transaction.amount
-        
-        monthly_transactions.append({
-            'date': transaction.date,
-            'name': transaction.title,
-            'type': transaction.type,
-            'amount': transaction.amount,
-            'is_scheduled': False
-        })
-
-    # Add scheduled transactions
-    for scheduled in scheduled_transactions:
-        # Get all occurrences for the selected month
-        occurrences = scheduled.get_occurrences_for_month(selected_month.year, selected_month.month)
-        
-        for occurrence_date in occurrences:
-            if scheduled.transaction_type == 'income':
-                expected_income += scheduled.amount
-            else:
-                expected_expense += scheduled.amount
-            
-            monthly_transactions.append({
-                'date': occurrence_date,
-                'name': scheduled.name,
-                'type': scheduled.transaction_type,
-                'amount': scheduled.amount,
-                'is_scheduled': True
-            })
-
-    # Sort transactions by date
-    monthly_transactions.sort(key=lambda x: x['date'])
-
-    # Calculate net
+            expected_expense += transaction['amount']
+    
+    # Calculate net sum
     net_sum = expected_income - expected_expense
-
+    
     context = {
-        'scheduled_transactions': scheduled_transactions,
+        'selected_month': selected_month,
+        'search_query': search_query,
         'monthly_transactions': monthly_transactions,
         'income_sum': expected_income,
         'expense_sum': expected_expense,
-        'net_sum': net_sum,
-        'search_query': search_query,
-        'selected_month': selected_month,
+        'net_sum': net_sum
     }
-
+    
     return render(request, 'finances/scheduled_transactions.html', context)
 
 @login_required
 def create_scheduled_transaction(request):
     if request.method == 'POST':
-        form = ScheduledTransactionForm(request.POST)
-
+        form = ScheduledTransactionForm(request.POST, user=request.user)
         if form.is_valid():
-            new_transaction = form.save(commit=False)
-            new_transaction.user = request.user
-            new_transaction.save()
-
-            messages.success(request, 'Scheduled transaction created successfully!')
+            scheduled_transaction = form.save(commit=False)
+            scheduled_transaction.user = request.user
+            scheduled_transaction.is_recurring = scheduled_transaction.repeats == 0
+            scheduled_transaction.save()
+            messages.success(request, 'Scheduled transaction created successfully.')
             return redirect('scheduled_transactions')
         else:
-            messages.error(request, 'There was an error with your input.')
-
+            return render(request, 'finances/scheduled_transaction_form.html', {
+                'form': form,
+                'title': 'Create Scheduled Transaction'
+            })
     else:
-        form = ScheduledTransactionForm()
-
-    return render(request, 'finances/create_scheduled_transaction.html', {'form': form})
+        form = ScheduledTransactionForm(user=request.user)
+        return render(request, 'finances/scheduled_transaction_form.html', {
+            'form': form,
+            'title': 'Create Scheduled Transaction'
+        })
 
 @login_required
 def edit_scheduled_transaction(request, pk):
     scheduled_transaction = get_object_or_404(ScheduledTransaction, pk=pk, user=request.user)
 
     if request.method == 'POST':
-        form = ScheduledTransactionForm(request.POST, instance=scheduled_transaction)
-
+        form = ScheduledTransactionForm(request.POST, instance=scheduled_transaction, user=request.user)
         if form.is_valid():
-            form.save()
+            updated_transaction = form.save(commit=False)
+            updated_transaction.is_recurring = updated_transaction.repeats == 0
+            updated_transaction.save()
             messages.success(request, 'Scheduled transaction updated successfully!')
             return redirect('scheduled_transactions')
         else:
             messages.error(request, 'There was an error with your input.')
-
     else:
-        form = ScheduledTransactionForm(instance=scheduled_transaction)
+        form = ScheduledTransactionForm(instance=scheduled_transaction, user=request.user)
 
-    return render(request, 'finances/create_scheduled_transaction.html', {'form': form})
+    return render(request, 'finances/scheduled_transaction_form.html', {
+        'form': form,
+        'title': 'Edit Scheduled Transaction',
+        'scheduled_transaction': scheduled_transaction
+    })
 
 @login_required
 def delete_scheduled_transaction(request, pk):
     scheduled_transaction = get_object_or_404(ScheduledTransaction, pk=pk, user=request.user)
 
+    related_count = ScheduledTransaction.objects.filter(parent_transaction=scheduled_transaction).count()
     if request.method == 'POST':
+        if scheduled_transaction.parent_transaction is None:
+            ScheduledTransaction.objects.filter(parent_transaction=scheduled_transaction).delete()
         scheduled_transaction.delete()
-        messages.success(request, 'Scheduled transaction deleted successfully!')
+        messages.success(request, 'Scheduled transaction deleted successfully.')
         return redirect('scheduled_transactions')
 
-    return render(request, 'finances/confirm_delete_scheduled_transaction.html', {'scheduled_transaction': scheduled_transaction})
+    return render(request, 'finances/confirm_delete_scheduled_modal.html', {
+        'object': scheduled_transaction,
+        'related_count': related_count,
+        'title': 'Delete Scheduled Transaction'
+    })
 
 @login_required
 def debts_list(request):
@@ -2048,133 +2024,57 @@ def charts_data_time(request):
 
 @login_required
 def charts_data_future(request):
-    """API endpoint for future projections chart data"""
-    try:
-        # Get query parameters
-        period = request.GET.get('period', 'month')
-        chart_type = request.GET.get('chartType', 'line')
-        
-        today = timezone.now().date()
-        data = {
-            'labels': [],
-            'projected': [],
-            'future_transactions': [],
-            'scheduled_transactions': [],
-            'debts_credits': [],
-            'credit_card_payments': []
-        }
-        
-        # Determine the end date and date points based on period
-        if period == 'month':
-            end_date = today + timedelta(days=30)
-            date_points = [(today + timedelta(days=x)) for x in range(31)]
-            date_format = '%d %b'
-        elif period == 'quarter':
-            # For quarter, we'll use monthly points instead of daily
-            end_date = today + timedelta(days=90)
-            current_month = today.replace(day=1)
-            date_points = []
-            for i in range(3):  # Next 3 months
-                date_points.append(current_month + timedelta(days=32*i))  # Using 32 to ensure we get to next month
-            date_format = '%b %Y'
-        else:  # year
-            # For year, we'll use monthly points
-            end_date = today + timedelta(days=365)
-            current_month = today.replace(day=1)
-            date_points = []
-            for i in range(12):  # Next 12 months
-                date_points.append(current_month + timedelta(days=32*i))
-            date_format = '%b %Y'
+    # Get the current date and calculate date ranges
+    today = timezone.now()
+    start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # Calculate end date (6 months from now)
+    if start_date.month + 6 > 12:
+        end_date = start_date.replace(year=start_date.year + 1, month=start_date.month + 6 - 12)
+    else:
+        end_date = start_date.replace(month=start_date.month + 6)
+    end_date = end_date.replace(day=1) - timedelta(days=1)
+    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        # Process each date point
-        for current_date in date_points:
-            # Ensure we're always using the 1st of the month for quarter and year periods
-            if period in ['quarter', 'year']:
-                current_date = current_date.replace(day=1)
-            
-            data['labels'].append(current_date.strftime(date_format))
-            
-            # Initialize amounts for this date
-            future_amount = 0
-            scheduled_amount = 0
-            debts_credits_amount = 0
-            credit_card_amount = 0
+    # Get all transactions (actual and scheduled) for the period
+    transactions = get_transactions_with_scheduled(request.user, start_date, end_date)
+    # Sort transactions by date
+    transactions.sort(key=lambda t: t['date'])
 
-            try:
-                # For quarter and year, get all transactions for the whole month
-                if period in ['quarter', 'year']:
-                    month_end = (current_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-                    date_range = [current_date, month_end]
-                else:
-                    date_range = [current_date, current_date]
+    # Prepare labels (dates as strings)
+    dates = [start_date.strftime('%Y-%m-%d')]
+    for t in transactions:
+        dates.append(t['date'].strftime('%Y-%m-%d'))
 
-                # Get scheduled transactions for this period
-                scheduled = ScheduledTransaction.objects.filter(
-                    user=request.user,
-                    date_scheduled__range=date_range
-                )
-                for transaction in scheduled:
-                    amount = float(transaction.amount)
-                    if transaction.transaction_type == 'expense':
-                        amount = -amount
-                    scheduled_amount += amount
-            except Exception as e:
-                print(f"Error processing scheduled transactions: {str(e)}")
-                scheduled_amount = 0
+    # Calculate projected balance trend
+    balances = []
+    current_balance = Decimal('0')
+    for account in Account.objects.filter(user=request.user):
+        if hasattr(account, 'debitaccount'):
+            current_balance += account.debitaccount.balance
+        elif hasattr(account, 'wallet'):
+            current_balance += account.wallet.balance
+        elif hasattr(account, 'creditaccount'):
+            current_balance -= account.creditaccount.current_usage
+    balances.append(float(current_balance))
+    for t in transactions:
+        if t['type'] == 'income':
+            current_balance += t['amount']
+        else:
+            current_balance -= t['amount']
+        balances.append(float(current_balance))
 
-            try:
-                # Get debt payments due in this period
-                debts = Debt.objects.filter(
-                    user=request.user,
-                    due_date__range=date_range
-                )
-                for debt in debts:
-                    if debt.debt_type == 'debt':
-                        debts_credits_amount -= float(debt.residual_amount)
-                    else:  # credit
-                        debts_credits_amount += float(debt.residual_amount)
-            except Exception as e:
-                print(f"Error processing debts: {str(e)}")
-                debts_credits_amount = 0
-
-            try:
-                # Get credit card payments due in this period
-                credit_accounts = CreditAccount.objects.filter(
-                    user=request.user
-                )
-                for account in credit_accounts:
-                    if hasattr(account, 'payment_due_date') and account.payment_due_date:
-                        payment_date = account.payment_due_date
-                        if date_range[0] <= payment_date <= date_range[1]:
-                            if hasattr(account, 'minimum_payment'):
-                                credit_card_amount -= float(account.minimum_payment)
-            except Exception as e:
-                print(f"Error processing credit cards: {str(e)}")
-                credit_card_amount = 0
-
-            # Add the amounts to their respective arrays
-            data['future_transactions'].append(future_amount)
-            data['scheduled_transactions'].append(scheduled_amount)
-            data['debts_credits'].append(debts_credits_amount)
-            data['credit_card_payments'].append(credit_card_amount)
-            
-            # Calculate total projected amount for this date
-            total_projected = future_amount + scheduled_amount + debts_credits_amount + credit_card_amount
-            data['projected'].append(total_projected)
-        
-        return JsonResponse(data)
-        
-    except Exception as e:
-        print(f"Error in charts_data_future: {str(e)}")
-        return JsonResponse({
-            'error': str(e),
-            'labels': [],
-            'projected': [],
-            'future_transactions': [],
-            'scheduled_transactions': [],
-            'debts_credits': [],
-            'credit_card_payments': []
-        }, status=500)
+    # For now, fill other arrays with zeros (same length as labels)
+    n = len(dates)
+    zeros = [0] * n
+    data = {
+        'labels': dates,
+        'future_transactions': zeros,
+        'scheduled_transactions': zeros,
+        'debts_credits': zeros,
+        'credit_card_payments': zeros,
+        'projected': balances,
+    }
+    return JsonResponse(data)
 
 def calculate_account_summaries(user):
     """Calculate account summaries for a user."""

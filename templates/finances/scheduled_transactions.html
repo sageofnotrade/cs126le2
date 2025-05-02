@@ -1,118 +1,274 @@
 {% extends 'base.html' %}
 {% block title %}Scheduled Transactions{% endblock %}
 {% block content %}
-<div class="container">
-    <h2>Scheduled Transactions</h2>
-
-    <form method="GET" class="mb-3">
-        <div class="row">
-            <div class="col-md-4">
-                <input type="text" class="form-control" name="search" placeholder="Search by name or note" value="{{ request.GET.search }}">
-            </div>
-            <div class="col-md-4">
-                <input type="month" class="form-control" name="month" value="{{ selected_month|date:'Y-m' }}">
-            </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-primary">Apply Filter</button>
-            </div>
-        </div>
-    </form>
-
-    <ul class="list-group">
-        {% for transaction in scheduled_transactions %}
-            <li class="list-group-item d-flex justify-content-between">
-                <div>
-                    <strong>{{ transaction.name }}</strong>
-                    <br>
-                    {{ transaction.amount }} USD ({{ transaction.transaction_type }})
-                    <br>
-                    Next Schedule: {{ transaction.date_scheduled }} 
-                    {% if transaction.repeats %}
-                        (Repeats {{ transaction.repeats }} times)
-                    {% else %}
-                        (One-time)
-                    {% endif %}
-                </div>
-                <div>
-                    <a href="{% url 'edit_scheduled_transaction' transaction.id %}" class="btn btn-sm btn-warning">Edit</a>
-                    <a href="{% url 'delete_scheduled_transaction' transaction.id %}" class="btn btn-sm btn-danger">Delete</a>
-                </div>
-            </li>
-        {% empty %}
-            <p>No scheduled transactions found.</p>
-        {% endfor %}
-    </ul>
-
-    <div class="card mt-4">
+<div class="container-fluid">
+    <header class="page-header mb-4 d-flex justify-content-between align-items-center">
+        <h1 class="h2">Scheduled Transactions</h1>
+        <button id="openCreateScheduledModal" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create Scheduled Transaction
+        </button>
+    </header>
+    <!-- Monthly Summary Card -->
+    <div class="card border-0 shadow-sm mt-4">
         <div class="card-header">
             <h5 class="mb-0">Monthly Summary for {{ selected_month|date:"F Y" }}</h5>
         </div>
         <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <h6>Income</h6>
-                    <p class="text-success">{{ income_sum }} USD</p>
+            <div class="row text-center">
+                <div class="col-4">
+                    <h6 class="mb-1">Expected Income</h6>
+                    <p class="text-success fw-bold mb-0">${{ income_sum|floatformat:2 }}</p>
                 </div>
-                <div class="col-md-4">
-                    <h6>Expenses</h6>
-                    <p class="text-danger">{{ expense_sum }} USD</p>
+                <div class="col-4">
+                    <h6 class="mb-1">Expected Expenses</h6>
+                    <p class="text-danger fw-bold mb-0">${{ expense_sum|floatformat:2 }}</p>
                 </div>
-                <div class="col-md-4">
-                    <h6>Net</h6>
-                    <p class="{% if net_sum >= 0 %}text-success{% else %}text-danger{% endif %}">
-                        {{ net_sum }} USD
-                    </p>
+                <div class="col-4">
+                    <h6 class="mb-1">Net</h6>
+                    <p class="fw-bold mb-0 {% if net_sum >= 0 %}text-success{% else %}text-danger{% endif %}">${{ net_sum|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">Monthly Transactions</h5>
+    <div class="row">
+        <!-- Filter Sidebar -->
+        <div class="col-md-3 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Filter</h2>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="mb-0">
+                        <div class="mb-3">
+                            <label for="search" class="form-label">Name or Note</label>
+                            <input type="text" class="form-control" id="search" name="search" placeholder="Search by name or note" value="{{ search_query }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="month" class="form-label">Month</label>
+                            <input type="month" class="form-control" id="month" name="month" value="{{ selected_month|date:'Y-m' }}">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Apply Filter</button>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for transaction in monthly_transactions %}
-                            <tr>
-                                <td>{{ transaction.date|date:"Y-m-d" }}</td>
-                                <td>{{ transaction.name }}</td>
-                                <td>
-                                    <span class="badge {% if transaction.type == 'income' %}bg-success{% else %}bg-danger{% endif %}">
-                                        {{ transaction.type }}
-                                    </span>
-                                </td>
-                                <td>{{ transaction.amount }} USD</td>
-                                <td>
+        <!-- Transactions List -->
+        <div class="col-md-9">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="h5 mb-0">Transactions</h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% if monthly_transactions %}
+                            {% for transaction in monthly_transactions %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center position-relative transaction-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <span class="icon-wrapper rounded-circle bg-{% if transaction.type == 'income' %}success{% else %}danger{% endif %} p-2">
+                                            <i class="bi {% if transaction.is_scheduled %}bi-calendar-event{% else %}bi-cash{% endif %} text-white"></i>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ transaction.name }}</div>
+                                        <small class="text-muted">
+                                            {{ transaction.date|date:"Y-m-d" }}
+                                            {% if transaction.is_scheduled %}(Scheduled){% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <div class="text-end me-3">
+                                        <div class="fw-bold {% if transaction.type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                            {% if transaction.type == 'income' %}+{% else %}-{% endif %}${{ transaction.amount|floatformat:2 }}
+                                        </div>
+                                        <span class="badge {% if transaction.type == 'income' %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ transaction.type|title }}
+                                        </span>
+                                    </div>
                                     {% if transaction.is_scheduled %}
-                                        <span class="badge bg-warning">Scheduled</span>
-                                    {% else %}
-                                        <span class="badge bg-success">Completed</span>
+                                    <div class="dropdown ms-3">
+                                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item openEditScheduledModal" href="#" data-url="{% url 'edit_scheduled_transaction' transaction.scheduled_id %}">Edit</a></li>
+                                            <li><a class="dropdown-item text-danger openDeleteScheduledModal" href="#" data-url="{% url 'delete_scheduled_transaction' transaction.scheduled_id %}">Delete</a></li>
+                                        </ul>
+                                    </div>
                                     {% endif %}
-                                </td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center">No transactions for this month</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                </div>
+                                <!-- Color indicator bar -->
+                                <div class="position-absolute top-0 bottom-0 end-0 transaction-indicator {% if transaction.type == 'income' %}bg-success{% else %}bg-danger{% endif %}" style="width: 4px;"></div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="list-group-item py-4 text-center">
+                                <p class="mb-0">No transactions found for this period</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-
-    <a href="{% url 'create_scheduled_transaction' %}" class="btn btn-primary my-3">Create Scheduled Transaction</a>
 </div>
+
+<!-- Modal for Create/Edit Scheduled Transaction -->
+<div class="modal fade" id="scheduledTransactionModal" tabindex="-1" aria-labelledby="scheduledTransactionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduledTransactionModalLabel">Scheduled Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="scheduledTransactionModalBody">
+                <!-- The form will be loaded here via AJAX -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteScheduledModal" tabindex="-1" aria-labelledby="deleteScheduledModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteScheduledModalLabel">Delete Scheduled Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="deleteScheduledModalBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+.transaction-item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+.transaction-indicator {
+    border-radius: 0 0.375rem 0.375rem 0;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setupScheduledTransactionForm() {
+    // Set min date for scheduled date input
+    var dateInput = document.getElementById('id_date_scheduled');
+    if (dateInput) {
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        var minDate = yyyy + '-' + mm + '-' + dd;
+        dateInput.setAttribute('min', minDate);
+    }
+
+    // Repeat type and number of transactions logic
+    var repeatType = document.getElementById('id_repeat_type');
+    var repeats = document.getElementById('id_repeats');
+    var repeatsHelp = document.getElementById('repeats-help');
+
+    function updateRepeatsField() {
+        if (repeatType && repeats) {
+            if (repeatType.value === 'once') {
+                repeats.value = 1;
+                repeats.setAttribute('disabled', 'disabled');
+            } else {
+                repeats.removeAttribute('disabled');
+            }
+        }
+    }
+    if (repeatType && repeats) {
+        repeatType.addEventListener('change', updateRepeatsField);
+        updateRepeatsField();
+    }
+    // Add helper text for infinite repeats
+    if (repeats && !document.getElementById('repeats-help')) {
+        var help = document.createElement('div');
+        help.className = 'form-text';
+        help.id = 'repeats-help';
+        help.innerText = 'Set to 0 for infinite repeats';
+        repeats.parentNode.appendChild(help);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Open Create Modal
+    document.getElementById('openCreateScheduledModal').addEventListener('click', function(e) {
+        e.preventDefault();
+        openScheduledTransactionModal('{% url 'create_scheduled_transaction' %}');
+    });
+
+    // Open Edit Modal
+    document.querySelectorAll('.openEditScheduledModal').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openScheduledTransactionModal(this.getAttribute('data-url'));
+        });
+    });
+
+    // Open Delete Modal
+    document.querySelectorAll('.openDeleteScheduledModal').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openDeleteScheduledModal(this.getAttribute('data-url'));
+        });
+    });
+
+    function openScheduledTransactionModal(url) {
+        var modal = new bootstrap.Modal(document.getElementById('scheduledTransactionModal'));
+        var modalBody = document.getElementById('scheduledTransactionModalBody');
+        modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        modal.show();
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                var form = doc.querySelector('form');
+                if (form) {
+                    modalBody.innerHTML = '';
+                    modalBody.appendChild(form);
+                } else {
+                    modalBody.innerHTML = html;
+                }
+                // Setup form logic after form is loaded
+                setupScheduledTransactionForm();
+            });
+    }
+
+    function openDeleteScheduledModal(url) {
+        var modal = new bootstrap.Modal(document.getElementById('deleteScheduledModal'));
+        var modalBody = document.getElementById('deleteScheduledModalBody');
+        modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        modal.show();
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                modalBody.innerHTML = html;
+            });
+    }
+});
+</script>
 {% endblock %}
