@@ -3,6 +3,13 @@
     overflow-y: auto;
     border: 1px solid #dee2e6;
     border-radius: 0.375rem;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.category-selector::-webkit-scrollbar {
+    display: none;
 }
 
 .category-list {

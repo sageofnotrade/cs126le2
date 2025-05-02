@@ -418,6 +418,13 @@ function addFilterCategoryListStyles() {
             overflow-y: auto;
             scroll-behavior: auto !important;
             margin-bottom: 10px;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .filter-category-list::-webkit-scrollbar {
+            display: none;
         }
         
         .filter-category-item {

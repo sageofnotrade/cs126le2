@@ -345,6 +345,13 @@ function addHierarchicalListStyles() {
             max-height: 300px;
             overflow-y: auto;
             scroll-behavior: auto !important;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .hierarchical-category-list::-webkit-scrollbar {
+            display: none;
         }
         
         .category-item {
