@@ -516,22 +516,73 @@ def dashboard(request):
     first_day = today.replace(day=1)
     last_day = today.replace(day=calendar.monthrange(today.year, today.month)[1])
     
-    income = Transaction.objects.filter(
+    # Calculate previous month
+    if today.month == 1:
+        prev_month = today.replace(year=today.year-1, month=12, day=1)
+    else:
+        prev_month = today.replace(month=today.month-1, day=1)
+    prev_month_last_day = prev_month.replace(day=calendar.monthrange(prev_month.year, prev_month.month)[1])
+    
+    # Account summary logic
+    debit_accounts = DebitAccount.objects.filter(user=request.user)
+    credit_accounts = CreditAccount.objects.filter(user=request.user)
+    wallet_accounts = Wallet.objects.filter(user=request.user)
+
+    debit_balance = sum(account.balance for account in debit_accounts)
+    credit_balance = sum(account.credit_limit - account.current_usage for account in credit_accounts)
+    wallet_balance = sum(account.balance for account in wallet_accounts)
+    total_balance = debit_balance + credit_balance + wallet_balance
+
+    accounts_summary = {
+        'debit': {
+            'accounts': list(debit_accounts),
+            'balance': float(debit_balance),
+        },
+        'credit': {
+            'accounts': list(credit_accounts),
+            'balance': float(credit_balance),
+        },
+        'wallet': {
+            'accounts': list(wallet_accounts),
+            'balance': float(wallet_balance),
+        },
+    }
+    
+    # Current month data
+    current_month_income = float(Transaction.objects.filter(
         user=request.user,
         type='income',
         date__gte=first_day,
         date__lte=last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    ).aggregate(Sum('amount'))['amount__sum'] or 0)
     
-    expenses = Transaction.objects.filter(
+    current_month_expenses = float(Transaction.objects.filter(
         user=request.user,
         type='expense',
         date__gte=first_day,
         date__lte=last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    ).aggregate(Sum('amount'))['amount__sum'] or 0)
     
-    balance = income - expenses
+    current_month_balance = current_month_income - current_month_expenses
     
+    # Previous month data
+    prev_month_income = float(Transaction.objects.filter(
+        user=request.user,
+        type='income',
+        date__gte=prev_month,
+        date__lte=prev_month_last_day
+    ).aggregate(Sum('amount'))['amount__sum'] or 0)
+    
+    prev_month_expenses = float(Transaction.objects.filter(
+        user=request.user,
+        type='expense',
+        date__gte=prev_month,
+        date__lte=prev_month_last_day
+    ).aggregate(Sum('amount'))['amount__sum'] or 0)
+    
+    prev_month_balance = prev_month_income - prev_month_expenses
+    
+    # Get recent transactions
     recent_transactions = Transaction.objects.filter(
         user=request.user
     ).order_by('-date')[:5]
@@ -541,18 +592,18 @@ def dashboard(request):
     expenses_by_category = []
     
     for category in categories:
-        amount = Transaction.objects.filter(
+        amount = float(Transaction.objects.filter(
             user=request.user,
             type='expense',
             category=category,
             date__gte=first_day,
             date__lte=last_day
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        ).aggregate(Sum('amount'))['amount__sum'] or 0)
         
         if amount > 0:
             expenses_by_category.append({
                 'category': category.name,
-                'amount': float(amount)
+                'amount': amount
             })
     
     # Budget warnings
@@ -560,31 +611,38 @@ def dashboard(request):
     budget_warnings = []
     
     for budget in budgets:
-        spent = Transaction.objects.filter(
+        spent = float(Transaction.objects.filter(
             user=request.user,
             type='expense',
             subcategory=budget.subcategory,
             date__gte=first_day,
             date__lte=last_day,
             transaction_account=budget.account
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        ).aggregate(Sum('amount'))['amount__sum'] or 0)
         
         if spent > budget.amount:
             budget_warnings.append({
                 'category': budget.subcategory.name,
                 'budget': float(budget.amount),
-                'spent': float(spent),
+                'spent': spent,
                 'percentage': round((spent / budget.amount) * 100)
             })
     
     context = {
-        'income': income,
-        'expenses': expenses,
-        'balance': balance,
+        'accounts_summary': accounts_summary,
+        'total_balance': float(total_balance),
+        'current_month': today,
+        'prev_month': prev_month,
+        'current_month_income': current_month_income,
+        'current_month_expenses': current_month_expenses,
+        'current_month_balance': current_month_balance,
+        'prev_month_income': prev_month_income,
+        'prev_month_expenses': prev_month_expenses,
+        'prev_month_balance': prev_month_balance,
         'recent_transactions': recent_transactions,
         'expenses_by_category': json.dumps(expenses_by_category),
         'budget_warnings': budget_warnings,
-        'import_export_url': 'import-export'  # Add this line to provide the correct URL
+        'import_export_url': 'import-export'
     }
     
     return render(request, 'finances/dashboard.html', context)
@@ -1391,8 +1449,29 @@ def transactions(request):
     
     # Get current month and year, defaulting to current date
     current_date = timezone.now().date()
-    current_month = int(request.GET.get('month', current_date.month))
-    current_year = int(request.GET.get('year', current_date.year))
+    
+    # Get month and year from URL parameters
+    month_param = request.GET.get('month', '')
+    year_param = request.GET.get('year', '')
+    
+    # Parse month and year from the month parameter if it's in Y-m format
+    if month_param:
+        try:
+            # Handle Y-m format (e.g., 2024-03)
+            if '-' in month_param:
+                year, month = map(int, month_param.split('-'))
+                current_month = month
+                current_year = year
+            else:
+                # Handle single month parameter
+                current_month = int(month_param)
+                current_year = int(year_param) if year_param else current_date.year
+        except (ValueError, TypeError):
+            current_month = current_date.month
+            current_year = current_date.year
+    else:
+        current_month = current_date.month
+        current_year = current_date.year
     
     # Get start and end date for the selected month
     start_date = timezone.datetime(current_year, current_month, 1).date()
@@ -1439,7 +1518,7 @@ def transactions(request):
     context = {
         'transactions': transactions,
         'categories': categories,
-        'accounts': accounts,  # Add accounts to context
+        'accounts': accounts,
         'current_month': current_month,
         'current_year': current_year,
         'current_month_name': current_month_name,

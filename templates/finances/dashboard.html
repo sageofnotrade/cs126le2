@@ -28,24 +28,28 @@
                     <h6 class="text-muted mb-2">Summary</h6>
                     <div class="flex-grow-1 d-flex flex-column">
                         <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="text-secondary small">Debit Balance ({{ accounts_summary.debit.accounts|length }} account/s)</span>
-                                <span class="fw-medium ms-2 {% if accounts_summary.debit.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                    ${{ accounts_summary.debit.balance|floatformat:2 }}
-                                </span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="text-secondary small">Credit ({{ accounts_summary.credit.accounts|length }} account/s)</span>
-                                <span class="fw-medium ms-2 {% if accounts_summary.credit.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                    ${{ accounts_summary.credit.balance|floatformat:2 }}
-                                </span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-secondary small">Wallet Balance ({{ accounts_summary.wallet.accounts|length }} account/s)</span>
-                                <span class="fw-medium ms-2 {% if accounts_summary.wallet.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                    ${{ accounts_summary.wallet.balance|floatformat:2 }}
-                                </span>
-                            </div>
+                            {% if accounts_summary.debit.accounts|length == 0 and accounts_summary.credit.accounts|length == 0 and accounts_summary.wallet.accounts|length == 0 %}
+                                <div class="text-center text-muted">No existing accounts</div>
+                            {% else %}
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-secondary small">Debit Balance ({{ accounts_summary.debit.accounts|length }} account/s)</span>
+                                    <span class="fw-medium ms-2 {% if accounts_summary.debit.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                        ${{ accounts_summary.debit.balance|floatformat:2 }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-secondary small">Credit ({{ accounts_summary.credit.accounts|length }} account/s)</span>
+                                    <span class="fw-medium ms-2 {% if accounts_summary.credit.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                        ${{ accounts_summary.credit.balance|floatformat:2 }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-secondary small">Wallet Balance ({{ accounts_summary.wallet.accounts|length }} account/s)</span>
+                                    <span class="fw-medium ms-2 {% if accounts_summary.wallet.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                        ${{ accounts_summary.wallet.balance|floatformat:2 }}
+                                    </span>
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="mt-auto pt-2 border-top">
                             <div class="d-flex justify-content-between align-items-center">
@@ -232,27 +236,43 @@ document.addEventListener('DOMContentLoaded', function() {
             maintainAspectRatio: false,
             cutout: '70%',
             plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    enabled: false
-                }
+                legend: { display: false },
+                tooltip: { enabled: false }
             },
             events: []
         }
     };
 
+    // Helper to get chart data and color
+    function getChartData(income, expenses) {
+        if (income === 0 && expenses === 0) {
+            return {
+                data: [1],
+                backgroundColor: ['#e0e0e0'],
+                labels: ['No Data']
+            };
+        } else {
+            return {
+                data: [income, expenses],
+                backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'],
+                labels: ['Income', 'Expenses']
+            };
+        }
+    }
+
     // Current Month Chart
+    const currentMonthIncome = {{ current_month_income|default:0 }};
+    const currentMonthExpenses = {{ current_month_expenses|default:0 }};
     const currentMonthCtx = document.getElementById('currentMonthChart').getContext('2d');
+    const currentData = getChartData(currentMonthIncome, currentMonthExpenses);
     new Chart(currentMonthCtx, {
         ...chartConfig,
         data: {
-            labels: ['Income', 'Expenses'],
+            labels: currentData.labels,
             datasets: [{
-                data: [{{ current_month_income }}, {{ current_month_expenses }}],
-                backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'],
-                borderColor: ['rgb(40, 167, 69)', 'rgb(220, 53, 69)'],
+                data: currentData.data,
+                backgroundColor: currentData.backgroundColor,
+                borderColor: currentData.backgroundColor,
                 borderWidth: 0,
                 hoverOffset: 0
             }]
@@ -260,15 +280,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Previous Month Chart
+    const prevMonthIncome = {{ prev_month_income|default:0 }};
+    const prevMonthExpenses = {{ prev_month_expenses|default:0 }};
     const prevMonthCtx = document.getElementById('prevMonthChart').getContext('2d');
+    const prevData = getChartData(prevMonthIncome, prevMonthExpenses);
     new Chart(prevMonthCtx, {
         ...chartConfig,
         data: {
-            labels: ['Income', 'Expenses'],
+            labels: prevData.labels,
             datasets: [{
-                data: [{{ prev_month_income }}, {{ prev_month_expenses }}],
-                backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'],
-                borderColor: ['rgb(40, 167, 69)', 'rgb(220, 53, 69)'],
+                data: prevData.data,
+                backgroundColor: prevData.backgroundColor,
+                borderColor: prevData.backgroundColor,
                 borderWidth: 0,
                 hoverOffset: 0
             }]
