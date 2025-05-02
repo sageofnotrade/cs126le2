@@ -49,6 +49,7 @@ urlpatterns = [
     path('transactions/api/create/', views.create_transaction_api, name='create_transaction_api'),
     path('transactions/api/<int:transaction_id>/update/', views.update_transaction_api, name='update_transaction_api'),
     path('transactions/api/<int:transaction_id>/delete/', views.delete_transaction_api, name='delete_transaction_api'),
+    path('transactions/api/batch-delete/', views.batch_delete_transactions_api, name='batch_delete_transactions_api'),
     path('api/accounts/', views.api_accounts, name='api_accounts'),
     path('api/accounts/<int:account_id>/balance/', views.api_account_balance, name='api_account_balance'),
     # Dashboard

@@ -17,6 +17,7 @@ from django.contrib.auth.models import User
 import logging
 from django.db import models
 from decimal import Decimal
+import decimal
 
 def home(request):
     return render(request, 'finances/home.html')
@@ -1176,6 +1177,20 @@ def api_add_subcategory(request, category_id):
         subcategory = form.save(commit=False)
         subcategory.parent_category = category
         subcategory.save()
+
+        # Check if the category already has itself as a subcategory
+        category_as_subcategory = SubCategory.objects.filter(
+            parent_category=category,
+            name=category.name,
+        ).first()
+        
+        # If the category doesn't have itself as a subcategory, create it
+        if not category_as_subcategory:
+            category_as_subcategory = SubCategory.objects.create(
+                name=category.name,
+                parent_category=category,
+                icon=category.icon
+            )
         
         return JsonResponse({
             'success': True,
@@ -1422,12 +1437,38 @@ def transactions(request):
     else:
         end_date = timezone.datetime(current_year, current_month + 1, 1).date() - timedelta(days=1)
     
-    # Get all transactions for the month
-    transactions = Transaction.objects.filter(
+    # Get filter parameters
+    category_id = request.GET.get('category', '')
+    subcategory_id = request.GET.get('subcategory', '')
+    search_term = request.GET.get('search', '')
+    types_param = request.GET.get('types', 'expense,income')
+    types = types_param.split(',') if types_param else ['expense', 'income']
+    
+    # Start with base query for the current month
+    transactions_query = Transaction.objects.filter(
         user=request.user,
         date__gte=start_date,
         date__lte=end_date
-    ).order_by('-date')
+    )
+    
+    # Apply filters if present
+    if category_id:
+        transactions_query = transactions_query.filter(category_id=category_id)
+        
+        if subcategory_id:
+            transactions_query = transactions_query.filter(subcategory_id=subcategory_id)
+    
+    if types and 'all' not in types:
+        transactions_query = transactions_query.filter(type__in=types)
+    
+    if search_term:
+        transactions_query = transactions_query.filter(
+            models.Q(title__icontains=search_term) | 
+            models.Q(notes__icontains=search_term)
+        )
+    
+    # Get all transactions for the month with filters applied
+    transactions = transactions_query.order_by('-date')
     
     # Calculate total
     income = Transaction.objects.filter(
@@ -1465,6 +1506,8 @@ def transactions(request):
         'current_year': current_year,
         'current_month_name': current_month_name,
         'total_balance': total_balance,
+        'selected_category': category_id,
+        'selected_subcategory': subcategory_id,
     }
     
     return render(request, 'finances/transactions.html', context)
@@ -1474,9 +1517,21 @@ def transactions_api(request):
     """API endpoint for fetching transactions with filters"""
     
     # Get parameters from request
-    current_month = int(request.GET.get('month', timezone.now().date().month))
-    current_year = int(request.GET.get('year', timezone.now().date().year))
+    month_param = request.GET.get('month')
+    if month_param and '-' in month_param:
+        try:
+            year, month = map(int, month_param.split('-'))
+            current_month = month
+            current_year = year
+        except (ValueError, IndexError):
+            current_month = timezone.now().date().month
+            current_year = timezone.now().date().year
+    else:
+        current_month = int(request.GET.get('month', timezone.now().date().month))
+        current_year = int(request.GET.get('year', timezone.now().date().year))
+    
     category_id = request.GET.get('category', '')
+    subcategory_id = request.GET.get('subcategory', '')
     search_term = request.GET.get('search', '')
     types_param = request.GET.get('types', 'expense,income')
     types = types_param.split(',') if types_param else ['expense', 'income']
@@ -1492,13 +1547,20 @@ def transactions_api(request):
     transactions = Transaction.objects.filter(
         user=request.user,
         date__gte=start_date,
-        date__lte=end_date,
-        type__in=types
+        date__lte=end_date
     ).select_related('category', 'subcategory', 'transaction_account')
+    
+    # Apply type filter if specified
+    if types and 'all' not in types:
+        transactions = transactions.filter(type__in=types)
     
     # Additional filters
     if category_id:
         transactions = transactions.filter(category_id=category_id)
+        
+        # If subcategory is specified, filter by it as well
+        if subcategory_id:
+            transactions = transactions.filter(subcategory_id=subcategory_id)
     
     if search_term:
         transactions = transactions.filter(
@@ -1510,9 +1572,24 @@ def transactions_api(request):
     transactions = transactions.order_by('-date')
     
     # Calculate totals
-    income = sum(t.amount for t in transactions if t.type == 'income')
-    expenses = sum(t.amount for t in transactions if t.type == 'expense')
+    income = 0
+    expenses = 0
+    for t in transactions:
+        try:
+            if t.type == 'income':
+                income += float(t.amount)
+            elif t.type == 'expense':
+                expenses += float(t.amount)
+        except (ValueError, decimal.InvalidOperation):
+            # Skip transactions with invalid amount values
+            continue
+    
     total = income - expenses
+    
+    # Format month name for response
+    month_names = ['January', 'February', 'March', 'April', 'May', 'June', 
+                  'July', 'August', 'September', 'October', 'November', 'December']
+    current_month_name = month_names[current_month - 1]
     
     # Prepare data for JSON response
     transactions_data = []
@@ -1528,72 +1605,107 @@ def transactions_api(request):
             subcategory_name = transaction.subcategory.name
             subcategory_icon = transaction.subcategory.icon or category_icon
         
+        # Get account information
+        account_name = transaction.transaction_account.name if transaction.transaction_account else None
+        
         # Use subcategory info if it exists, otherwise use category info
         display_name = subcategory_name or category_name or 'Uncategorized'
         display_icon = subcategory_icon or category_icon or 'bi bi-tag'
+        
+        # Format time if available
+        time_str = None
+        if hasattr(transaction, 'time') and transaction.time:
+            time_str = transaction.time.strftime('%H:%M')
         
         transactions_data.append({
             'id': transaction.id,
             'title': transaction.title,
             'amount': float(transaction.amount),
             'date': transaction.date.isoformat(),
+            'time': time_str,
             'type': transaction.type,
             'category': transaction.category_id if transaction.category else None,
             'subcategory': transaction.subcategory_id if transaction.subcategory else None,
+            'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
             'category_name': category_name,
             'category_icon': category_icon,
             'subcategory_name': subcategory_name,
             'subcategory_icon': subcategory_icon,
+            'account_name': account_name,
             'display_name': display_name,
             'display_icon': display_icon,
             'notes': transaction.notes or '',
         })
     
+    # Return complete data
     return JsonResponse({
         'transactions': transactions_data,
-        'count': len(transactions_data),
-        'total': float(total),
+        'total': total,
+        'income': income,
+        'expenses': expenses,
+        'current_month': current_month,
+        'current_year': current_year,
+        'current_month_name': current_month_name,
+        'filters': {
+            'category': category_id,
+            'subcategory': subcategory_id,
+            'search': search_term,
+            'types': types
+        }
     })
 
 @login_required
 def transaction_detail_api(request, transaction_id):
     """API endpoint for getting a single transaction's details"""
-    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+    print(f"Fetching details for transaction ID: {transaction_id}")
     
-    # Load the related objects to ensure they're available
-    if transaction.category:
-        category_name = transaction.category.name
-        category_icon = transaction.category.icon
-    else:
-        category_name = None
-        category_icon = 'bi bi-tag'
+    try:
+        transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+        print(f"Transaction found: {transaction}")
         
-    # Load subcategory info if available
-    if transaction.subcategory:
-        subcategory_name = transaction.subcategory.name
-        subcategory_icon = transaction.subcategory.icon or category_icon
-    else:
-        subcategory_name = None
-        subcategory_icon = None
-    
-    data = {
-        'id': transaction.id,
-        'title': transaction.title,
-        'amount': float(transaction.amount),
-        'date': transaction.date.isoformat(),
-        'time': transaction.time.strftime('%H:%M') if transaction.time else None,
-        'type': transaction.type,
-        'category': transaction.category_id if transaction.category else None,
-        'subcategory': transaction.subcategory_id if transaction.subcategory else None,
-        'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
-        'category_name': category_name,
-        'category_icon': category_icon,
-        'subcategory_name': subcategory_name,
-        'subcategory_icon': subcategory_icon,
-        'notes': transaction.notes or '',
-    }
-    
-    return JsonResponse(data)
+        # Load the related objects to ensure they're available
+        if transaction.category:
+            category_name = transaction.category.name
+            category_icon = transaction.category.icon
+        else:
+            category_name = None
+            category_icon = 'bi bi-tag'
+            
+        # Load subcategory info if available
+        if transaction.subcategory:
+            subcategory_name = transaction.subcategory.name
+            subcategory_icon = transaction.subcategory.icon or category_icon
+        else:
+            subcategory_name = None
+            subcategory_icon = None
+        
+        # Format time if available
+        time_str = None
+        if hasattr(transaction, 'time') and transaction.time:
+            time_str = transaction.time.strftime('%H:%M')
+        
+        data = {
+            'id': transaction.id,
+            'title': transaction.title,
+            'amount': float(transaction.amount),
+            'date': transaction.date.isoformat(),
+            'time': time_str,
+            'type': transaction.type,
+            'category': transaction.category_id if transaction.category else None,
+            'subcategory': transaction.subcategory_id if transaction.subcategory else None,
+            'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
+            'category_name': category_name,
+            'category_icon': category_icon,
+            'subcategory_name': subcategory_name,
+            'subcategory_icon': subcategory_icon,
+            'notes': transaction.notes or '',
+        }
+        
+        print(f"Returning transaction data: {data}")
+        return JsonResponse(data)
+    except Exception as e:
+        print(f"Error fetching transaction details: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
 def create_transaction_api(request):
@@ -1622,8 +1734,8 @@ def create_transaction_api(request):
             
             # Convert amount to float
             try:
-                amount = float(amount)
-            except ValueError:
+                amount = float(amount.replace(',', '.').strip())
+            except (ValueError, AttributeError, decimal.InvalidOperation):
                 return JsonResponse({'success': False, 'error': 'Invalid amount format'})
             
             # Create the transaction
@@ -1697,8 +1809,8 @@ def update_transaction_api(request, transaction_id):
             
             # Convert amount to float
             try:
-                amount = float(amount)
-            except ValueError:
+                amount = float(amount.replace(',', '.').strip())
+            except (ValueError, AttributeError, decimal.InvalidOperation):
                 return JsonResponse({'success': False, 'error': 'Invalid amount format'})
             
             # Update the transaction
@@ -2223,3 +2335,44 @@ def get_budget_warnings(user, start_date, end_date):
             })
     
     return budget_warnings
+
+@login_required
+def batch_delete_transactions_api(request):
+    """API endpoint for batch deleting multiple transactions"""
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        transaction_ids = data.get('transaction_ids', [])
+        
+        if not transaction_ids:
+            return JsonResponse({'error': 'No transaction IDs provided'}, status=400)
+        
+        # Get transactions that belong to this user
+        transactions = Transaction.objects.filter(
+            user=request.user,
+            id__in=transaction_ids
+        )
+        
+        if not transactions:
+            return JsonResponse({'error': 'No valid transactions found to delete'}, status=404)
+        
+        # Count how many were found
+        found_count = transactions.count()
+        
+        # Delete the transactions
+        transactions.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully deleted {found_count} transaction(s)',
+            'deleted_count': found_count
+        })
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON in request body'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

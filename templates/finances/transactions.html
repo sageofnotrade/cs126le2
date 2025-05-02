@@ -5,6 +5,8 @@
 
 {% block navbar_title %}Transactions{% endblock %}
 
+{% block body_attributes %}data-selected-category="{{ selected_category }}" data-selected-subcategory="{{ selected_subcategory }}" id="page-body"{% endblock %}
+
 {% block extra_css %}
 <style>
     /* Custom checkbox styling */
@@ -72,6 +74,67 @@
         width: 36px;
         height: 36px;
     }
+    
+    /* Fix modal display issues */
+    .modal {
+        z-index: 1050;
+    }
+    
+    .modal-backdrop {
+        z-index: 1040;
+    }
+    
+    .modal-open {
+        overflow: hidden;
+    }
+    
+    .modal-open .modal {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+    
+    /* Ensure modals are properly displayed */
+    #transactionModal, #deleteModal {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Fix the issue with screen going black */
+    body.modal-open {
+        padding-right: 0 !important;
+    }
+    
+    /* Ensure content is visible */
+    .modal-content {
+        background-color: #fff;
+        z-index: 1051;
+    }
+    
+    /* Emergency fix button for modal issues */
+    #emergency-fix {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        padding: 10px 15px;
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        display: none; /* Hidden by default */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    /* Show the button when body has modal-open class for more than 10 seconds */
+    body.modal-open #emergency-fix {
+        display: block;
+    }
+    
+    /* Hide the emergency button when it's not needed */
+    body:not(.modal-open) #emergency-fix {
+        display: none !important;
+    }
 </style>
 {% endblock %}
 
@@ -79,6 +142,13 @@
 <header class="page-header mb-4 d-flex justify-content-between align-items-center">
     <h1 class="h2">Transactions</h1>
     <div class="actions">
+        <!-- Test button for delete modal - Commented out -->
+        <!--
+        <button type="button" class="btn btn-outline-primary me-2" id="test-delete-modal">
+            <i class="bi bi-bug"></i> Test Delete Modal
+        </button>
+        -->
+        
         <button type="button" class="btn btn-success" id="add-income-btn">
             <i class="bi bi-plus-circle"></i> Add Income
         </button>
@@ -102,7 +172,10 @@
                         <select id="category-filter" class="form-select">
                             <option value="">All Categories</option>
                             {% for category in categories %}
-                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-type="{{ category.type }}" data-is-category="true">{{ category.name }}</option>
+                                {% for subcategory in category.subcategories.all %}
+                                <option value="{{ category.id }}" data-icon="{{ subcategory.icon|default:category.icon }}" data-type="{{ category.type }}" data-parent-category="{{ category.id }}" data-subcategory-id="{{ subcategory.id }}">{{ subcategory.name }}</option>
+                                {% endfor %}
                             {% endfor %}
                         </select>
                     </div>
@@ -139,7 +212,10 @@
                 <button type="button" id="prev-month-btn" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-chevron-left"></i>
                 </button>
-                <h3 id="current-month" class="h5 mb-0">{{ current_month_name }} {{ current_year }}</h3>
+                <div>
+                    <h3 id="current-month" class="h5 mb-0">{{ current_month_name }} {{ current_year }}</h3>
+                    <div id="current-month-data" data-month="{{ current_month }}" data-year="{{ current_year }}" class="d-none"></div>
+                </div>
                 <button type="button" id="next-month-btn" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-chevron-right"></i>
                 </button>
@@ -212,10 +288,9 @@
                             </div>
                             <!-- Transaction Actions -->
                             <div class="dropdown">
-                                <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-three-dots-vertical"></i>
+                                <button class="btn btn-sm btn-light dropdown-toggle" type="button" id="dropdownMenuButton-{{ transaction.id }}" data-bs-toggle="dropdown" aria-expanded="false">
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton-{{ transaction.id }}">
                                     <li><a class="dropdown-item edit-transaction" href="#" data-id="{{ transaction.id }}">Edit</a></li>
                                     <li><a class="dropdown-item duplicate-transaction" href="#" data-id="{{ transaction.id }}">Duplicate</a></li>
                                     <li><hr class="dropdown-divider"></li>
@@ -299,6 +374,9 @@
                                 <option value="" data-icon="bi-bookmark">Choose a category</option>
                                 {% for category in categories %}
                                 <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-type="{{ category.type }}" data-is-category="true">{{ category.name }}</option>
+                                    {% for subcategory in category.subcategories.all %}
+                                    <option value="{{ category.id }}" data-icon="{{ subcategory.icon|default:category.icon }}" data-type="{{ category.type }}" data-parent-category="{{ category.id }}" data-subcategory-id="{{ subcategory.id }}">{{ subcategory.name }}</option>
+                                    {% endfor %}
                                 {% endfor %}
                             </select>
                         </div>
@@ -338,1158 +416,640 @@
         </div>
     </div>
 </div>
+
+<!-- Emergency fix button for modal issues - Commented out -->
+<!--
+<button id="emergency-fix" type="button" onclick="fixModalIssues()">
+    Screen stuck? Click to fix!
+</button>
+-->
 {% endblock %}
 
-{% block extra_js %}
+{% block extra_scripts %}
+<!-- Ensure Bootstrap JS is properly loaded -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Other scripts -->
+<script src="{% static 'js/category_dropdown.js' %}"></script>
+<script src="{% static 'js/transaction.js' %}"></script>
+<script src="{% static 'js/filter_category_dropdown.js' %}"></script>
+<script src="{% static 'js/transaction_list.js' %}"></script>
+<!-- Modal initialization script -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Test if subcategories exist in the database - add this at the very top after DOMContentLoaded
-        console.log("Checking if subcategories exist in the database...");
+        console.log('Checking bootstrap availability:', typeof bootstrap !== 'undefined');
+        console.log('Checking bootstrap.Modal availability:', 
+                  typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined');
+        console.log('DeleteModal element exists:', document.getElementById('deleteModal') !== null);
         
-        // Get all category IDs
-        const categorySelect = document.getElementById('transaction-category');
-        if (categorySelect) {
-            const categories = Array.from(categorySelect.options)
-                .filter(opt => opt.getAttribute('data-is-category') === 'true')
-                .map(opt => opt.value);
+        // Advanced modal management to prevent black screen issues
+        function setupModalManagement() {
+            // Get all modals on the page
+            const modals = document.querySelectorAll('.modal');
             
-            console.log(`Found ${categories.length} categories to check for subcategories`);
-            
-            // Check each category for subcategories
-            categories.forEach(categoryId => {
-                if (!categoryId) return;
+            // For each modal, ensure it has proper event listeners
+            modals.forEach(modal => {
+                // Click outside modal to close
+                modal.addEventListener('click', function(event) {
+                    if (event.target === modal) {
+                        console.log('Clicked outside modal content, closing modal');
+                        closeModalProperly(modal);
+                    }
+                });
                 
-                fetch(`/finances/api/categories/${categoryId}/subcategories/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log(`Category ID ${categoryId} has ${data.length} subcategories:`, data);
-                    })
-                    .catch(error => {
-                        console.error(`Error checking subcategories for category ${categoryId}:`, error);
+                // Close button click handler
+                const closeButtons = modal.querySelectorAll('[data-bs-dismiss="modal"], .btn-close, .btn-secondary');
+                closeButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        console.log('Modal close button clicked');
+                        closeModalProperly(modal);
                     });
+                });
+            });
+            
+            // Escape key to close any visible modal
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    const visibleModal = document.querySelector('.modal.show');
+                    if (visibleModal) {
+                        console.log('Escape key pressed, closing modal');
+                        closeModalProperly(visibleModal);
+                    }
+                }
+            });
+            
+            // Click on backdrop to close modal
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('modal-backdrop')) {
+                    console.log('Backdrop clicked, closing modals');
+                    document.querySelectorAll('.modal.show').forEach(modal => {
+                        closeModalProperly(modal);
+                    });
+                }
+            });
+            
+            // Function to properly close a modal
+            function closeModalProperly(modal) {
+                // Try bootstrap first
+                try {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        const bsModal = bootstrap.Modal.getInstance(modal);
+                        if (bsModal) {
+                            bsModal.hide();
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Error using Bootstrap to close modal:', err);
+                }
+                
+                // Fallback to manual closing
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+                
+                // Remove backdrop manually
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+                
+                // Reset body
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            }
+            
+            // Detect when a modal backdrop is added to the DOM
+            const bodyObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.classList && node.classList.contains('modal-backdrop')) {
+                                console.log('Modal backdrop detected');
+                                // Check if any modal is actually visible
+                                setTimeout(function() {
+                                    const visibleModals = document.querySelectorAll('.modal.show');
+                                    if (visibleModals.length === 0) {
+                                        console.log('No visible modals, removing orphaned backdrop');
+                                        node.remove();
+                                        document.body.classList.remove('modal-open');
+                                        document.body.style.overflow = '';
+                                        document.body.style.paddingRight = '';
+                                    }
+                                }, 100);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // Start observing the body for added modal backdrops
+            bodyObserver.observe(document.body, {
+                childList: true,
+                subtree: false
             });
         }
         
-        // Initialize styled account select
-        initAccountSelect();
-        initCategorySelect();
+        // Run modal setup
+        setupModalManagement();
         
-        // Current selected month/year (initialize with displayed values)
-        let currentMonth = {% if current_month %}{{ current_month }}{% else %}new Date().getMonth() + 1{% endif %};
-        let currentYear = {% if current_year %}{{ current_year }}{% else %}new Date().getFullYear(){% endif %};
-        let deleteTransactionId = null;
-        
-        // Month navigation
-        const prevMonthBtn = document.getElementById('prev-month-btn');
-        const nextMonthBtn = document.getElementById('next-month-btn');
-        const currentMonthDisplay = document.getElementById('current-month');
-        
-        // Filter elements
-        const applyFiltersBtn = document.getElementById('apply-filters-btn');
-        const clearFiltersBtn = document.getElementById('clear-filters-btn');
-        
-        // Transaction buttons
-        const addIncomeBtn = document.getElementById('add-income-btn');
-        const addExpenseBtn = document.getElementById('add-expense-btn');
-        const saveTransactionBtn = document.getElementById('save-transaction-btn');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-        const batchDeleteBtn = document.querySelector('.batch-delete');
-        
-        // Add event listeners for month navigation
-        prevMonthBtn.addEventListener('click', () => {
-            resetSelection();
-            currentMonth--;
-            if (currentMonth < 1) {
-                currentMonth = 12;
-                currentYear--;
+        // Function to clean up any stray modal elements
+        function cleanupModalArtifacts() {
+            // Remove any stuck modal backdrops
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            if (backdrops.length > 0) {
+                console.log('Cleaning up', backdrops.length, 'modal backdrops');
+                backdrops.forEach(backdrop => backdrop.remove());
             }
-            loadTransactionsForMonth();
-        });
-        
-        nextMonthBtn.addEventListener('click', () => {
-            resetSelection();
-            currentMonth++;
-            if (currentMonth > 12) {
-                currentMonth = 1;
-                currentYear++;
+            
+            // Ensure body doesn't have modal-open class if no modals are visible
+            const visibleModals = document.querySelectorAll('.modal.show');
+            if (visibleModals.length === 0 && document.body.classList.contains('modal-open')) {
+                console.log('Removing modal-open class from body');
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
             }
-            loadTransactionsForMonth();
-        });
+        }
         
-        // Apply filters event
-        applyFiltersBtn.addEventListener('click', () => {
-            resetSelection();
-            loadTransactionsForMonth();
-        });
+        // Run cleanup on page load
+        cleanupModalArtifacts();
         
-        // Clear filters event
-        clearFiltersBtn.addEventListener('click', function() {
-            // Reset filters
-            document.getElementById('category-filter').value = '';
-            document.getElementById('from-to-filter').value = '';
-            document.getElementById('expense-check').checked = true;
-            document.getElementById('income-check').checked = true;
-            resetSelection();
-            loadTransactionsForMonth();
-        });
+        // Override loadTransactionsForMonth to clean up after refresh
+        if (typeof window.loadTransactionsForMonth === 'function') {
+            const originalLoadTransactions = window.loadTransactionsForMonth;
+            window.loadTransactionsForMonth = function(...args) {
+                // Clean up before loading new transactions
+                cleanupModalArtifacts();
+                
+                // Call the original function
+                const result = originalLoadTransactions.apply(this, args);
+                
+                // Clean up after a short delay to ensure any new modals are properly handled
+                setTimeout(() => {
+                    cleanupModalArtifacts();
+                    
+                    // After cleaning up, reattach event handlers
+                    if (typeof window.attachDeleteEventHandlers === 'function') {
+                        window.attachDeleteEventHandlers();
+                    }
+                }, 200);
+                
+                return result;
+            };
+        }
         
-        // Add transaction buttons
-        addIncomeBtn.addEventListener('click', () => {
-            resetSelection();
-            openTransactionModal('income');
-        });
+        // Initialize all dropdowns
+        function initializeDropdowns() {
+            console.log('Initializing dropdowns');
+            
+            // First, try to initialize using Bootstrap's Dropdown
+            document.querySelectorAll('.dropdown-toggle').forEach(function(dropdownToggle) {
+                try {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                        new bootstrap.Dropdown(dropdownToggle);
+                    }
+                } catch (err) {
+                    console.error('Error initializing dropdown:', err);
+                }
+                
+                // Also add a direct click handler as a fallback
+                dropdownToggle.removeEventListener('click', toggleDropdownMenu);
+                dropdownToggle.addEventListener('click', toggleDropdownMenu);
+            });
+        }
         
-        addExpenseBtn.addEventListener('click', () => {
-            resetSelection();
-            openTransactionModal('expense');
-        });
-        
-        // Implement global click handler to reset selection when clicking elsewhere
-        document.addEventListener('click', function(e) {
-            // Don't reset if clicking on checkboxes, delete button, or elements inside the transaction item
-            if (e.target.closest('.custom-checkbox') || 
-                e.target.closest('.batch-delete') ||
-                e.target.closest('.transaction-item') ||
-                e.target.closest('.batch-actions') ||
-                e.target.closest('#deleteModal')) {
+        // Function to manually toggle dropdown menu visibility
+        function toggleDropdownMenu(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const dropdownMenu = this.nextElementSibling;
+            if (!dropdownMenu || !dropdownMenu.classList.contains('dropdown-menu')) {
                 return;
             }
             
-            // Reset selection for clicks outside of selection-related elements
-            resetSelection();
-        });
-        
-        // Save transaction
-        saveTransactionBtn.addEventListener('click', saveTransaction);
-        
-        // Delete transaction
-        confirmDeleteBtn.addEventListener('click', () => {
-            if (deleteTransactionId) {
-                deleteTransaction(deleteTransactionId);
-            }
-        });
-        
-        // Delegate event listeners for transaction actions (edit, duplicate, delete)
-        document.addEventListener('click', function(e) {
-            // Edit transaction
-            if (e.target.classList.contains('edit-transaction') || e.target.parentElement.classList.contains('edit-transaction')) {
-                e.preventDefault();
-                const element = e.target.classList.contains('edit-transaction') ? e.target : e.target.parentElement;
-                const transactionId = element.dataset.id;
-                editTransaction(transactionId);
-            }
+            // Toggle dropdown visibility
+            const isCurrentlyVisible = dropdownMenu.classList.contains('show');
             
-            // Duplicate transaction
-            if (e.target.classList.contains('duplicate-transaction') || e.target.parentElement.classList.contains('duplicate-transaction')) {
-                e.preventDefault();
-                const element = e.target.classList.contains('duplicate-transaction') ? e.target : e.target.parentElement;
-                const transactionId = element.dataset.id;
-                duplicateTransaction(transactionId);
-            }
-            
-            // Delete transaction
-            if (e.target.classList.contains('delete-transaction') || e.target.parentElement.classList.contains('delete-transaction')) {
-                e.preventDefault();
-                const element = e.target.classList.contains('delete-transaction') ? e.target : e.target.parentElement;
-                const transactionId = element.dataset.id;
-                deleteTransactionId = transactionId;
-                
-                // Show delete confirmation modal
-                new bootstrap.Modal(document.getElementById('deleteModal')).show();
-            }
-        });
-        
-        // Handle category change for subcategories
-        document.getElementById('transaction-category').addEventListener('change', function() {
-            loadSubcategoriesInCategoryDropdown(this.value);
-        });
-        
-        // Filter accounts when transaction type changes
-        document.getElementById('transaction-type').addEventListener('change', function() {
-            filterAccountsByTransactionType(this.value);
-            filterCategoriesByTransactionType(this.value);
-        });
-        
-        // Functions
-        function initAccountSelect() {
-            const accountSelect = document.getElementById('transaction-account');
-            
-            // Initialize select with icon
-            setTimeout(updateAccountSelectIcon, 0);
-            
-            // Listen for changes to update the icon
-            accountSelect.addEventListener('change', updateAccountSelectIcon);
-        }
-        
-        function updateAccountSelectIcon() {
-            const accountSelect = document.getElementById('transaction-account');
-            const selectedOption = accountSelect.options[accountSelect.selectedIndex];
-            const iconClass = selectedOption ? selectedOption.getAttribute('data-icon') : null;
-            const selectedValue = accountSelect.value;
-            
-            // Clear the input group first
-            const inputGroup = accountSelect.closest('.input-group');
-            if (inputGroup) {
-                // Store original select
-                const originalSelect = accountSelect.cloneNode(true);
-                
-                // Clear all contents
-                inputGroup.innerHTML = '';
-                
-                // Re-add the select
-                inputGroup.appendChild(originalSelect);
-                
-                // Update the reference to the select
-                const newSelect = inputGroup.querySelector('select');
-                
-                // Set the selected value (important for showing the right option)
-                if (selectedValue) {
-                    newSelect.value = selectedValue;
+            // First close all other open dropdowns
+            document.querySelectorAll('.dropdown-menu.show').forEach(function(menu) {
+                if (menu !== dropdownMenu) {
+                    menu.classList.remove('show');
                 }
-                
-                if (iconClass) {
-                    // Create a wrapper to hold both the select and icon
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'position-relative w-100';
-                    
-                    // Create the icon element
-                    const iconElement = document.createElement('i');
-                    iconElement.className = `bi ${iconClass} position-absolute`;
-                    iconElement.style.left = '15px';
-                    iconElement.style.top = '50%';
-                    iconElement.style.transform = 'translateY(-50%)';
-                    iconElement.style.zIndex = '10';
-                    iconElement.style.color = '#6c757d';
-                    iconElement.style.fontSize = '1.1rem';
-                    iconElement.style.width = '20px';
-                    iconElement.style.textAlign = 'center';
-                    
-                    // Set styles for the select
-                    newSelect.style.paddingLeft = '40px';
-                    
-                    // Add icon and select to wrapper
-                    wrapper.appendChild(iconElement);
-                    wrapper.appendChild(newSelect);
-                    
-                    // Replace select with wrapper
-                    inputGroup.innerHTML = '';
-                    inputGroup.appendChild(wrapper);
-                    
-                    // Re-add event listeners
-                    newSelect.addEventListener('change', function() {
-                        filterAccountsByTransactionType(document.getElementById('transaction-type').value);
-                        updateAccountSelectIcon();
-                    });
-                } else {
-                    // No icon needed
-                    newSelect.style.paddingLeft = '';
-                }
-            }
-        }
-        
-        function initCategorySelect() {
-            const categorySelect = document.getElementById('transaction-category');
-            
-            // Initialize select with icon
-            setTimeout(updateCategorySelectIcon, 0);
-            
-            // Preload all subcategories based on current transaction type
-            setTimeout(() => {
-                const transactionType = document.getElementById('transaction-type').value;
-                preloadAllSubcategories(transactionType);
-            }, 100);
-            
-            // Listen for changes to update the icon
-            categorySelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                
-                // Check if the selected option is a subcategory
-                if (selectedOption && selectedOption.hasAttribute('data-subcategory-id')) {
-                    // Set the subcategory ID in the hidden field
-                    document.getElementById('transaction-subcategory').value = selectedOption.getAttribute('data-subcategory-id');
-                    
-                    // Also mark the parent category as the selected category (for processing)
-                    const parentCategoryId = selectedOption.getAttribute('data-parent-category');
-                    if (parentCategoryId) {
-                        // We're just setting the internal value for form submission, not changing the visible selection
-                        document.getElementById('transaction-category').setAttribute('data-selected-category', parentCategoryId);
-                    }
-                } else {
-                    // It's a main category, clear subcategory selection
-                    document.getElementById('transaction-subcategory').value = '';
-                    
-                    // If it's a category, load its subcategories
-                    if (selectedOption && selectedOption.getAttribute('data-is-category') === 'true') {
-                        loadSubcategoriesInCategoryDropdown(this.value);
-                    }
-                }
-                
-                // Update the icon
-                updateCategorySelectIcon();
             });
-        }
-        
-        function updateCategorySelectIcon() {
-            const categorySelect = document.getElementById('transaction-category');
-            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-            const iconClass = selectedOption ? selectedOption.getAttribute('data-icon') : null;
-            const selectedValue = categorySelect.value;
             
-            // Clear the input group first
-            const inputGroup = categorySelect.closest('.input-group');
-            if (inputGroup) {
-                // Store original select
-                const originalSelect = categorySelect.cloneNode(true);
+            // Toggle this dropdown
+            if (isCurrentlyVisible) {
+                dropdownMenu.classList.remove('show');
+            } else {
+                dropdownMenu.classList.add('show');
+                dropdownMenu.style.position = 'absolute';
+                dropdownMenu.style.inset = '0px 0px auto auto';
+                dropdownMenu.style.margin = '0px';
+                dropdownMenu.style.transform = 'translate(-8px, 40px)';
+            }
+            
+            // Close dropdown when clicking outside
+            if (!isCurrentlyVisible) {
+                const closeDropdownHandler = function(evt) {
+                    if (!dropdownMenu.contains(evt.target) && evt.target !== e.target) {
+                        dropdownMenu.classList.remove('show');
+                        document.removeEventListener('click', closeDropdownHandler);
+                    }
+                };
                 
-                // Clear all contents
-                inputGroup.innerHTML = '';
-                
-                // Re-add the select
-                inputGroup.appendChild(originalSelect);
-                
-                // Update the reference to the select
-                const newSelect = inputGroup.querySelector('select');
-                
-                // Set the selected value (important for showing the right option)
-                if (selectedValue) {
-                    newSelect.value = selectedValue;
-                }
-                
-                if (iconClass) {
-                    // Create a wrapper to hold both the select and icon
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'position-relative w-100';
-                    
-                    // Create the icon element
-                    const iconElement = document.createElement('i');
-                    iconElement.className = `bi ${iconClass} position-absolute`;
-                    iconElement.style.left = '15px';
-                    iconElement.style.top = '50%';
-                    iconElement.style.transform = 'translateY(-50%)';
-                    iconElement.style.zIndex = '10';
-                    iconElement.style.color = '#6c757d';
-                    iconElement.style.fontSize = '1.1rem';
-                    iconElement.style.width = '20px';
-                    iconElement.style.textAlign = 'center';
-                    
-                    // Set styles for the select
-                    newSelect.style.paddingLeft = '40px';
-                    
-                    // Add icon and select to wrapper
-                    wrapper.appendChild(iconElement);
-                    wrapper.appendChild(newSelect);
-                    
-                    // Replace select with wrapper
-                    inputGroup.innerHTML = '';
-                    inputGroup.appendChild(wrapper);
-                    
-                    // Re-add event listeners
-                    newSelect.addEventListener('change', function() {
-                        loadSubcategoriesInCategoryDropdown(this.value);
-                        updateCategorySelectIcon();
-                    });
-                } else {
-                    // No icon needed
-                    newSelect.style.paddingLeft = '';
-                }
+                // Add event listener with a small delay to avoid immediate triggering
+                setTimeout(function() {
+                    document.addEventListener('click', closeDropdownHandler);
+                }, 10);
             }
         }
         
-        function loadTransactionsForMonth() {
-            // Format the month name to display
-            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                              'July', 'August', 'September', 'October', 'November', 'December'];
-            currentMonthDisplay.textContent = `${monthNames[currentMonth-1]} ${currentYear}`;
+        // Run initial dropdown initialization
+        initializeDropdowns();
+        
+        // Execute initialization after transaction list is updated
+        const transactionListElement = document.querySelector('.list-group-flush');
+        if (transactionListElement) {
+            const observer = new MutationObserver(function(mutations) {
+                console.log('Transaction list changed, initializing dropdowns');
+                initializeDropdowns();
+            });
             
-            // Get filter values
-            const categoryId = document.getElementById('category-filter').value;
-            const searchTerm = document.getElementById('from-to-filter').value;
-            const includeExpenses = document.getElementById('expense-check').checked;
-            const includeIncome = document.getElementById('income-check').checked;
-            
-            // Build transaction types array
-            const types = [];
-            if (includeExpenses) types.push('expense');
-            if (includeIncome) types.push('income');
-            
-            // AJAX call to get filtered transactions
-            fetch(`/finances/transactions/api/?month=${currentMonth}&year=${currentYear}&category=${categoryId}&search=${searchTerm}&types=${types.join(',')}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log("Received transactions data:", data.transactions);
-                    updateTransactionsList(data.transactions);
-                    document.getElementById('transaction-count').textContent = data.count;
-                    document.getElementById('transaction-total').textContent = `$${data.total.toFixed(2)}`;
-                    
-                    // Update class based on total value
-                    const totalElement = document.getElementById('transaction-total');
-                    if (data.total >= 0) {
-                        totalElement.classList.remove('text-danger');
-                        totalElement.classList.add('text-success');
-                    } else {
-                        totalElement.classList.remove('text-success');
-                        totalElement.classList.add('text-danger');
-                    }
-                })
-                .catch(error => console.error('Error loading transactions:', error));
+            observer.observe(transactionListElement, { childList: true });
         }
         
-        function updateTransactionsList(transactions) {
-            const listContainer = document.querySelector('.list-group');
+        // Override updateTransactionList function if it gets defined later
+        const originalUpdateTransactionList = window.updateTransactionList;
+        if (originalUpdateTransactionList) {
+            window.updateTransactionList = function(...args) {
+                const result = originalUpdateTransactionList.apply(this, args);
+                setTimeout(initializeDropdowns, 10);
+                return result;
+            };
+        }
+        
+        // Global function to show the delete modal directly
+        window.showDeleteConfirmationModal = function(title, message, confirmText, confirmCallback) {
+            const deleteModal = document.getElementById('deleteModal');
+            const deleteModalLabel = document.getElementById('deleteModalLabel');
+            const deleteConfirmationMessage = document.getElementById('delete-confirmation-message');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
             
-            if (transactions.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="list-group-item py-4 text-center">
-                        <p class="mb-0">No transactions found for this period</p>
-                    </div>
-                `;
+            if (!deleteModal || !deleteModalLabel || !deleteConfirmationMessage || !confirmDeleteBtn) {
+                console.error('Delete modal elements not found');
+                alert('Error showing confirmation dialog');
                 return;
             }
             
-            let html = '';
+            // Clean up any existing backdrops before showing a new modal
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
             
-            transactions.forEach(transaction => {
-                // Determine which icon to use - prioritize subcategory if available
-                const iconToUse = transaction.subcategory_icon || transaction.category_icon || 'bi bi-tag';
-                const nameToDisplay = transaction.subcategory_name || transaction.category_name || 'Uncategorized';
-                
-                html += `
-                <div class="list-group-item d-flex justify-content-between align-items-center transaction-item position-relative">
-                    <div class="d-flex align-items-center">
-                        <div class="custom-checkbox me-2">
-                            <input class="transaction-check" type="checkbox" value="${transaction.id}" id="check-${transaction.id}">
-                            <label class="custom-checkbox-label" for="check-${transaction.id}"></label>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="transaction-icon me-3">
-                                <span class="icon-wrapper rounded-circle bg-${transaction.type === 'income' ? 'success' : 'danger'} p-2">
-                                    <i class="${iconToUse} text-white"></i>
-                                </span>
-                            </div>
-                            <div>
-                                <div class="fw-bold">${transaction.title}</div>
-                                <small class="text-muted">
-                                    ${nameToDisplay}
-                                    ${transaction.notes ? '- ' + transaction.notes : ''}
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <div class="text-end me-3">
-                            <div class="${transaction.type === 'income' ? 'text-success' : 'text-danger'} fw-bold">
-                                ${transaction.type === 'income' ? '+' : '-'}$${parseFloat(transaction.amount).toFixed(2)}
-                            </div>
-                            <small class="text-muted">${formatDate(transaction.date)}</small>
-                        </div>
-                        <!-- Transaction Actions -->
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots-vertical"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item edit-transaction" href="#" data-id="${transaction.id}">Edit</a></li>
-                                <li><a class="dropdown-item duplicate-transaction" href="#" data-id="${transaction.id}">Duplicate</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item delete-transaction text-danger" href="#" data-id="${transaction.id}">Delete</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                    <!-- Color indicator bar -->
-                    <div class="position-absolute top-0 bottom-0 end-0 transaction-indicator ${transaction.type === 'income' ? 'bg-success' : 'bg-danger'}" style="width: 4px;"></div>
-                </div>
-                `;
-            });
+            // Update modal content
+            deleteModalLabel.textContent = title || 'Confirm Delete';
+            deleteConfirmationMessage.innerHTML = message || 'Are you sure you want to delete this item?';
+            confirmDeleteBtn.textContent = confirmText || 'Delete';
+            confirmDeleteBtn.classList.remove('btn-primary');
+            confirmDeleteBtn.classList.add('btn-danger');
             
-            listContainer.innerHTML = html;
-        }
-        
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-        }
-        
-        function openTransactionModal(type) {
-            // Reset form
-            document.getElementById('transaction-form').reset();
-            document.getElementById('transaction-id').value = '';
-            document.getElementById('transaction-type').value = type;
-            
-            // Set default date and time to now
-            const now = new Date();
-            document.getElementById('transaction-date').value = formatDateForInput(now);
-            document.getElementById('transaction-time').value = formatTimeForInput(now);
-            
-            // Filter accounts based on transaction type
-            filterAccountsByTransactionType(type);
-            
-            // Filter categories based on transaction type
-            filterCategoriesByTransactionType(type);
-            
-            // Update icons for select dropdowns
-            updateAccountSelectIcon();
-            updateCategorySelectIcon();
-            
-            // Load subcategories for all visible categories (Pre-load subcategories)
-            preloadAllSubcategories(type);
-            
-            // Update modal title based on transaction type
-            const modalTitle = type === 'income' ? 'Add Income' : 'Add Expense';
-            document.getElementById('transactionModalLabel').textContent = modalTitle;
-            
-            // Show the modal
-            new bootstrap.Modal(document.getElementById('transactionModal')).show();
-        }
-        
-        // Function to preload subcategories for all visible categories
-        function preloadAllSubcategories(transactionType) {
-            const categorySelect = document.getElementById('transaction-category');
-            const categories = Array.from(categorySelect.options)
-                .filter(opt => opt.getAttribute('data-is-category') === 'true' && 
-                              (!opt.getAttribute('data-type') || opt.getAttribute('data-type') === transactionType));
-            
-            // Load subcategories for each visible category
-            if (categories.length > 0) {
-                // Process categories one by one
-                let index = 0;
-                
-                function processNextCategory() {
-                    if (index < categories.length) {
-                        const categoryId = categories[index].value;
-                        
-                        // Fetch subcategories for this category
-                        fetch(`/finances/api/categories/${categoryId}/subcategories/`)
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.length > 0) {
-                                    // Remove any existing subcategory options for this category
-                                    const existingSubcats = Array.from(categorySelect.options)
-                                        .filter(opt => opt.getAttribute('data-parent-category') === categoryId);
-                                    existingSubcats.forEach(opt => opt.remove());
-                                    
-                                    // Add subcategory options after the parent category
-                                    const categoryOption = Array.from(categorySelect.options)
-                                        .find(opt => opt.value === categoryId);
-                                    const categoryIndex = Array.from(categorySelect.options).indexOf(categoryOption);
-                                    
-                                    // Add subcategories
-                                    data.forEach((subcategory, subIndex) => {
-                                        const option = document.createElement('option');
-                                        option.value = `subcat-${subcategory.id}`;
-                                        option.setAttribute('data-icon', subcategory.icon || 'bi-tag-fill');
-                                        option.setAttribute('data-parent-category', categoryId);
-                                        option.setAttribute('data-subcategory-id', subcategory.id);
-                                        option.setAttribute('data-type', categoryOption.getAttribute('data-type'));
-                                        option.style.paddingLeft = '25px';
-                                        option.textContent = `↳ ${subcategory.name}`;
-                                        
-                                        // Insert after parent category and any previously added subcategories
-                                        categorySelect.insertBefore(option, categorySelect.options[categoryIndex + subIndex + 1]);
-                                    });
-                                }
-                                
-                                // Process the next category
-                                index++;
-                                processNextCategory();
-                            })
-                            .catch(error => {
-                                console.error('Error loading subcategories:', error);
-                                index++;
-                                processNextCategory();
-                            });
-                    } else {
-                        // All categories processed, update category icon
-                        updateCategorySelectIcon();
-                    }
-                }
-                
-                // Start processing categories
-                processNextCategory();
-            }
-        }
-        
-        function filterAccountsByTransactionType(transactionType) {
-            const accountSelect = document.getElementById('transaction-account');
-            const options = accountSelect.querySelectorAll('option');
-            
-            options.forEach(option => {
-                // Skip the default empty option
-                if (!option.value) return;
-                
-                const accountType = option.getAttribute('data-account-type');
-                
-                // For income transactions, hide credit accounts
-                if (transactionType === 'income' && accountType === 'credit') {
-                    option.style.display = 'none';
-                } else {
-                    option.style.display = '';
-                }
-            });
-            
-            // Reset selection to default if the currently selected account is now hidden
-            const selectedOption = accountSelect.options[accountSelect.selectedIndex];
-            if (selectedOption && selectedOption.style.display === 'none') {
-                accountSelect.value = '';
-            }
-        }
-        
-        function editTransaction(transactionId) {
-            // Fetch transaction details
-            fetch(`/finances/transactions/api/${transactionId}/`)
-                .then(response => response.json())
-                .then(transaction => {
-                    console.log("Transaction details for editing:", transaction);
+            // Show the modal using Bootstrap if available, otherwise fallback to direct DOM manipulation
+            try {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    const bsModal = new bootstrap.Modal(deleteModal);
+                    bsModal.show();
                     
-                    // Fill form with transaction data
-                    document.getElementById('transaction-id').value = transaction.id;
-                    document.getElementById('transaction-title').value = transaction.title;
-                    document.getElementById('transaction-amount').value = transaction.amount;
-                    document.getElementById('transaction-date').value = formatDateForInput(new Date(transaction.date));
-                    
-                    // Set time if available
-                    if (transaction.time) {
-                        document.getElementById('transaction-time').value = transaction.time.substring(0, 5); // HH:MM format
-                    } else {
-                        document.getElementById('transaction-time').value = formatTimeForInput(new Date());
-                    }
-                    
-                    document.getElementById('transaction-type').value = transaction.type;
-                    document.getElementById('transaction-notes').value = transaction.notes || '';
-                    
-                    // Set account if available
-                    if (transaction.transaction_account) {
-                        document.getElementById('transaction-account').value = transaction.transaction_account;
-                    }
-                    
-                    // Filter accounts based on transaction type
-                    filterAccountsByTransactionType(transaction.type);
-                    
-                    // Filter categories based on transaction type
-                    filterCategoriesByTransactionType(transaction.type);
-                    
-                    // Load category and subcategory
-                    if (transaction.category) {
-                        // First set the main category
-                        document.getElementById('transaction-category').value = transaction.category;
-                        
-                        // Load subcategories for this category and select the right one if present
-                        if (transaction.subcategory) {
-                            // Set the hidden subcategory field
-                            document.getElementById('transaction-subcategory').value = transaction.subcategory;
-                            
-                            // We need to load all subcategories first to ensure proper selection
-                            const transactionType = document.getElementById('transaction-type').value;
-                            preloadAllSubcategories(transactionType);
-                            
-                            // Give it a moment to load, then try to select the subcategory
-                            setTimeout(() => {
-                                // Find the subcategory option
-                                const subcategoryOption = Array.from(document.getElementById('transaction-category').options)
-                                    .find(opt => opt.getAttribute('data-subcategory-id') === transaction.subcategory.toString());
-                                
-                                // Select it if found
-                                if (subcategoryOption) {
-                                    document.getElementById('transaction-category').value = subcategoryOption.value;
-                                    console.log("Selected subcategory option:", subcategoryOption.textContent);
-                                }
-                                
-                                // Update the icon
-                                updateCategorySelectIcon();
-                            }, 300);
-                        } else {
-                            // Just load subcategories for the selected category
-                            loadSubcategoriesInCategoryDropdown(transaction.category);
+                    // Set the confirm button handler
+                    confirmDeleteBtn.onclick = function() {
+                        if (typeof confirmCallback === 'function') {
+                            confirmCallback();
                         }
-                    }
+                        bsModal.hide();
+                    };
                     
-                    // Update the icons for select dropdowns
-                    updateAccountSelectIcon();
-                    updateCategorySelectIcon();
+                    // Set event handler to clean up when the modal is hidden
+                    deleteModal.addEventListener('hidden.bs.modal', function() {
+                        cleanupModalState();
+                    }, { once: true });
                     
-                    // Update modal title
-                    const modalTitle = transaction.type === 'income' ? 'Edit Income' : 'Edit Expense';
-                    document.getElementById('transactionModalLabel').textContent = modalTitle;
-                    
-                    // Show the modal
-                    new bootstrap.Modal(document.getElementById('transactionModal')).show();
-                })
-                .catch(error => console.error('Error loading transaction details:', error));
-        }
-        
-        function duplicateTransaction(transactionId) {
-            // Similar to edit, but we don't set the ID, creating a new transaction
-            fetch(`/finances/transactions/api/${transactionId}/`)
-                .then(response => response.json())
-                .then(transaction => {
-                    // Fill form with transaction data but don't set ID (creates a new one)
-                    document.getElementById('transaction-id').value = '';  // Important: empty for new transaction
-                    document.getElementById('transaction-title').value = transaction.title;
-                    document.getElementById('transaction-amount').value = transaction.amount;
-                    document.getElementById('transaction-date').value = formatDateForInput(new Date()); // Current date
-                    document.getElementById('transaction-type').value = transaction.type;
-                    document.getElementById('transaction-notes').value = transaction.notes || '';
-                    
-                    // Filter accounts based on transaction type
-                    filterAccountsByTransactionType(transaction.type);
-                    
-                    // Filter categories based on transaction type
-                    filterCategoriesByTransactionType(transaction.type);
-                    
-                    // Load category and subcategory
-                    if (transaction.category) {
-                        // First set the main category
-                        document.getElementById('transaction-category').value = transaction.category;
-                        
-                        // Load subcategories for this category and select the right one if present
-                        if (transaction.subcategory) {
-                            // Set the hidden subcategory field
-                            document.getElementById('transaction-subcategory').value = transaction.subcategory;
-                            
-                            // We need to load all subcategories first to ensure proper selection
-                            const transactionType = document.getElementById('transaction-type').value;
-                            preloadAllSubcategories(transactionType);
-                            
-                            // Give it a moment to load, then try to select the subcategory
-                            setTimeout(() => {
-                                // Find the subcategory option
-                                const subcategoryOption = Array.from(document.getElementById('transaction-category').options)
-                                    .find(opt => opt.getAttribute('data-subcategory-id') === transaction.subcategory.toString());
-                                
-                                // Select it if found
-                                if (subcategoryOption) {
-                                    document.getElementById('transaction-category').value = subcategoryOption.value;
-                                }
-                                
-                                // Update the icon
-                                updateCategorySelectIcon();
-                            }, 300);
-                        } else {
-                            // Just load subcategories for the selected category
-                            loadSubcategoriesInCategoryDropdown(transaction.category);
-                        }
-                    }
-                    
-                    // Update the icons for select dropdowns
-                    updateAccountSelectIcon();
-                    updateCategorySelectIcon();
-                    
-                    // Update modal title (Duplicate)
-                    const modalTitle = transaction.type === 'income' ? 'Duplicate Income' : 'Duplicate Expense';
-                    document.getElementById('transactionModalLabel').textContent = modalTitle;
-                    
-                    // Show the modal
-                    new bootstrap.Modal(document.getElementById('transactionModal')).show();
-                })
-                .catch(error => console.error('Error duplicating transaction:', error));
-        }
-        
-        function saveTransaction() {
-            // Get form data
-            const transactionId = document.getElementById('transaction-id').value;
-            const form = document.getElementById('transaction-form');
-            const formData = new FormData(form);
-            
-            // Handle the category and subcategory
-            const categorySelect = document.getElementById('transaction-category');
-            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-            
-            // Check if the selected option is a subcategory
-            if (selectedOption && selectedOption.hasAttribute('data-subcategory-id')) {
-                // For subcategories, we need to set the correct category ID and subcategory ID
-                formData.set('category', selectedOption.getAttribute('data-parent-category'));
-                formData.set('subcategory', selectedOption.getAttribute('data-subcategory-id'));
-            } else if (selectedOption && selectedOption.getAttribute('data-is-category') === 'true') {
-                // For main categories, make sure subcategory is empty
-                formData.set('subcategory', '');
+                    return;
+                }
+            } catch (err) {
+                console.error('Error using Bootstrap Modal:', err);
+                // Continue with fallback
             }
             
-            // Get CSRF token
-            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            // Fallback to direct DOM manipulation if Bootstrap failed
+            console.log('Using direct DOM manipulation for modal');
             
-            // Determine if this is a create or update operation
-            const url = transactionId 
-                ? `/finances/transactions/api/${transactionId}/update/` 
-                : '/finances/transactions/api/create/';
+            // Show the modal using direct DOM API
+            deleteModal.classList.add('show');
+            deleteModal.style.display = 'block';
+            document.body.classList.add('modal-open');
             
-            console.log("Saving transaction:", {
-                id: transactionId,
-                title: formData.get('title'),
-                amount: formData.get('amount'),
-                date: formData.get('date'),
-                time: formData.get('time'),
-                type: formData.get('type'),
-                category: formData.get('category'),
-                subcategory: formData.get('subcategory'),
-                transaction_account: formData.get('transaction_account'),
-                notes: formData.get('notes')
-            });
+            // Create backdrop manually
+            const backdrop = document.createElement('div');
+            backdrop.classList.add('modal-backdrop', 'show');
+            document.body.appendChild(backdrop);
             
-            // Send AJAX request
-            fetch(url, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': csrftoken
+            // Set the confirm button handler
+            confirmDeleteBtn.onclick = function() {
+                if (typeof confirmCallback === 'function') {
+                    confirmCallback();
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Close modal and reload transactions
-                    bootstrap.Modal.getInstance(document.getElementById('transactionModal')).hide();
-                    loadTransactionsForMonth();
-                } else {
-                    // Display error message
-                    alert(data.error || 'An error occurred while saving the transaction.');
-                }
-            })
-            .catch(error => {
-                console.error('Error saving transaction:', error);
-                alert('An error occurred while saving the transaction.');
-            });
-        }
-        
-        function deleteTransaction(transactionId) {
-            // Handle both single and batch deletions
-            const isArray = Array.isArray(transactionId);
-            
-            if (isArray) {
-                // For batch deletions, we'll handle each transaction individually
-                let successCount = 0;
-                let errorCount = 0;
-                let processedCount = 0;
                 
-                // Process each transaction one by one
-                transactionId.forEach(id => {
-                    fetch(`/finances/transactions/api/${id}/delete/`, {
+                // Hide the modal
+                hideDeleteConfirmationModal();
+            };
+            
+            // Set cancel button handler
+            const cancelBtn = deleteModal.querySelector('.btn-secondary');
+            if (cancelBtn) {
+                cancelBtn.onclick = hideDeleteConfirmationModal;
+            }
+            
+            // Also capture click on X button
+            const closeBtn = deleteModal.querySelector('.btn-close');
+            if (closeBtn) {
+                closeBtn.onclick = hideDeleteConfirmationModal;
+            }
+            
+            // Also capture click outside modal
+            deleteModal.onclick = function(event) {
+                if (event.target === deleteModal) {
+                    hideDeleteConfirmationModal();
+                }
+            };
+            
+            // Escape key handler
+            const escHandler = function(e) {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    hideDeleteConfirmationModal();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+            
+            function hideDeleteConfirmationModal() {
+                // Hide the modal
+                deleteModal.classList.remove('show');
+                deleteModal.style.display = 'none';
+                
+                // Remove the backdrop
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                }
+                
+                // Reset body state
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                
+                // Clean up event handlers
+                cleanupModalState();
+            }
+            
+            function cleanupModalState() {
+                // Reset the modal content and events
+                if (cancelBtn) cancelBtn.onclick = null;
+                if (closeBtn) closeBtn.onclick = null;
+                deleteModal.onclick = null;
+                confirmDeleteBtn.onclick = null;
+                
+                // Remove the escape key handler
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        
+        // Function to attach delete event handlers to transaction items
+        window.attachDeleteEventHandlers = function() {
+            console.log('Attaching delete event handlers to transaction items');
+            
+            // Direct event listeners for delete transaction links
+            document.querySelectorAll('.delete-transaction').forEach(link => {
+                // Remove existing listener first to prevent duplicates
+                link.removeEventListener('click', handleDeleteClick);
+                // Add the new listener
+                link.addEventListener('click', handleDeleteClick);
+            });
+            
+            // Direct event listener for batch delete button
+            const batchDeleteBtn = document.querySelector('.batch-delete');
+            if (batchDeleteBtn) {
+                // Remove existing listener first
+                batchDeleteBtn.removeEventListener('click', handleBatchDeleteClick);
+                // Add the new listener
+                batchDeleteBtn.addEventListener('click', handleBatchDeleteClick);
+            }
+        };
+        
+        // Handler function for delete transaction clicks
+        function handleDeleteClick(e) {
+            e.preventDefault();
+            const transactionId = this.getAttribute('data-id');
+            
+            // Find the transaction title
+            const transactionItem = this.closest('.transaction-item');
+            const transactionTitle = transactionItem ? transactionItem.querySelector('.fw-bold').textContent : 'this transaction';
+            
+            // Show confirmation dialog
+            window.showDeleteConfirmationModal(
+                'Confirm Delete Transaction',
+                `<p>Are you sure you want to delete the transaction <strong>"${transactionTitle}"</strong>?</p>
+                 <div class="alert alert-warning">
+                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                     This action cannot be undone.
+                 </div>`,
+                'Delete Transaction',
+                function() {
+                    // Send delete request
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    fetch(`/finances/transactions/api/${transactionId}/delete/`, {
                         method: 'POST',
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                            'X-CSRFToken': csrfToken
                         }
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        processedCount++;
-                        
-                        if (data.success) {
-                            successCount++;
-                        } else {
-                            errorCount++;
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Server error: ${response.status}`);
                         }
-                        
-                        // When all transactions are processed, show results and refresh
-                        if (processedCount === transactionId.length) {
-                            // Close modal
-                            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Reset selection counter and hide batch actions
+                            document.querySelector('.selected-count').textContent = '0';
+                            document.querySelector('.batch-actions').classList.add('invisible');
+                            document.getElementById('select-all-transactions').checked = false;
                             
-                            // Show results
-                            if (errorCount > 0) {
-                                alert(`Deleted ${successCount} transaction(s). Failed to delete ${errorCount} transaction(s).`);
+                            // Reload transactions
+                            const urlParams = new URLSearchParams(window.location.search);
+                            if (typeof loadTransactionsForMonth === 'function') {
+                                loadTransactionsForMonth(urlParams.toString());
+                            } else {
+                                // Fallback to page reload
+                                window.location.reload();
                             }
                             
-                            // Refresh the list and reset selection
-                            loadTransactionsForMonth();
-                            resetSelection();
+                            if (typeof showToast === 'function') {
+                                showToast('Success', 'Transaction deleted successfully', 'success');
+                            }
+                        } else {
+                            throw new Error(data.error || 'Unknown error');
                         }
                     })
                     .catch(error => {
-                        processedCount++;
-                        errorCount++;
-                        
-                        console.error(`Error deleting transaction ${id}:`, error);
-                        
-                        // When all transactions are processed, show results and refresh
-                        if (processedCount === transactionId.length) {
-                            // Close modal
-                            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
-                            
-                            // Show results
-                            alert(`Deleted ${successCount} transaction(s). Failed to delete ${errorCount} transaction(s).`);
-                            
-                            // Refresh the list and reset selection
-                            loadTransactionsForMonth();
-                            resetSelection();
+                        console.error('Error deleting transaction:', error);
+                        if (typeof showToast === 'function') {
+                            showToast('Error', 'Failed to delete transaction: ' + error.message, 'danger');
+                        } else {
+                            alert('Error deleting transaction: ' + error.message);
                         }
                     });
-                });
-            } else {
-                // Single transaction deletion - original code
-                fetch(`/finances/transactions/api/${transactionId}/delete/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Close modal and reload transactions
-                        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
-                        loadTransactionsForMonth();
-                    } else {
-                        // Display error message
-                        alert(data.error || 'An error occurred while deleting the transaction.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error deleting transaction:', error);
-                    alert('An error occurred while deleting the transaction.');
-                });
-            }
+                }
+            );
         }
         
-        function loadSubcategoriesInCategoryDropdown(categoryId, selectedSubcategoryId = null) {
-            if (!categoryId) {
-                // Reset hidden subcategory field
-                document.getElementById('transaction-subcategory').value = '';
-                updateCategorySelectIcon();
-                return;
-            }
+        // Handler function for batch delete clicks
+        function handleBatchDeleteClick() {
+            const checkedBoxes = document.querySelectorAll('.transaction-check:checked');
+            if (checkedBoxes.length === 0) return;
             
-            console.log(`Loading subcategories for category ID: ${categoryId}, selectedSubcategory: ${selectedSubcategoryId}`);
+            const transactionIds = Array.from(checkedBoxes).map(checkbox => checkbox.value);
+            const count = transactionIds.length;
             
-            // Fetch subcategories for selected category
-            fetch(`/finances/api/categories/${categoryId}/subcategories/`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Received subcategories data:', data);
-                    
-                    const categorySelect = document.getElementById('transaction-category');
-                    const categoryOption = Array.from(categorySelect.options).find(opt => opt.value === categoryId);
-                    
-                    if (!categoryOption) {
-                        console.warn('Category option not found in dropdown');
-                        return;
-                    }
-                    
-                    // Get all subcategory options
-                    const subcategoryOptions = Array.from(categorySelect.options).filter(opt => 
-                        opt.getAttribute('data-parent-category') === categoryId);
-                    
-                    // Remove any existing subcategory options for this category
-                    console.log(`Removing ${subcategoryOptions.length} existing subcategory options`);
-                    subcategoryOptions.forEach(opt => opt.remove());
-                    
-                    if (data.length === 0) {
-                        console.log('No subcategories found for this category');
-                        updateCategorySelectIcon();
-                        return;
-                    }
-                    
-                    // Add subcategory options after the parent category
-                    const categoryIndex = Array.from(categorySelect.options).indexOf(categoryOption);
-                    console.log(`Adding ${data.length} subcategories after category at index ${categoryIndex}`);
-                    
-                    // Store original selected value
-                    const originalSelectedValue = categorySelect.value;
-                    
-                    data.forEach((subcategory, index) => {
-                        const option = document.createElement('option');
-                        option.value = `subcat-${subcategory.id}`; // Prefix to identify as subcategory
-                        option.setAttribute('data-icon', subcategory.icon || 'bi-tag-fill');
-                        option.setAttribute('data-parent-category', categoryId);
-                        option.setAttribute('data-subcategory-id', subcategory.id);
-                        option.setAttribute('data-type', categoryOption.getAttribute('data-type'));
-                        option.style.paddingLeft = '25px'; // Indent to show hierarchy
-                        option.textContent = `↳ ${subcategory.name}`;
-                        
-                        // Set as selected if it matches the selected subcategory ID
-                        if (selectedSubcategoryId && subcategory.id == selectedSubcategoryId) {
-                            option.selected = true;
-                            console.log(`Selected subcategory: ${subcategory.name}`);
+            // Show confirmation dialog
+            window.showDeleteConfirmationModal(
+                'Confirm Batch Delete',
+                `<p>Are you sure you want to delete ${count} selected transaction(s)?</p>
+                 <div class="alert alert-warning">
+                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                     This action cannot be undone.
+                 </div>`,
+                'Delete Selected Transactions',
+                function() {
+                    // Send batch delete request
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    fetch('/finances/transactions/api/batch-delete/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ transaction_ids: transactionIds })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Server error: ${response.status}`);
                         }
-                        
-                        // Insert after parent category
-                        categorySelect.insertBefore(option, categorySelect.options[categoryIndex + index + 1]);
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Reset selection counter and hide batch actions
+                            document.querySelector('.selected-count').textContent = '0';
+                            document.querySelector('.batch-actions').classList.add('invisible');
+                            document.getElementById('select-all-transactions').checked = false;
+                            
+                            // Reload transactions
+                            const urlParams = new URLSearchParams(window.location.search);
+                            if (typeof loadTransactionsForMonth === 'function') {
+                                loadTransactionsForMonth(urlParams.toString());
+                            } else {
+                                // Fallback to page reload
+                                window.location.reload();
+                            }
+                            
+                            if (typeof showToast === 'function') {
+                                showToast('Success', `Successfully deleted ${count} transaction(s)`, 'success');
+                            }
+                        } else {
+                            throw new Error(data.error || 'Unknown error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error batch deleting transactions:', error);
+                        if (typeof showToast === 'function') {
+                            showToast('Error', 'Failed to delete transactions: ' + error.message, 'danger');
+                        } else {
+                            alert('Error deleting transactions: ' + error.message);
+                        }
                     });
-                    
-                    // Restore selection if no subcategory was selected
-                    if (!selectedSubcategoryId) {
-                        categorySelect.value = originalSelectedValue;
+                }
+            );
+        }
+        
+        // If test button exists, add a direct handler - Commented out
+        /*
+        const testBtn = document.getElementById('test-delete-modal');
+        if (testBtn) {
+            testBtn.addEventListener('click', function() {
+                window.showDeleteConfirmationModal(
+                    'Test Delete Modal',
+                    '<p>This is a test of the delete modal functionality.</p>' +
+                    '<div class="alert alert-warning">' +
+                    '<i class="bi bi-exclamation-triangle-fill me-2"></i>' +
+                    'This is just a test, no action will be taken.' +
+                    '</div>',
+                    'Test Button',
+                    function() {
+                        alert('Test button clicked!');
                     }
-                    
-                    // Update the icon
-                    updateCategorySelectIcon();
-                    
-                    console.log('Subcategories added successfully');
-                    
-                    // If a subcategory was selected, update the hidden field
-                    if (selectedSubcategoryId) {
-                        document.getElementById('transaction-subcategory').value = selectedSubcategoryId;
-                        
-                        // Find and select the subcategory option
-                        const subcatOption = Array.from(categorySelect.options).find(
-                            opt => opt.getAttribute('data-subcategory-id') == selectedSubcategoryId
-                        );
-                        
-                        if (subcatOption) {
-                            categorySelect.value = subcatOption.value;
-                            console.log(`Selected subcategory with value: ${subcatOption.value}`);
-                        }
-                    }
-                })
-                .catch(error => console.error('Error loading subcategories:', error));
-        }
-        
-        function formatDateForInput(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-        
-        function formatTimeForInput(date) {
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${hours}:${minutes}`;
-        }
-        
-        function filterCategoriesByTransactionType(transactionType) {
-            const categorySelect = document.getElementById('transaction-category');
-            const options = categorySelect.querySelectorAll('option');
-            
-            options.forEach(option => {
-                // Skip the default empty option
-                if (!option.value) return;
-                
-                const categoryType = option.getAttribute('data-type');
-                
-                // Show only categories matching the current transaction type
-                if (categoryType && categoryType !== transactionType) {
-                    option.style.display = 'none';
-                } else {
-                    option.style.display = '';
-                }
-            });
-            
-            // Reset selection to default if the currently selected category is now hidden
-            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-            if (selectedOption && selectedOption.style.display === 'none') {
-                categorySelect.value = '';
-                
-                // Clear subcategories since the category changed
-                document.getElementById('transaction-subcategory').innerHTML = '<option value="" data-icon="bi-tags">Choose a subcategory</option>';
-                document.getElementById('transaction-subcategory').disabled = true;
-                updateSubcategorySelectIcon();
-            }
-            
-            // Update the category icon (directly call to ensure it updates)
-            setTimeout(updateCategorySelectIcon, 0);
-        }
-        
-        // Checkbox and batch actions handling
-        const selectAllCheckbox = document.getElementById('select-all-transactions');
-        const batchActionsMenu = document.querySelector('.batch-actions');
-        const selectedCountDisplay = document.querySelector('.selected-count');
-        
-        // Event listener for select all checkbox
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', function() {
-                const checkboxes = document.querySelectorAll('.transaction-check');
-                checkboxes.forEach(checkbox => {
-                    checkbox.checked = this.checked;
-                });
-                
-                updateBatchActionsVisibility();
+                );
             });
         }
+        */
         
-        // Event delegation for individual checkboxes
-        document.addEventListener('change', function(e) {
-            if (e.target.classList.contains('transaction-check')) {
-                updateBatchActionsVisibility();
-                
-                // If any checkbox is unchecked, uncheck the "Select All" checkbox
-                if (!e.target.checked && selectAllCheckbox.checked) {
-                    selectAllCheckbox.checked = false;
-                }
-                
-                // If all checkboxes are checked, check the "Select All" checkbox
-                if (areAllTransactionsSelected()) {
-                    selectAllCheckbox.checked = true;
-                }
-            }
-        });
+        // Initial attachment of event handlers
+        window.attachDeleteEventHandlers();
         
-        // Batch actions event handlers
-        document.querySelector('.batch-delete')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            const selectedIds = getSelectedTransactionIds();
-            if (selectedIds.length > 0) {
-                // Update delete confirmation message
-                const message = selectedIds.length === 1 
-                    ? 'Are you sure you want to delete this transaction? This action cannot be undone.'
-                    : `Are you sure you want to delete these ${selectedIds.length} transactions? This action cannot be undone.`;
-                
-                document.getElementById('delete-confirmation-message').textContent = message;
-                
-                // Store selected IDs for deletion
-                deleteTransactionId = selectedIds;
-                
-                // Show delete confirmation modal
-                new bootstrap.Modal(document.getElementById('deleteModal')).show();
-            }
-        });
-        
-        document.querySelector('.batch-export')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            const selectedIds = getSelectedTransactionIds();
-            if (selectedIds.length > 0) {
-                // In a production app, you would implement export functionality
-                alert(`Feature not implemented: Would export transaction IDs: ${selectedIds.join(', ')}`);
-            }
-        });
-        
-        document.querySelector('.batch-cancel')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            resetSelection();
-        });
-        
-        // Helper functions for batch actions
-        function updateBatchActionsVisibility() {
-            const selectedCount = getSelectedTransactionIds().length;
-            const selectedCountDisplay = document.querySelector('.selected-count');
-            const batchActionsMenu = document.querySelector('.batch-actions');
-            
-            if (selectedCountDisplay) {
-                selectedCountDisplay.textContent = selectedCount;
-            }
-            
-            if (batchActionsMenu) {
-                if (selectedCount > 0) {
-                    batchActionsMenu.classList.remove('invisible');
-                } else {
-                    batchActionsMenu.classList.add('invisible');
-                }
-            }
-        }
-        
-        function getSelectedTransactionIds() {
-            const checkboxes = document.querySelectorAll('.transaction-check:checked');
-            return Array.from(checkboxes).map(cb => cb.value);
-        }
-        
-        function areAllTransactionsSelected() {
-            const allCheckboxes = document.querySelectorAll('.transaction-check');
-            const checkedCheckboxes = document.querySelectorAll('.transaction-check:checked');
-            return allCheckboxes.length > 0 && allCheckboxes.length === checkedCheckboxes.length;
-        }
-        
-        function resetSelection() {
-            const checkboxes = document.querySelectorAll('.transaction-check');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = false;
+        // Add a mutation observer to watch for changes to the transaction list
+        // This ensures event handlers are reattached when the transaction list is updated
+        const transactionListForHandlers = document.querySelector('.list-group-flush');
+        if (transactionListForHandlers) {
+            const observer = new MutationObserver(function(mutations) {
+                window.attachDeleteEventHandlers();
             });
             
-            if (selectAllCheckbox) {
-                selectAllCheckbox.checked = false;
-            }
-            
-            updateBatchActionsVisibility();
+            observer.observe(transactionListForHandlers, { childList: true, subtree: true });
         }
+        
+        // Add emergency fix function - Commented out
+        /*
+        window.fixModalIssues = function() {
+            console.log('Emergency fix executed');
+            
+            // Remove all modal backdrops
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            
+            // Hide all modals
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.style.display = 'none';
+                modal.classList.remove('show');
+                modal.setAttribute('aria-hidden', 'true');
+            });
+            
+            // Reset body styles
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            
+            return false; // Prevent default
+        };
+        
+        // Add keyboard shortcut (Escape key) to fix modal issues
+        document.addEventListener('keydown', function(e) {
+            // ESC key
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                // Only execute if body has modal-open class
+                if (document.body.classList.contains('modal-open')) {
+                    window.fixModalIssues();
+                }
+            }
+        });
+        */
     });
 </script>
 {% endblock %} 
