@@ -394,8 +394,8 @@ def update_payment(request, pk):
             category=None,
             subcategory=None,
             user=request.user,
-            notes=f"Payment for debt with {debt.person}",
-            # account=account
+            notes=f"DebtPaymentAuto: Payment for debt with {debt.person}",
+            transaction_account=account1 or account2 or account3
         )
 
         messages.success(request, "Payment successfully updated!")
@@ -655,6 +655,7 @@ def add_transaction(request):
             transaction = form.save(commit=False)
             transaction.user = request.user
             transaction.save()
+            update_account_for_transaction(transaction)
             messages.success(request, 'Transaction added successfully.')
             return redirect('dashboard')
     else:
@@ -669,7 +670,19 @@ def edit_transaction(request, pk):
     if request.method == 'POST':
         form = TransactionForm(request.POST, instance=transaction, user=request.user)
         if form.is_valid():
+            old_transaction = Transaction.objects.get(pk=transaction.pk)
             form.save()
+            # Reverse the old transaction's effect, then apply the new one
+            if old_transaction.transaction_account and not (old_transaction.notes and 'DebtPaymentAuto' in str(old_transaction.notes)):
+                reverse_transaction = Transaction(
+                    amount=old_transaction.amount,
+                    type='income' if old_transaction.type == 'expense' else 'expense',
+                    transaction_account=old_transaction.transaction_account
+                )
+                update_account_for_transaction(reverse_transaction)
+            # Apply the new transaction's effect
+            updated_transaction = Transaction.objects.get(pk=transaction.pk)
+            update_account_for_transaction(updated_transaction)
             messages.success(request, 'Transaction updated successfully.')
             return redirect('dashboard')
     else:
@@ -1653,6 +1666,38 @@ def transaction_detail_api(request, transaction_id):
     
     return JsonResponse(data)
 
+def update_account_for_transaction(transaction):
+    # Skip if this is a debt payment auto transaction
+    if transaction.notes and 'DebtPaymentAuto' in str(transaction.notes):
+        return
+    account = transaction.transaction_account
+    if not account:
+        return
+    amount = Decimal(str(transaction.amount))  # Convert to Decimal
+    # Debit Account
+    if hasattr(account, 'debitaccount'):
+        if transaction.type == 'expense':
+            account.debitaccount.balance -= amount
+        elif transaction.type == 'income':
+            account.debitaccount.balance += amount
+        account.debitaccount.save()
+    # Credit Account
+    elif hasattr(account, 'creditaccount'):
+        if transaction.type == 'expense':
+            account.creditaccount.current_usage += amount
+            # Don't allow negative usage or over limit (optional: add checks)
+            if account.creditaccount.current_usage > account.creditaccount.credit_limit:
+                account.creditaccount.current_usage = account.creditaccount.credit_limit
+            account.creditaccount.save()
+        # For income, do nothing (or could reduce usage if you want to support payments)
+    # Wallet
+    elif hasattr(account, 'wallet'):
+        if transaction.type == 'expense':
+            account.wallet.balance -= amount
+        elif transaction.type == 'income':
+            account.wallet.balance += amount
+        account.wallet.save()
+
 @login_required
 def create_transaction_api(request):
     """API endpoint for creating a transaction"""
@@ -1716,6 +1761,7 @@ def create_transaction_api(request):
                     print(f"Error getting account: {e}")
             
             transaction.save()
+            update_account_for_transaction(transaction)
             print(f"Transaction created successfully with ID: {transaction.id}")
             
             return JsonResponse({'success': True, 'transaction_id': transaction.id})
@@ -1744,11 +1790,6 @@ def update_transaction_api(request, transaction_id):
             transaction_account_id = request.POST.get('transaction_account') or None
             notes = request.POST.get('notes', '')
             
-            # Debug: Print all parameters
-            print(f"Title: {title}, Amount: {amount}, Date: {date_str}, Type: {transaction_type}")
-            print(f"Category ID: {category_id}, Subcategory ID: {subcategory_id}, Notes: {notes}")
-            print(f"Transaction Account ID: {transaction_account_id}")
-            
             # Validate required fields
             if not title or not amount or not date_str or not transaction_type:
                 return JsonResponse({'success': False, 'error': 'Missing required fields'})
@@ -1759,14 +1800,20 @@ def update_transaction_api(request, transaction_id):
             except ValueError:
                 return JsonResponse({'success': False, 'error': 'Invalid amount format'})
             
+            # Reverse the old transaction's effect if not a debt payment auto
+            if transaction.transaction_account and not (transaction.notes and 'DebtPaymentAuto' in str(transaction.notes)):
+                reverse_transaction = Transaction(
+                    amount=transaction.amount,
+                    type='income' if transaction.type == 'expense' else 'expense',
+                    transaction_account=transaction.transaction_account
+                )
+                update_account_for_transaction(reverse_transaction)
             # Update the transaction
             transaction.title = title
             transaction.amount = amount
             transaction.date = date_str
             transaction.type = transaction_type
             transaction.notes = notes
-            
-            # Update category
             if category_id and category_id != 'null' and category_id != '':
                 try:
                     category = get_object_or_404(Category, id=category_id, user=request.user)
@@ -1775,8 +1822,6 @@ def update_transaction_api(request, transaction_id):
                     print(f"Error updating category: {e}")
             else:
                 transaction.category = None
-            
-            # Update subcategory
             if subcategory_id and subcategory_id != 'null' and subcategory_id != '':
                 try:
                     subcategory = get_object_or_404(SubCategory, id=subcategory_id, parent_category__user=request.user)
@@ -1785,8 +1830,6 @@ def update_transaction_api(request, transaction_id):
                     print(f"Error updating subcategory: {e}")
             else:
                 transaction.subcategory = None
-            
-            # Update account
             if transaction_account_id and transaction_account_id != 'null' and transaction_account_id != '':
                 try:
                     account = get_object_or_404(Account, id=transaction_account_id, user=request.user)
@@ -1795,10 +1838,9 @@ def update_transaction_api(request, transaction_id):
                     print(f"Error updating account: {e}")
             else:
                 transaction.transaction_account = None
-            
             transaction.save()
+            update_account_for_transaction(transaction)
             print(f"Transaction updated successfully with ID: {transaction.id}")
-            
             return JsonResponse({'success': True, 'transaction_id': transaction.id})
         except Exception as e:
             print(f"Error updating transaction: {e}")
