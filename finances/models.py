@@ -4,6 +4,11 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
+from django.conf import settings
+from django.urls import reverse
+import uuid
+from decimal import Decimal
+import json
 
 class Debt(models.Model):
     DEBT_TYPES = (
@@ -202,7 +207,8 @@ class Budget(models.Model):
         ('1 month', '1 Month')
     ]
 
-    subcategory = models.ForeignKey(SubCategory, on_delete=models.CASCADE, db_index=True)
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.CASCADE, db_index=True, null=True, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, db_index=True, null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
     account = models.ForeignKey(Account, on_delete=models.CASCADE, db_index=True)
@@ -211,7 +217,51 @@ class Budget(models.Model):
     end_date = models.DateField(db_index=True)
 
     def __str__(self):
-        return f"{self.subcategory.name} - {self.amount} ({self.duration})"
+        if self.subcategory:
+            return f"{self.subcategory.name} - {self.amount} ({self.duration})"
+        elif self.category:
+            return f"{self.category.name} - {self.amount} ({self.duration})"
+        return f"Budget - {self.amount} ({self.duration})"
+
+    def get_spent_amount(self):
+        """Calculate the amount spent in this budget's subcategory for the current period"""
+        from django.db.models import Sum
+        
+        # If this budget is for a subcategory
+        if self.subcategory:
+            spent = Transaction.objects.filter(
+                user=self.user,
+                type='expense',
+                subcategory=self.subcategory,
+                date__gte=self.start_date,
+                date__lte=self.end_date,
+                transaction_account=self.account
+            ).aggregate(Sum('amount'))['amount__sum'] or 0
+            return spent
+        
+        # If this budget is for a main category (without subcategory)
+        elif self.category:
+            spent = Transaction.objects.filter(
+                user=self.user,
+                type='expense',
+                category=self.category,
+                date__gte=self.start_date,
+                date__lte=self.end_date,
+                transaction_account=self.account
+            ).aggregate(Sum('amount'))['amount__sum'] or 0
+            return spent
+            
+        return 0
+        
+    def get_remaining_amount(self):
+        """Calculate the remaining budget"""
+        return self.amount - self.get_spent_amount()
+        
+    def get_percentage_spent(self):
+        """Calculate the percentage of budget used"""
+        if self.amount > 0:
+            return round((self.get_spent_amount() / self.amount) * 100)
+        return 0
 
     @classmethod
     def get_default_start_date(cls):
@@ -255,28 +305,6 @@ class Budget(models.Model):
             end_date = next_month - timedelta(days=1)
         return start_date, end_date
 
-    @property
-    def spent(self):
-        """Calculate total spent from transactions within the budget period"""
-        return Transaction.objects.filter(
-            user=self.user,
-            type='expense',
-            subcategory=self.subcategory,
-            date__gte=self.start_date,
-            date__lte=self.end_date,
-            transaction_account=self.account
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
-
-    @property
-    def remaining(self):
-        return self.amount - self.spent
-
-    @property
-    def percentage_used(self):
-        if self.amount > 0:
-            return round((self.spent / self.amount) * 100, 2)
-        return 0
-
     def save(self, *args, **kwargs):
         # Set default start date for new budgets
         if not self.pk and not self.start_date:
@@ -292,8 +320,37 @@ class Budget(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
-        unique_together = ('subcategory', 'user', 'start_date', 'account')
+        unique_together = ('category', 'subcategory', 'user', 'start_date', 'account')
         indexes = [
             models.Index(fields=['start_date', 'end_date']),
             models.Index(fields=['user', 'subcategory']),
+            models.Index(fields=['user', 'category']),
         ]  
+
+class DashboardPreference(models.Model):
+    """Store user preferences for the customizable dashboard."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dashboard_preference')
+    columns = models.IntegerField(default=2)
+    visible_elements = models.TextField(default='["accounts", "budgets", "chart-balance", "chart-last-7-days"]')
+    hidden_elements = models.TextField(default='["credit-cards", "debts-credits", "transactions", "scheduled-transactions", "balance-currency", "cash-flow"]')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def get_visible_elements(self):
+        """Return the visible elements as a list."""
+        return json.loads(self.visible_elements)
+    
+    def set_visible_elements(self, elements_list):
+        """Set the visible elements from a list."""
+        self.visible_elements = json.dumps(elements_list)
+    
+    def get_hidden_elements(self):
+        """Return the hidden elements as a list."""
+        return json.loads(self.hidden_elements)
+    
+    def set_hidden_elements(self, elements_list):
+        """Set the hidden elements from a list."""
+        self.hidden_elements = json.dumps(elements_list)
+
+    def __str__(self):
+        return f"{self.user.username}'s Dashboard Preferences"  

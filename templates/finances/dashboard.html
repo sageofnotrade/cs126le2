@@ -12,11 +12,6 @@
         <h1 class="h2 mb-1">Dashboard</h1>
         <p class="text-muted mb-0">Welcome back, {{ user.username }}!</p>
     </div>
-    <div>
-        <a href="{% url 'add_transaction' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle" aria-hidden="true"></i> New Transaction
-        </a>
-    </div>
 </header>
 
 <div class="row g-3">
@@ -198,6 +193,88 @@
         </div>
     </div>
 </section>
+
+<!-- Customizable Dashboard -->
+<section class="customizable-dashboard mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">Overview</h2>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#dashboardPreferencesModal">
+            <i class="bi bi-gear"></i> Configure
+        </button>
+    </div>
+    
+    <div id="dashboard-grid" class="dashboard-grid row g-3">
+        <!-- Dashboard widgets will be loaded here via JavaScript -->
+    </div>
+</section>
+
+<!-- Dashboard Preferences Modal -->
+<div class="modal fade" id="dashboardPreferencesModal" tabindex="-1" aria-labelledby="dashboardPreferencesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dashboardPreferencesModalLabel">OVERVIEW - PREFERENCES</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="columns-select" class="form-label">Columns number in the "Overview" page:</label>
+                    <select id="columns-select" class="form-select">
+                        <option value="1">1</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Visible elements</h6>
+                    <div id="visible-elements" class="dashboard-elements-container">
+                        <div class="dashboard-element" data-element-id="accounts">
+                            <i class="bi bi-grip-vertical me-2"></i> Accounts
+                        </div>
+                        <div class="dashboard-element" data-element-id="budgets">
+                            <i class="bi bi-grip-vertical me-2"></i> Budgets
+                        </div>
+                        <div class="dashboard-element" data-element-id="chart-balance">
+                            <i class="bi bi-grip-vertical me-2"></i> Chart: Balance
+                        </div>
+                        <div class="dashboard-element" data-element-id="chart-last-7-days">
+                            <i class="bi bi-grip-vertical me-2"></i> Chart: Last 7 days
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Hidden elements</h6>
+                    <div id="hidden-elements" class="dashboard-elements-container">
+                        <div class="dashboard-element" data-element-id="credit-cards">
+                            <i class="bi bi-grip-vertical me-2"></i> Credit cards
+                        </div>
+                        <div class="dashboard-element" data-element-id="debts-credits">
+                            <i class="bi bi-grip-vertical me-2"></i> Debts / Credits
+                        </div>
+                        <div class="dashboard-element" data-element-id="transactions">
+                            <i class="bi bi-grip-vertical me-2"></i> Transactions
+                        </div>
+                        <div class="dashboard-element" data-element-id="scheduled-transactions">
+                            <i class="bi bi-grip-vertical me-2"></i> Scheduled transactions: This month
+                        </div>
+                        <div class="dashboard-element" data-element-id="balance-currency">
+                            <i class="bi bi-grip-vertical me-2"></i> Balance (Currency)
+                        </div>
+                        <div class="dashboard-element" data-element-id="cash-flow">
+                            <i class="bi bi-grip-vertical me-2"></i> Cash flow (Transactions)
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CANCEL</button>
+                <button type="button" class="btn btn-primary" id="save-dashboard-preferences">SAVE</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -252,6 +329,476 @@ document.addEventListener('DOMContentLoaded', function() {
             }]
         }
     });
+
+    // Dashboard customization code
+    initDashboard();
 });
+
+// Dashboard drag and drop functionality
+function initDashboard() {
+    // Define all available widgets and their content
+    const widgetDefinitions = {
+        'accounts': {
+            title: 'Accounts',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Accounts Summary</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>Checking</span>
+                            <span class="fw-bold income-text">$2,450.50</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Savings</span>
+                            <span class="fw-bold income-text">$8,275.00</span>
+                        </div>
+                    </div>
+                    <a href="{% url 'accounts_list' %}" class="btn btn-sm btn-outline-primary mt-2">View All</a>
+                </div>
+            `
+        },
+        'budgets': {
+            title: 'Budgets',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Budget Status</h6>
+                    <div class="mb-2">
+                        <div class="mb-1">Groceries</div>
+                        <div class="progress mb-2" style="height: 6px;">
+                            <div class="progress-bar" role="progressbar" style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="mb-1">Utilities</div>
+                        <div class="progress mb-2" style="height: 6px;">
+                            <div class="progress-bar" role="progressbar" style="width: 45%;" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <a href="{% url 'manage_budget' %}" class="btn btn-sm btn-outline-primary mt-2">View All</a>
+                </div>
+            `
+        },
+        'chart-balance': {
+            title: 'Chart: Balance',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Balance Trend</h6>
+                    <div class="chart-container" style="height: 150px;">
+                        <canvas id="balanceChart"></canvas>
+                    </div>
+                </div>
+            `,
+            initScript: function() {
+                if (document.getElementById('balanceChart')) {
+                    const ctx = document.getElementById('balanceChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                            datasets: [{
+                                label: 'Balance',
+                                data: [5000, 5500, 4800, 5200, 5800, 6100],
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                tension: 0.1,
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        },
+        'chart-last-7-days': {
+            title: 'Chart: Last 7 Days',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Last 7 Days</h6>
+                    <div class="chart-container" style="height: 150px;">
+                        <canvas id="last7DaysChart"></canvas>
+                    </div>
+                </div>
+            `,
+            initScript: function() {
+                if (document.getElementById('last7DaysChart')) {
+                    const ctx = document.getElementById('last7DaysChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                            datasets: [{
+                                label: 'Income',
+                                data: [50, 20, 80, 30, 0, 100, 45],
+                                backgroundColor: 'rgba(40, 167, 69, 0.8)'
+                            }, {
+                                label: 'Expenses',
+                                data: [30, 45, 25, 70, 55, 90, 40],
+                                backgroundColor: 'rgba(220, 53, 69, 0.8)'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top'
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        },
+        'credit-cards': {
+            title: 'Credit Cards',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Credit Cards</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Visa (****1234)</span>
+                            <span class="fw-bold expense-text">$450.75</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Mastercard (****5678)</span>
+                            <span class="fw-bold expense-text">$1,250.00</span>
+                        </div>
+                    </div>
+                    <a href="#" class="btn btn-sm btn-outline-primary mt-2">View All</a>
+                </div>
+            `
+        },
+        'debts-credits': {
+            title: 'Debts / Credits',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Debts & Credits</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Student Loan</span>
+                            <span class="fw-bold expense-text">$12,500.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Car Loan</span>
+                            <span class="fw-bold expense-text">$8,750.00</span>
+                        </div>
+                    </div>
+                    <a href="#" class="btn btn-sm btn-outline-primary mt-2">View All</a>
+                </div>
+            `
+        },
+        'transactions': {
+            title: 'Transactions',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Recent Transactions</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Grocery Store</span>
+                            <span class="fw-bold expense-text">$75.45</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Salary</span>
+                            <span class="fw-bold income-text">$3,200.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Electricity Bill</span>
+                            <span class="fw-bold expense-text">$120.00</span>
+                        </div>
+                    </div>
+                    <a href="{% url 'transactions' %}" class="btn btn-sm btn-outline-primary mt-2">View All</a>
+                </div>
+            `
+        },
+        'scheduled-transactions': {
+            title: 'Scheduled Transactions',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Upcoming Transactions</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <div>
+                                <span>Rent</span>
+                                <div class="small text-muted">May 1, 2023</div>
+                            </div>
+                            <span class="fw-bold expense-text">$1,200.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <span>Internet Bill</span>
+                                <div class="small text-muted">May 5, 2023</div>
+                            </div>
+                            <span class="fw-bold expense-text">$65.00</span>
+                        </div>
+                    </div>
+                    <a href="#" class="btn btn-sm btn-outline-primary mt-2">View All</a>
+                </div>
+            `
+        },
+        'balance-currency': {
+            title: 'Balance (Currency)',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Balance by Currency</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>USD</span>
+                            <span class="fw-bold income-text">$10,725.50</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>EUR</span>
+                            <span class="fw-bold income-text">€1,200.00</span>
+                        </div>
+                    </div>
+                </div>
+            `
+        },
+        'cash-flow': {
+            title: 'Cash Flow',
+            content: `
+                <div class="card-body p-3">
+                    <h6 class="mb-3">Cash Flow</h6>
+                    <div class="chart-container" style="height: 150px;">
+                        <canvas id="cashFlowChart"></canvas>
+                    </div>
+                </div>
+            `,
+            initScript: function() {
+                if (document.getElementById('cashFlowChart')) {
+                    const ctx = document.getElementById('cashFlowChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                            datasets: [{
+                                label: 'Income',
+                                data: [4500, 4200, 4800, 5000, 5200, 5500],
+                                backgroundColor: 'rgba(40, 167, 69, 0.8)'
+                            }, {
+                                label: 'Expenses',
+                                data: [4000, 3800, 4500, 4200, 4600, 4900],
+                                backgroundColor: 'rgba(220, 53, 69, 0.8)'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top'
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    };
+
+    // Load dashboard preferences from the server (passed from Django view)
+    let dashboardPreferences = {
+        columns: {{ dashboard_preference.columns }},
+        visibleElements: {{ dashboard_preference.visible_elements|safe }},
+        hiddenElements: {{ dashboard_preference.hidden_elements|safe }}
+    };
+
+    // Apply columns setting
+    document.getElementById('columns-select').value = dashboardPreferences.columns;
+    updateDashboardColumns(dashboardPreferences.columns);
+
+    // Render dashboard based on preferences
+    renderDashboard();
+
+    // Initialize Sortable.js for drag-and-drop functionality
+    let visibleSortable = new Sortable(document.getElementById('visible-elements'), {
+        group: 'dashboard-elements',
+        animation: 150,
+        handle: '.bi-grip-vertical',
+        onEnd: updateElementsOrder
+    });
+
+    let hiddenSortable = new Sortable(document.getElementById('hidden-elements'), {
+        group: 'dashboard-elements',
+        animation: 150,
+        handle: '.bi-grip-vertical',
+        onEnd: updateElementsOrder
+    });
+
+    let dashboardSortable = new Sortable(document.getElementById('dashboard-grid'), {
+        animation: 150,
+        handle: '.card-header',
+        onEnd: updateDashboardOrder
+    });
+
+    // Handle column change
+    document.getElementById('columns-select').addEventListener('change', function() {
+        const columns = parseInt(this.value);
+        updateDashboardColumns(columns);
+        dashboardPreferences.columns = columns;
+    });
+
+    // Handle save button
+    document.getElementById('save-dashboard-preferences').addEventListener('click', function() {
+        // Update preferences based on current DOM state
+        const visibleElements = Array.from(document.getElementById('visible-elements').children)
+            .map(el => el.dataset.elementId);
+        
+        const hiddenElements = Array.from(document.getElementById('hidden-elements').children)
+            .map(el => el.dataset.elementId);
+
+        dashboardPreferences.visibleElements = visibleElements;
+        dashboardPreferences.hiddenElements = hiddenElements;
+
+        // Save to server
+        saveDashboardPreferences(dashboardPreferences);
+
+        // Re-render dashboard
+        renderDashboard();
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('dashboardPreferencesModal'));
+        modal.hide();
+    });
+
+    function saveDashboardPreferences(preferences) {
+        // Save preferences to server
+        fetch('{% url "save_dashboard_preferences" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                columns: preferences.columns,
+                visibleElements: preferences.visibleElements,
+                hiddenElements: preferences.hiddenElements
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('Dashboard preferences saved successfully');
+            } else {
+                console.error('Error saving dashboard preferences:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error saving dashboard preferences:', error);
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function updateElementsOrder() {
+        // This will be called after drag and drop events between visible and hidden elements
+        // We don't save changes until the user clicks Save
+    }
+
+    function updateDashboardOrder() {
+        // This will update the order of widgets in the dashboard after drag and drop
+        // Save to server immediately
+        const elements = Array.from(document.getElementById('dashboard-grid').children)
+            .map(el => el.dataset.elementId);
+        
+        dashboardPreferences.visibleElements = elements;
+        saveDashboardPreferences(dashboardPreferences);
+    }
+
+    function updateDashboardColumns(columns) {
+        // Remove existing column classes
+        const dashboardGrid = document.getElementById('dashboard-grid');
+        dashboardGrid.classList.remove('row-cols-1', 'row-cols-2', 'row-cols-3');
+        
+        // Add appropriate column class
+        dashboardGrid.classList.add(`row-cols-${columns}`);
+    }
+
+    function renderDashboard() {
+        const dashboardGrid = document.getElementById('dashboard-grid');
+        dashboardGrid.innerHTML = '';
+
+        // Add columns class
+        updateDashboardColumns(dashboardPreferences.columns);
+
+        // Add widgets based on visibleElements preference
+        dashboardPreferences.visibleElements.forEach(elementId => {
+            if (widgetDefinitions[elementId]) {
+                const widget = widgetDefinitions[elementId];
+                const widgetElement = document.createElement('div');
+                widgetElement.className = 'col';
+                widgetElement.dataset.elementId = elementId;
+                
+                widgetElement.innerHTML = `
+                    <div class="card border-0 shadow-sm dashboard-card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 fs-6">${widget.title}</h5>
+                            <i class="bi bi-grip-horizontal"></i>
+                        </div>
+                        ${widget.content}
+                    </div>
+                `;
+                
+                dashboardGrid.appendChild(widgetElement);
+                
+                // Initialize any charts or other components if needed
+                if (widget.initScript) {
+                    widget.initScript();
+                }
+            }
+        });
+    }
+}
 </script>
+
+<style>
+.dashboard-grid .card-header {
+    cursor: grab;
+}
+.dashboard-grid .card-header:active {
+    cursor: grabbing;
+}
+.dashboard-elements-container {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    min-height: 50px;
+}
+.dashboard-element {
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    cursor: grab;
+}
+.dashboard-element:last-child {
+    margin-bottom: 0;
+}
+.dashboard-element:active {
+    cursor: grabbing;
+}
+.dashboard-element .bi-grip-vertical {
+    color: #adb5bd;
+}
+</style>
 {% endblock %}

@@ -6,11 +6,11 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 import calendar
 import csv
 import json
-from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory, Debt, ScheduledTransaction
+from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory, Debt, ScheduledTransaction, DashboardPreference
 from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, SubCategoryForm, DebtForm, ScheduledTransactionForm
 from django import forms
 from django.contrib.auth.models import User
@@ -511,144 +511,75 @@ def delete_account(request, account_id):
 
 @login_required
 def dashboard(request):
-    today = timezone.now().date()
-    first_day = today.replace(day=1)
-    last_day = today.replace(day=calendar.monthrange(today.year, today.month)[1])
-    
-    # Get current month's transactions
-    current_month_income = Transaction.objects.filter(
-        user=request.user,
-        type='income',
-        date__gte=first_day,
-        date__lte=last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    
-    current_month_expenses = Transaction.objects.filter(
-        user=request.user,
-        type='expense',
-        date__gte=first_day,
-        date__lte=last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    
-    current_month_balance = current_month_income - current_month_expenses
-    
-    # Get previous month's transactions
-    if today.month == 1:
-        prev_month = today.replace(year=today.year - 1, month=12)
-    else:
-        prev_month = today.replace(month=today.month - 1)
-    
-    prev_first_day = prev_month.replace(day=1)
-    prev_last_day = prev_month.replace(day=calendar.monthrange(prev_month.year, prev_month.month)[1])
-    
-    prev_month_income = Transaction.objects.filter(
-        user=request.user,
-        type='income',
-        date__gte=prev_first_day,
-        date__lte=prev_last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    
-    prev_month_expenses = Transaction.objects.filter(
-        user=request.user,
-        type='expense',
-        date__gte=prev_first_day,
-        date__lte=prev_last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    
-    prev_month_balance = prev_month_income - prev_month_expenses
-    
-    # Get account balances
-    total_balance = debit_balance = credit_balance = wallet_balance = 0
-    
-    debit_accounts = DebitAccount.objects.filter(user=request.user)
-    credit_accounts = CreditAccount.objects.filter(user=request.user)
-    wallet_accounts = Wallet.objects.filter(user=request.user)
-    
-    for account in list(debit_accounts):
-        debit_balance += account.balance - account.maintaining_balance
-    
-    for account in list(credit_accounts):
-        credit_balance += account.credit_limit - account.current_usage
-    
-    for account in list(wallet_accounts):
-        wallet_balance += account.balance
+    """Display the dashboard with summary information."""
+    # Get or create dashboard preferences for the user
+    dashboard_preference, created = DashboardPreference.objects.get_or_create(user=request.user)
 
-    total_balance = debit_balance + credit_balance + wallet_balance
-    
-    recent_transactions = Transaction.objects.filter(
-        user=request.user
-    ).order_by('-date')[:5]
-    
-    # Get expenses by category for pie chart
-    categories = Category.objects.filter(user=request.user)
-    expenses_by_category = []
-    
-    for category in categories:
-        amount = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            category=category,
-            date__gte=first_day,
-            date__lte=last_day
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        if amount > 0:
-            expenses_by_category.append({
-                'category': category.name,
-                'amount': float(amount)
-            })
-    
+    # Rest of the existing dashboard code...
+    current_month = timezone.now().date().replace(day=1)
+    prev_month = (current_month - timedelta(days=1)).replace(day=1)
+    next_month = (current_month + timedelta(days=32)).replace(day=1)
+
+    # Account summaries
+    accounts_summary = calculate_account_summaries(request.user)
+    total_balance = Decimal('0.00')
+    for account_type in accounts_summary.values():
+        total_balance += account_type['balance']
+
+    # Month summaries
+    current_month_income, current_month_expenses = get_month_summary(request.user, current_month)
+    current_month_balance = current_month_income - current_month_expenses
+
+    prev_month_income, prev_month_expenses = get_month_summary(request.user, prev_month)
+    prev_month_balance = prev_month_income - prev_month_expenses
+
     # Budget warnings
-    budgets = Budget.objects.filter(user=request.user, start_date__year=today.year, end_date__month=today.month)
-    budget_warnings = []
-    
-    for budget in budgets:
-        spent = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            category=budget.category,
-            date__year=today.year,
-            date__month=today.month
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        if spent > float(budget.amount) * 0.8:  # Warning at 80% of budget
-            budget_warnings.append({
-                'category': budget.category.name,
-                'budget': budget.amount,
-                'spent': spent,
-                'percentage': round((spent / budget.amount) * 100)
-            })
-    
-    context = {
+    budget_warnings = get_budget_warnings(request.user, current_month, current_month.replace(day=1, month=current_month.month+1) - timedelta(days=1))
+
+    # Recent transactions
+    recent_transactions = Transaction.objects.filter(user=request.user).order_by('-date', '-time')[:5]
+
+    return render(request, 'finances/dashboard.html', {
+        'accounts_summary': accounts_summary,
+        'total_balance': total_balance,
+        'current_month': current_month,
         'current_month_income': current_month_income,
         'current_month_expenses': current_month_expenses,
         'current_month_balance': current_month_balance,
+        'prev_month': prev_month,
         'prev_month_income': prev_month_income,
         'prev_month_expenses': prev_month_expenses,
         'prev_month_balance': prev_month_balance,
-        'accounts_summary': {
-            'debit': {
-                'accounts': list(debit_accounts),
-                'balance': debit_balance
-            },
-            'credit': {
-                'accounts': list(credit_accounts),
-                'balance': credit_balance
-            },
-            'wallet': {
-                'accounts': list(wallet_accounts),
-                'balance': wallet_balance
-            },
-        },
-        'total_balance': total_balance,
-        'recent_transactions': recent_transactions,
-        'expenses_by_category': json.dumps(expenses_by_category),
         'budget_warnings': budget_warnings,
-        'current_month': today,  # Add current month date object
-        'prev_month': prev_month,  # Add previous month date object
-    }
+        'recent_transactions': recent_transactions,
+        'dashboard_preference': dashboard_preference,
+    })
+
+@login_required
+def save_dashboard_preferences(request):
+    """Save dashboard preferences to the database."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            dashboard_preference, created = DashboardPreference.objects.get_or_create(user=request.user)
+            
+            # Update dashboard preference
+            if 'columns' in data:
+                dashboard_preference.columns = data['columns']
+            
+            if 'visibleElements' in data:
+                dashboard_preference.set_visible_elements(data['visibleElements'])
+            
+            if 'hiddenElements' in data:
+                dashboard_preference.set_hidden_elements(data['hiddenElements'])
+            
+            dashboard_preference.save()
+            
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
-    return render(request, 'finances/dashboard.html', context)
+    return JsonResponse({'status': 'error', 'message': 'Only POST method is allowed'}, status=405)
 
 @login_required
 def add_transaction(request):
@@ -856,47 +787,58 @@ def manage_budget(request):
     
     today = timezone.now().date()
     # Get all active budgets (those that include today's date)
-    budgets = Budget.objects.select_related('subcategory').filter(
+    budgets = Budget.objects.select_related('subcategory', 'category').filter(
         user=request.user,
         start_date__lte=today,
         end_date__gte=today
     )
     
     budget_data = []
+    has_weekly_budgets = False
+    has_monthly_budgets = False
+    
     for budget in budgets:
-        # Calculate the amount spent in this subcategory for the current period
-        spent = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            subcategory=budget.subcategory,
-            date__gte=budget.start_date,
-            date__lte=budget.end_date,
-            transaction_account=budget.account
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        # Calculate the remaining budget and the percentage used
-        remaining = budget.amount - spent
-        percentage = round((spent / budget.amount) * 100) if budget.amount > 0 else 0
-        
-        # Prepare the budget data to display
-        budget_data.append({
+        # Check if we have any weekly or monthly budgets
+        if budget.duration == '1 week':
+            has_weekly_budgets = True
+        elif budget.duration == '1 month':
+            has_monthly_budgets = True
+            
+        # Calculate budget usage and add to data list
+        budget_item = {
             'id': budget.id,
-            'subcategory': budget.subcategory,  # Pass the entire subcategory object
-            'budget': budget.amount,
-            'spent': spent,
-            'remaining': remaining,
-            'percentage_used': percentage,
+            'account': budget.account,
+            'amount': budget.amount,
+            'spent': budget.get_spent_amount(),
+            'remaining': budget.get_remaining_amount(),
+            'percentage_used': budget.get_percentage_spent(),
+            'duration': budget.duration,
             'start_date': budget.start_date,
             'end_date': budget.end_date,
-            'duration': budget.duration,
-            'amount': budget.amount
-        })
+        }
+        
+        # Handle subcategory or category data
+        if budget.subcategory:
+            budget_item['subcategory'] = budget.subcategory
+            budget_item['category'] = budget.subcategory.parent_category
+        else:
+            budget_item['subcategory'] = None
+            budget_item['category'] = budget.category
+            
+        budget_data.append(budget_item)
     
-    return render(request, 'finances/manage_budget.html', {
+    # Get all categories for the category selector - fix the filter to only get user's categories
+    categories = Category.objects.filter(user=request.user)
+    
+    context = {
         'form': form,
         'budgets': budget_data,
-        'categories': Category.objects.filter(user=request.user)
-    })
+        'categories': categories,
+        'has_weekly_budgets': has_weekly_budgets,
+        'has_monthly_budgets': has_monthly_budgets,
+    }
+    
+    return render(request, 'finances/manage_budget.html', context)
 
 @login_required
 def update_budget(request):
@@ -960,25 +902,46 @@ def add_budget(request):
             budget = form.save(commit=False)
             budget.user = request.user
             
-            # Check for existing budget in the same period
-            existing_budget = Budget.objects.filter(
-                user=request.user,
-                category=budget.category,
-                start_date__year=budget.start_date.year,
-                start_date__month=budget.start_date.month,
-                account=budget.account
-            ).first()
+            # When no subcategory is provided, use the category directly
+            if not budget.category and 'category' in request.POST:
+                try:
+                    category_id = request.POST.get('category')
+                    budget.category = Category.objects.get(id=category_id, user=request.user)
+                except (Category.DoesNotExist, ValueError):
+                    return JsonResponse({
+                        'success': False, 
+                        'errors': {
+                            'category': ['Please select a valid category.']
+                        }
+                    })
             
-            if existing_budget:
+            # Check for existing budget in the same period
+            if budget.category:
+                existing_budget = Budget.objects.filter(
+                    user=request.user,
+                    category=budget.category,
+                    start_date__year=budget.start_date.year,
+                    start_date__month=budget.start_date.month,
+                    account=budget.account
+                ).first()
+                
+                if existing_budget:
+                    return JsonResponse({
+                        'success': False, 
+                        'errors': {
+                            'category': ['A budget for this category already exists in the selected period.']
+                        }
+                    })
+                
+                budget.save()
+                return JsonResponse({'success': True})
+            else:
                 return JsonResponse({
                     'success': False, 
                     'errors': {
-                        'category': ['A budget for this category already exists in the selected period.']
+                        'category': ['Please select a category.']
                     }
                 })
-            
-            budget.save()
-            return JsonResponse({'success': True})
         else:
             return JsonResponse({'success': False, 'errors': form.errors})
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
@@ -1173,6 +1136,26 @@ def api_subcategories(request, category_id):
     except Category.DoesNotExist:
         print(f"Category with ID {category_id} not found for user {request.user.username}")
         return JsonResponse({'error': 'Category not found'}, status=404)
+    
+# API endpoint to get a single subcategory details
+def api_subcategory_detail(request, subcategory_id):
+    """API endpoint to get details of a specific subcategory"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
+    try:
+        subcategory = SubCategory.objects.get(id=subcategory_id, parent_category__user=request.user)
+        
+        subcategory_data = {
+            'id': subcategory.id,
+            'name': subcategory.name,
+            'icon': subcategory.icon,
+            'parent_category': subcategory.parent_category.id
+        }
+        
+        return JsonResponse(subcategory_data)
+    except SubCategory.DoesNotExist:
+        return JsonResponse({'error': 'Subcategory not found'}, status=404)
 
 # API endpoint for adding a subcategory
 def api_add_subcategory(request, category_id):
@@ -2160,3 +2143,83 @@ def charts_data_future(request):
             'debts_credits': [],
             'credit_card_payments': []
         }, status=500)
+
+def calculate_account_summaries(user):
+    """Calculate account summaries for a user."""
+    debit_accounts = DebitAccount.objects.filter(user=user)
+    credit_accounts = CreditAccount.objects.filter(user=user)
+    wallet_accounts = Wallet.objects.filter(user=user)
+    
+    debit_balance = Decimal('0.00')
+    for account in debit_accounts:
+        debit_balance += account.balance - account.maintaining_balance
+    
+    credit_balance = Decimal('0.00')
+    for account in credit_accounts:
+        credit_balance += account.credit_limit - account.current_usage
+    
+    wallet_balance = Decimal('0.00')
+    for account in wallet_accounts:
+        wallet_balance += account.balance
+    
+    return {
+        'debit': {
+            'accounts': list(debit_accounts),
+            'balance': debit_balance
+        },
+        'credit': {
+            'accounts': list(credit_accounts),
+            'balance': credit_balance
+        },
+        'wallet': {
+            'accounts': list(wallet_accounts),
+            'balance': wallet_balance
+        },
+    }
+
+def get_month_summary(user, month_date):
+    """Get the income and expenses summary for a given month."""
+    # Calculate the first and last day of the month
+    first_day = month_date
+    last_day = (month_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    
+    # Get month's transactions
+    month_income = Transaction.objects.filter(
+        user=user,
+        type='income',
+        date__gte=first_day,
+        date__lte=last_day
+    ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+    
+    month_expenses = Transaction.objects.filter(
+        user=user,
+        type='expense',
+        date__gte=first_day,
+        date__lte=last_day
+    ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+    
+    return month_income, month_expenses
+
+def get_budget_warnings(user, start_date, end_date):
+    """Get budget warnings for a given date range."""
+    budgets = Budget.objects.filter(user=user, start_date__lte=end_date, end_date__gte=start_date)
+    budget_warnings = []
+    
+    for budget in budgets:
+        spent = Transaction.objects.filter(
+            user=user,
+            type='expense',
+            category=budget.category,
+            date__gte=start_date,
+            date__lte=end_date
+        ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+        
+        if spent > float(budget.amount) * 0.8:  # Warning at 80% of budget
+            budget_warnings.append({
+                'category': budget.category.name,
+                'budget': budget.amount,
+                'spent': spent,
+                'percentage': round((spent / budget.amount) * 100)
+            })
+    
+    return budget_warnings

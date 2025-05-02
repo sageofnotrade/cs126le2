@@ -25,14 +25,15 @@ urlpatterns = [
     path('api/categories/<int:category_id>/update/', views.api_update_category, name='api_update_category'),
     path('api/categories/<int:category_id>/subcategories/', views.api_subcategories, name='api_subcategories'),
     path('api/categories/<int:category_id>/subcategories/add/', views.api_add_subcategory, name='api_add_subcategory'),
+    path('api/subcategories/<int:subcategory_id>/', views.api_subcategory_detail, name='api_subcategory_detail'),
     path('api/subcategories/<int:subcategory_id>/delete/', views.api_delete_subcategory, name='api_delete_subcategory'),
     path('api/subcategories/<int:subcategory_id>/update/', views.api_update_subcategory, name='api_update_subcategory'),
     path('api/categories/reorder/', views.api_reorder_categories, name='api_reorder_categories'),
     path('export/', views.export_csv, name='export_csv'),
     path('budget/', views.manage_budget, name='manage_budget'),
-    path('budget/add/', views.add_budget, name='add_budget'),
-    path('budget/update/', views.update_budget, name='update_budget'),
-    path('budget/delete/', views.delete_budget, name='delete_budget'),
+    path('budgets/add/', views.add_budget, name='add_budget'),
+    path('budgets/edit/', views.update_budget, name='update_budget'),
+    path('budgets/delete/', views.delete_budget, name='delete_budget'),
     path('api/get_budgets/', views.get_budgets, name='get_budgets'),
     # Charts URLs
     path('charts/', views.charts_view, name='charts'),
@@ -50,4 +51,10 @@ urlpatterns = [
     path('transactions/api/<int:transaction_id>/delete/', views.delete_transaction_api, name='delete_transaction_api'),
     path('api/accounts/', views.api_accounts, name='api_accounts'),
     path('api/accounts/<int:account_id>/balance/', views.api_account_balance, name='api_account_balance'),
+    # Dashboard
+    path('', views.dashboard, name='dashboard'),
+    path('save-dashboard-preferences/', views.save_dashboard_preferences, name='save_dashboard_preferences'),
+    
+    # Authentication
+    path('signup/', views.signup, name='signup'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 
