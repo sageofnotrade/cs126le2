@@ -40,9 +40,13 @@ const Hero = ({ isAuthenticated }) => {
               </div>
             ) : (
               <div className="cta-buttons d-flex flex-wrap gap-3 slide-up-delay">
-                <a href="/signup/" className="btn btn-primary btn-lg px-4 py-2">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-lg px-4 py-2"
+                  onClick={() => window.openSignupModal && window.openSignupModal()}
+                >
                   <i className="bi bi-person-plus me-2"></i>Get Started Free
-                </a>
+                </button>
                 <a href="/accounts/login/" className="btn btn-outline-primary btn-lg px-4 py-2">
                   <i className="bi bi-box-arrow-in-right me-2"></i>Sign In
                 </a>

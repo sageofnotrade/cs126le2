@@ -14,25 +14,26 @@
       <meta name="keywords" content="">
       <meta name="description" content="">
       <meta name="author" content="">
-      <!-- Bootstrap CSS -->
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-      <!-- style css (local) -->
+      <!-- Bootstrap CSS (local) -->
+      <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+      <!-- style css -->
       <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
       <!-- Responsive (local) -->
       <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
-      <!-- fevicon (local) -->
+      <!-- fevicon -->
       <link rel="icon" href="{% static 'img/fevicon.png' %}" type="image/gif" />
       <!-- Scrollbar Custom CSS -->
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/malihu-custom-scrollbar-plugin@3.1.5/jquery.mCustomScrollbar.min.css">
-      <!-- Font Awesome -->
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-      <!-- Owl Carousel CSS -->
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
-      <!-- Fancybox CSS -->
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css" media="screen">
-      <meta name="csrf-token" content="{{ csrf_token }}">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-nice-select/1.1.0/css/nice-select.min.css">
+      <link rel="stylesheet" href="{% static 'css/jquery.mCustomScrollbar.min.css' %}">
+      <!-- Tweaks for older IEs-->
+      <!-- <link rel="stylesheet" href="{% static 'css/font-awesome.min.css' %}"> -->
+      <!-- owl stylesheets --> 
+      <link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
+      <!-- <link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}"> -->
+      <!-- <link rel="stylesheet" href="{% static 'css/jquery.fancybox.min.css' %}"> -->
+      <link rel="stylesheet" href="{% static 'css/meanmenu.css' %}">
+      <link rel="stylesheet" href="{% static 'css/nice-select.css' %}">
+      <link rel="stylesheet" href="{% static 'css/animate.min.css' %}">
+         
    </head>
    <body>
       <!--header section start -->
@@ -40,7 +41,7 @@
          <div class="container-fluid">
             <div class="row">
                <div class="col-md-3">
-                  <div class="logo"><a href="index.html"><img src="{% static 'img/logofinal.png' %}"></a></div>
+                  <div class="logo"><a href="{% url 'home' %}"><img src="{% static 'img/logofinal.png' %}"></a></div>
                </div>
                <div class="col-md-9">
                   <div class="menu_text">
@@ -48,19 +49,18 @@
                         <div id="myNav" class="overlay">
                            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
                            <div class="overlay-content">
-                              <a href="index.html">Home</a>
-                              <a href="blog.html">Blog</a>
-                              <a href="about.html">About</a>
-                              <a href="services.html">Services</a>
-                              <a href="client.html">Client</a>
-                              <a href="contact.html">Contact Us</a>
+                              <a href="{% url 'home' %}">Home</a>
+                              <a href="/finances/blog/">Blog</a>
+                              <a href="/finances/about/">About</a>
+                              <a href="/finances/services/">Services</a>
+                              <a href="/finances/client/">Client</a>
+                              <a href="/finances/contact/">Contact Us</a>
                            </div>
                         </div>
                         <span class="navbar-toggler-icon"></span>
                         <span onclick="openNav()"><img src="{% static 'img/toogle-icon.png' %}" class="toggle_menu"></span>
+                     </ul>
                   </div>
-                  </li>
-                  </ul>
                </div>
             </div>
          </div>
@@ -309,17 +309,17 @@
                <div class="client_section_2 layout_padding">
                    <div class="row">
                        <div class="col-lg-4 col-sm-12">
-                           <p class="ipsum_text">"I used to rely on guessing how much I had left by the end of the week. With this app, I finally see where every peso goes!"</p>
+                           <p class="ipsum_text">“I used to rely on guessing how much I had left by the end of the week. With this app, I finally see where every peso goes!”</p>
                            <div class="image_16"><img src="{% static 'img/img-16.png' %}"></div>
                            <div class="adipiscing_text">Drake<br>Student, Cebu</div>
                        </div>
                        <div class="col-lg-4 col-sm-12">
-                         <p class="ipsum_text">"What I love most is how simple and clean the interface is. Even without experience in budgeting, I picked it up in minutes."</p>
+                         <p class="ipsum_text">“What I love most is how simple and clean the interface is. Even without experience in budgeting, I picked it up in minutes.”</p>
                            <div class="image_16"><img src="{% static 'img/img-17.png' %}"></div>
                            <div class="adipiscing_text">Carlos<br>Freelancer, Baguio</div>
                        </div>
                        <div class="col-lg-4 col-sm-12">
-                           <p class="ipsum_text">"I started using this for a class project — now I use it every day. It really makes financial planning less stressful."</p>
+                           <p class="ipsum_text">“I started using this for a class project — now I use it every day. It really makes financial planning less stressful.”</p>
                            <div class="image_16"><img src="{% static 'img/img-18.png' %}"></div>
                            <div class="adipiscing_text">Ellian<br>Intern, Davao City</div>
                        </div>
@@ -330,17 +330,17 @@
                <div class="client_section_2 layout_padding">
                    <div class="row">
                        <div class="col-lg-4 col-sm-12">
-                           <p class="ipsum_text">"The daily spending tracker is a life saver. I've started saving small but consistent amounts every week."</p>
+                           <p class="ipsum_text">“The daily spending tracker is a life saver. I've started saving small but consistent amounts every week.”</p>
                            <div class="image_16"><img src="{% static 'img/img-16.1.png' %}"></div>
                            <div class="adipiscing_text">Mark<br>Call Center Agent, Manila</div>
                        </div>
                        <div class="col-lg-4 col-sm-12">
-                         <p class="ipsum_text">"Perfect for students and young professionals. The app helped me budget my internship allowance and set aside savings for emergencies."</p>
+                         <p class="ipsum_text">“Perfect for students and young professionals. The app helped me budget my internship allowance and set aside savings for emergencies.”</p>
                            <div class="image_16"><img src="{% static 'img/img-17.1.png' %}"></div>
                            <div class="adipiscing_text">Bea<br>College Student, Iloilo</div>
                        </div>
                        <div class="col-lg-4 col-sm-12">
-                           <p class="ipsum_text">"Very beginner-friendly. I recommended it to my barkada and we're now comparing how much we've saved weekly!"</p>
+                           <p class="ipsum_text">“Very beginner-friendly. I recommended it to my barkada and we're now comparing how much we've saved weekly!”</p>
                            <div class="image_16"><img src="{% static 'img/img-18.1.png' %}"></div>
                            <div class="adipiscing_text">Jerome<br>IT Graduate, Dumaguete</div>
                        </div>
@@ -351,17 +351,17 @@
                <div class="client_section_2 layout_padding">
                    <div class="row">
                        <div class="col-lg-4 col-sm-12">
-                           <p class="ipsum_text">"This is better than writing expenses in a notebook. The graphs and breakdowns give me more insight into my habits."</p>
+                           <p class="ipsum_text">“This is better than writing expenses in a notebook. The graphs and breakdowns give me more insight into my habits.”</p>
                            <div class="image_16"><img src="{% static 'img/img-16.2.png' %}"></div>
                            <div class="adipiscing_text">Migs<br>Student, Tagbilaran</div>
                        </div>
                        <div class="col-lg-4 col-sm-12">
-                           <p class="ipsum_text">"Finally an app that works offline and doesn't need registration. It just lets me focus on managing my money."</p>
+                           <p class="ipsum_text">“Finally an app that works offline and doesn't need registration. It just lets me focus on managing my money.”</p>
                            <div class="image_16"><img src="{% static 'img/img-17.2.png' %}"></div>
                            <div class="adipiscing_text">Lucky<br>Lecturer, Zamboanga</div>
                        </div>
                        <div class="col-lg-4 col-sm-12">
-                           <p class="ipsum_text">"From ₱50 a week savings to ₱500 a month — this app taught me that every coin counts. Highly recommend it and use to try it."</p>
+                           <p class="ipsum_text">“From ₱50 a week savings to ₱500 a month — this app taught me that every coin counts. Highly recommend it and use to try it.”</p>
                            <div class="image_16"><img src="{% static 'img/img-18.2.png' %}"></div>
                            <div class="adipiscing_text">Angel<br>Working Student, Cagayan de Oro</div>
                        </div>
@@ -398,7 +398,7 @@
                   </div>
                   <div class="send_bt">
                      <a href="#" onclick="alert('Thanks for reaching out! We\'ll be in touch soon.')">SEND</a>
-                   </div>
+                  </div>
                </div>
             </div>
          </div>
@@ -417,11 +417,11 @@
                   <div class="footer_menu_main">
                      <div class="footer_menu">
                         <ul>
-                           <li><a href="index.html.html">Home</a></li>
-                           <li><a href="blog.html">Blog</a></li>
-                           <li><a href="about.html">About</a></li>
-                           <li><a href="services.html">Services</a></li>
-                           <li><a href="contact.html">Contact Us</a></li>
+                           <li><a href="{% url 'home' %}">Home</a></li>
+                           <li><a href="/finances/blog/">Blog</a></li>
+                           <li><a href="/finances/about/">About</a></li>
+                           <li><a href="/finances/services/">Services</a></li>
+                           <li><a href="/finances/contact/">Contact Us</a></li>
                         </ul>
                      </div>
                   </div>
@@ -455,16 +455,30 @@
       </div>
       <!-- copyright section end -->
       <!-- Javascript files-->
-      <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/malihu-custom-scrollbar-plugin@3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-meanmenu/2.0.8/jquery.meanmenu.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-nice-select/1.1.0/js/jquery.nice-select.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+      <script src="{% static 'js/jquery.min.js' %}"></script>
+      <script src="{% static 'js/popper.min.js' %}"></script>
+      <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+      <script src="{% static 'js/jquery-3.0.0.min.js' %}"></script>
+      <script src="{% static 'js/plugin.js' %}"></script>
+      <!-- sidebar -->
+      <script src="{% static 'js/jquery.mCustomScrollbar.concat.min.js' %}"></script>
       <script src="{% static 'js/custom.js' %}"></script>
+      <!-- javascript --> 
+      <script src="{% static 'js/owl.carousel.js' %}"></script>
+      <!-- <script src="{% static 'js/jquery.fancybox.min.js' %}"></script> -->
+      <script>
+         $(document).ready(function(){
+            $(".fancybox").fancybox({
+               openEffect: "none",
+               closeEffect: "none"
+            });
+            $(".zoom").hover(function(){
+               $(this).addClass('transition');
+            }, function(){
+               $(this).removeClass('transition');
+            });
+         });
+      </script>
       <script>
          function openNav() {
          document.getElementById("myNav").style.width = "100%";
@@ -480,7 +494,11 @@
      <span class="modal-close" onclick="closeModal()">&times;</span>
      <h2 class="modal-title">Welcome Back</h2>
  
-     <form class="modal-form" id="loginForm">
+     <form class="modal-form" method="POST" action="{% url 'login' %}">
+       {% csrf_token %}
+       {% if form_errors and form_type == 'login' %}
+         <div class="modal-error">{{ form_errors }}</div>
+       {% endif %}
        <div class="input-group-modal">
          <label for="username"><strong>Username</strong></label>
          <div class="input-icon-wrapper">
@@ -497,7 +515,6 @@
          </div>
        </div>
  
-       <div id="login-error" style="color: red; margin-bottom: 10px;"></div>
        <button type="submit" class="modal-btn">Sign In</button>
  
        <p class="modal-note"><a href="#" onclick="openForgotModal()">Forgot password?</a></p>
@@ -506,7 +523,7 @@
    </div>
  </div>
 
-<!-- Forgot Password Modal -->
+ <!-- Forgot Password Modal -->
 <div id="forgotModal" class="modal" style="display: none;">
    <div class="modal-content-auth">
      <span class="modal-close" onclick="closeForgotModal()">&times;</span>
@@ -534,7 +551,12 @@
      <span class="modal-close" onclick="closeSignupModal()">&times;</span>
      <h2 class="modal-title">Create Your Account</h2>
  
-     <form class="modal-form" id="signupForm">
+     <form id="signupModalForm" class="modal-form" method="POST" action="{% url 'signup' %}">
+       {% csrf_token %}
+       {% if form_errors and form_type == 'register' %}
+         <div class="modal-error">{{ form_errors }}</div>
+       {% endif %}
+       <div id="signup-modal-errors" class="modal-error"></div>
        <div class="input-group-modal">
          <label for="signup-username"><strong>Username</strong></label>
          <div class="input-icon-wrapper">
@@ -567,7 +589,6 @@
          </div>
        </div>
  
-       <div id="signup-error" style="color: red; margin-bottom: 10px;"></div>
        <button type="submit" class="modal-btn">Sign Up</button>
  
        <p class="modal-note">Already have an account? <a href="#" onclick="switchToLogin()">Sign In</a></p>
@@ -579,136 +600,123 @@
    </div>
  </div>
  
-<script>
-// Modal open/close/switch functions
-function openModal() {
-  document.getElementById('authModal').style.display = 'flex';
-}
-function closeModal() {
-  document.getElementById('authModal').style.display = 'none';
-}
-function openSignupModal() {
-  document.getElementById('signupModal').style.display = 'flex';
-}
-function closeSignupModal() {
-  document.getElementById('signupModal').style.display = 'none';
-}
-function switchToSignup() {
-  closeModal();
-  openSignupModal();
-}
-function switchToLogin() {
-  closeSignupModal();
-  openModal();
-}
-function openForgotModal() {
-  closeModal();
-  document.getElementById('forgotModal').style.display = 'flex';
-}
-function closeForgotModal() {
-  document.getElementById('forgotModal').style.display = 'none';
-}
-function switchToLoginFromForgot() {
-  closeForgotModal();
-  openModal();
-}
+ <script>
+   function openModal() {
+     document.getElementById('authModal').style.display = 'flex';
+   }
+ 
+   function closeModal() {
+     document.getElementById('authModal').style.display = 'none';
+   }
+ 
+   function openSignupModal() {
+     document.getElementById('signupModal').style.display = 'flex';
+   }
+ 
+   function closeSignupModal() {
+     document.getElementById('signupModal').style.display = 'none';
+   }
+ 
+   function switchToSignup() {
+     closeModal();
+     openSignupModal();
+   }
+ 
+   function switchToLogin() {
+     closeSignupModal();
+     openModal();
+   }
 
-document.addEventListener('DOMContentLoaded', function () {
-  const tryButtons = document.querySelectorAll('.contact_bt a');
-  tryButtons.forEach(button => {
-    button.addEventListener('click', function (e) {
-      e.preventDefault();
-      openModal();
-    });
-  });
-  const forgotLink = document.querySelector('#authModal .modal-note a[href="#"]');
-  if (forgotLink) {
-    forgotLink.addEventListener('click', function (e) {
-      e.preventDefault();
-      openForgotModal();
-    });
+   function openForgotModal() {
+    closeModal(); // close login modal
+    document.getElementById('forgotModal').style.display = 'flex';
   }
-});
 
-// LOGIN FORM HANDLER
-const loginForm = document.getElementById('loginForm');
-if (loginForm) {
-  loginForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const errorDiv = document.getElementById('login-error');
-    errorDiv.textContent = '';
-    try {
-      const response = await fetch('/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRFToken': getCSRFToken(),
-        },
-        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
-      });
-      if (response.redirected) {
-        window.location.href = response.url;
-      } else {
-        const text = await response.text();
-        // Try to extract error message from the response
-        const match = text.match(/<ul class="errorlist.*?>([\s\S]*?)<\/ul>/);
-        if (match) {
-          errorDiv.innerHTML = match[1];
-        } else {
-          errorDiv.textContent = 'Login failed. Please check your credentials.';
-        }
-      }
-    } catch (err) {
-      errorDiv.textContent = 'An error occurred. Please try again.';
-    }
-  });
-}
-// SIGNUP FORM HANDLER
-const signupForm = document.getElementById('signupForm');
-if (signupForm) {
-  signupForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const username = document.getElementById('signup-username').value;
-    const email = document.getElementById('signup-email').value;
-    const password1 = document.getElementById('signup-password1').value;
-    const password2 = document.getElementById('signup-password2').value;
-    const errorDiv = document.getElementById('signup-error');
-    errorDiv.textContent = '';
-    try {
-      const response = await fetch('/signup/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRFToken': getCSRFToken(),
-        },
-        body: `username=${encodeURIComponent(username)}&email=${encodeURIComponent(email)}&password1=${encodeURIComponent(password1)}&password2=${encodeURIComponent(password2)}`
-      });
-      if (response.redirected) {
-        window.location.href = response.url;
-      } else {
-        const text = await response.text();
-        // Try to extract error message from the response
-        const match = text.match(/<ul class="errorlist.*?>([\s\S]*?)<\/ul>/);
-        if (match) {
-          errorDiv.innerHTML = match[1];
-        } else {
-          errorDiv.textContent = 'Signup failed. Please check your input.';
-        }
-      }
-    } catch (err) {
-      errorDiv.textContent = 'An error occurred. Please try again.';
-    }
-  });
-}
+  function closeForgotModal() {
+    document.getElementById('forgotModal').style.display = 'none';
+  }
 
-function getCSRFToken() {
-  return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-}
-</script>
+  function switchToLoginFromForgot() {
+    closeForgotModal();
+    openModal();
+  }
+ 
+   document.addEventListener('DOMContentLoaded', function () {
+     // Dedicated Login button
+     const loginBtn = document.querySelector('.login-btn');
+     if (loginBtn) {
+       loginBtn.addEventListener('click', function (e) {
+         e.preventDefault();
+         openModal();
+       });
+     }
+     // Dedicated Signup button
+     const signupBtn = document.querySelector('.signup-btn');
+     if (signupBtn) {
+       signupBtn.addEventListener('click', function (e) {
+         e.preventDefault();
+         openSignupModal();
+       });
+     }
+     // Existing Try It Now buttons
+     const tryButtons = document.querySelectorAll('.contact_bt a');
+     tryButtons.forEach(button => {
+       button.addEventListener('click', function (e) {
+         e.preventDefault();
+         openModal();
+       });
+     });
+     // AJAX Signup Modal
+     const signupForm = document.getElementById('signupModalForm');
+     if (signupForm) {
+         signupForm.addEventListener('submit', function (e) {
+             e.preventDefault();
+             const formData = new FormData(signupForm);
+             fetch(signupForm.action, {
+                 method: 'POST',
+                 headers: {
+                     'X-Requested-With': 'XMLHttpRequest'
+                 },
+                 body: formData
+             })
+             .then(response => response.json())
+             .then(data => {
+                 const errorDiv = document.getElementById('signup-modal-errors');
+                 if (data.success) {
+                     // Set a flag to open login modal after reload
+                     localStorage.setItem('openLoginModal', '1');
+                     window.location.reload();
+                 } else if (data.errors) {
+                     errorDiv.innerHTML = data.errors;
+                 }
+             })
+             .catch(error => {
+                 document.getElementById('signup-modal-errors').innerHTML = 'An error occurred. Please try again.';
+             });
+         });
+     }
+     // On page load, if openLoginModal flag is set, open login modal and clear flag
+     if (localStorage.getItem('openLoginModal') === '1') {
+         localStorage.removeItem('openLoginModal');
+         openModal();
+     }
+   });
+ </script>
+
+   {% if open_signup_modal %}
+     {% if form_errors %}
+       <script>var SIGNUP_MODAL_ERRORS = `{{ form_errors|escapejs|safe }}`;</script>
+     {% endif %}
+     <script>
+       document.addEventListener('DOMContentLoaded', function() {
+         openSignupModal();
+         var errorDiv = document.getElementById('signup-modal-errors');
+         if (typeof SIGNUP_MODAL_ERRORS !== 'undefined' && errorDiv) {
+           errorDiv.innerHTML = SIGNUP_MODAL_ERRORS;
+         }
+       });
+     </script>
+   {% endif %}
 
    </body>
 </html>

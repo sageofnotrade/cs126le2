@@ -21,7 +21,7 @@ import decimal
 from .utils import get_transactions_with_scheduled, generate_scheduled_transactions
 
 def home(request):
-    return render(request, 'finances/home.html')
+    return render(request, 'index.html')
 
 def login_view(request):
     if request.method == 'POST':
@@ -94,11 +94,20 @@ def signup(request):
                 )
             
             login(request, user)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             messages.success(request, f'Account created successfully! Welcome to Budget Tracker.')
             return redirect('dashboard')
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errors = form.errors.as_ul()
+                return JsonResponse({'success': False, 'errors': errors})
+            # If not AJAX, render home with modal open and errors
+            return render(request, 'index.html', {'open_signup_modal': True, 'form_errors': form.errors.as_ul(), 'form_type': 'register'})
     else:
         form = CustomUserCreationForm()
-    return render(request, 'registration/signup.html', {'form': form})
+        # If not AJAX, render home with modal open and empty form
+        return render(request, 'index.html', {'open_signup_modal': True, 'form_type': 'register'})
 
 @login_required
 def scheduled_transactions(request):
