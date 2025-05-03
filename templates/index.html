@@ -1,0 +1,722 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <!-- basic -->
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <!-- mobile metas -->
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+      <!-- site metas -->
+      <title>Budget Expense Tracker</title>
+      <meta name="keywords" content="">
+      <meta name="description" content="">
+      <meta name="author" content="">
+      <!-- Bootstrap CSS (local) -->
+      <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+      <!-- style css -->
+      <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+      <!-- Responsive (local) -->
+      <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+      <!-- fevicon -->
+      <link rel="icon" href="{% static 'img/fevicon.png' %}" type="image/gif" />
+      <!-- Scrollbar Custom CSS -->
+      <link rel="stylesheet" href="{% static 'css/jquery.mCustomScrollbar.min.css' %}">
+      <!-- Tweaks for older IEs-->
+      <!-- <link rel="stylesheet" href="{% static 'css/font-awesome.min.css' %}"> -->
+      <!-- owl stylesheets --> 
+      <link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
+      <!-- <link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}"> -->
+      <!-- <link rel="stylesheet" href="{% static 'css/jquery.fancybox.min.css' %}"> -->
+      <link rel="stylesheet" href="{% static 'css/meanmenu.css' %}">
+      <link rel="stylesheet" href="{% static 'css/nice-select.css' %}">
+      <link rel="stylesheet" href="{% static 'css/animate.min.css' %}">
+         
+   </head>
+   <body>
+      <!--header section start -->
+      <div class="header_section">
+         <div class="container-fluid">
+            <div class="row">
+               <div class="col-md-3">
+                  <div class="logo"><a href="{% url 'home' %}"><img src="{% static 'img/logofinal.png' %}"></a></div>
+               </div>
+               <div class="col-md-9">
+                  <div class="menu_text">
+                     <ul>
+                        <div id="myNav" class="overlay">
+                           <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+                           <div class="overlay-content">
+                              <a href="{% url 'home' %}">Home</a>
+                              <a href="/finances/blog/">Blog</a>
+                              <a href="/finances/about/">About</a>
+                              <a href="/finances/services/">Services</a>
+                              <a href="/finances/client/">Client</a>
+                              <a href="/finances/contact/">Contact Us</a>
+                           </div>
+                        </div>
+                        <span class="navbar-toggler-icon"></span>
+                        <span onclick="openNav()"><img src="{% static 'img/toogle-icon.png' %}" class="toggle_menu"></span>
+                     </ul>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <!-- banner section start -->
+         <div class="banner_section">
+            <div class="container-fluid padding_0">
+               <div id="my_slider" class="carousel slide" data-ride="carousel">
+                  <div class="carousel-inner">
+                     <div class="carousel-item active">
+                        <div class="row">
+                           <div class="col-md-6 banner_text_col">
+                              <div>                            
+                                 <h1 class="retailer_text">Your Simple Tool for Smarter Spending</h1>
+                                 <p class="search_text">
+                                    Log your daily purchases, create a realistic budget, and discover helpful spending insights. This budgeting site is designed with the needs of Filipinos in mind.
+                                    </p>
+                                 <div class="btn_main">
+                                    <div class="more_bt"><a href="#">Read More </a></div>
+                                    <div class="contact_bt"><a href="#">Try It Now</a></div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="col-md-6">
+                              <div><img src="{% static 'img/img-1.png' %}" class="image_1"></div>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="carousel-item">
+                        <div class="row">
+                           <div class="col-md-6 banner_text_col">
+                              <div>  
+                                 <h1 class="retailer_text">Take Charge of Your Daily <br> Budget</h1>
+                                 <p class="search_text">
+                                    Use our platform to log expenses, build a budget that works for you, and gain insights to help you make smarter financial decisions—right from your browser.
+                                 </p>
+                                 <div class="btn_main">
+                                    <div class="more_bt"><a href="#">Read More </a></div>
+                                    <div class="contact_bt"><a href="#">Try It Now</a></div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="col-md-6">
+                              <div><img src="{% static 'img/img-1.2.png' %}" class="image_1"></div>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="carousel-item">
+                        <div class="row">
+                           <div class="col-md-6 banner_text_col">
+                              <div>                            
+                                 <h1 class="retailer_text">
+                                    Save Daily, Track Monthly,
+                                    Make Every Peso Count
+                                  </h1>
+                                 <p class="search_text">
+                                    Whether it's daily gastos or long-term goals, this platform is your partner in making informed, confident money choices—tailored for Filipino users.
+                                 </p>
+                                 <div class="btn_main">
+                                    <div class="more_bt"><a href="#">Read More </a></div>
+                                    <div class="contact_bt"><a href="#">Try It Now</a></div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="col-md-6">
+                              <div><img src="{% static 'img/img-1.3.png' %}" class="image_1"></div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <a class="carousel-control-prev" href="#my_slider" role="button" data-slide="prev">
+                  <i class="fa fa-left"><img src="{% static 'img/left-arrow.png' %}"></i>
+                  </a>
+                  <a class="carousel-control-next" href="#my_slider" role="button" data-slide="next">
+                  <i class="fa fa-right"><img src="{% static 'img/right-arrow.png' %}"></i>
+                  </a>
+               </div>
+            </div>
+         </div>
+         <!-- banner section end -->
+      </div>
+      <!-- header section end -->
+      <div class="image_main">
+         <div class="container-fluid">
+            <div class="image_2">
+               <div class="image_0">
+                  <div><a href="#"><img src="{% static 'img/play-icon.png' %}" class="play_icon"></a></div>
+               </div>
+               <h2 class="see_text">Watch <span style="color: #470005;">Budgeting</span> Tips</h2>
+            </div>
+         </div>
+      </div>
+      <div class="advisor_section">
+         <div class="container">
+            <h1 class="what_text">Budget Tips and Financial Insights</h1>
+         </div>
+      </div>
+      <div class="advisor_section_2 layout_padding">
+         <div class="container">
+            <div class="box_section">
+               <div class="row">
+                  <div class="col-lg-4 col-sm-12">
+                     <div class="box_main">
+                        <div class="image_3"></div>
+                        <h4 class="consultative_text">Smart Spending Habits</h4>
+                        <p class="readable_text">Learn how to manage your daily expenses without sacrificing the things you enjoy. These practical tips will help you spend more mindfully.</p>
+                     </div>
+                  </div>
+                  <div class="col-lg-4 col-sm-12">
+                     <div class="box_main active">
+                        <div class="image_4 active"></div>
+                        <h4 class="consultative_text active">Creating a Realistic Budget</h4>
+                        <p class="readable_text active">Not sure where to start? Here's how you can create a personal budget that actually works and sticks — no math degree required.</p>
+                     </div>
+                  </div>
+                  <div class="col-lg-4 col-sm-12">
+                     <div class="box_main">
+                        <div class="image_5"></div>
+                        <h4 class="consultative_text">Tracking Your Progress</h4>
+                        <p class="readable_text">Stay motivated by monitoring your spending trends and savings goals over time. See how your choices add up to financial freedom.</p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <!-- about section start -->
+      <div class="about_section layout_padding">
+         <div class="container">
+            <div class="row">
+               <div class="col-sm-6">
+                  <div><img src="{% static 'img/img-8.png' %}" class="image_8"></div>
+               </div>
+               <div class="col-sm-6">
+                  <h1 class="about_taital">About Us</h1>
+                  <p class="lorem_text" style="text-align: justify;">We built this budgeting platform to help everyday Filipinos manage their money with confidence and ease. From students and freelancers to working professionals, our goal is to offer a simple tool that tracks your expenses, builds your savings, and helps you form smart financial habits, one peso at a time.</p>
+                  <div class="more_bt"><a href="#">Learn More </a></div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <!-- about section end -->
+      <!-- portfolio section start -->
+      <div class="portfolio_section layout_padding">
+         <div class="container">
+            <h1 class="what_text">Behind the Build</h1>
+         </div>
+         <div class="container-fluid">
+            <div class="images_section">
+               <div class="row">
+                  <div class="col-sm-4 padding_0">
+                     <div class="container_1">
+                        <img src="{% static 'img/img-9.png' %}" alt="Avatar" class="image" style="width:100%">
+                        <div class="middle">
+                           <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-sm-4 padding_0">
+                     <div class="container_1">
+                        <img src="{% static 'img/img-10.png' %}" alt="Avatar" class="image" style="width:100%">
+                        <div class="middle">
+                           <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-sm-4 padding_0">
+                     <div class="container_1">
+                        <img src="{% static 'img/img-11.png' %}" alt="Avatar" class="image" style="width:100%">
+                        <div class="middle">
+                           <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div class="row">
+                  <div class="col-sm-4 padding_0">
+                     <div class="container_1">
+                        <img src="{% static 'img/img-12.png' %}" alt="Avatar" class="image" style="width:100%">
+                        <div class="middle">
+                           <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-sm-4 padding_0">
+                     <div class="container_1">
+                        <img src="{% static 'img/img-13.png' %}" alt="Avatar" class="image" style="width:100%">
+                        <div class="middle">
+                           <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-sm-4 padding_0">
+                     <div class="container_1">
+                        <img src="{% static 'img/img-14.png' %}" alt="Avatar" class="image" style="width:100%">
+                        <div class="middle">
+                           <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <div class="portfolio_section_2 layout_padding">
+            <div class="container">
+               <h1 class="best_taital">What We Offer</h1>
+              <p class="best_text custom_justify_center">
+                From easy expense tracking to smart budgeting insights, our Budget App is built to empower everyday Filipinos to take control of their finances. Whether you're a student, freelancer, or working professional, our services are designed to help you spend wisely, save consistently, and build better financial habits—anytime, anywhere.
+              </p>
+               <div class="get_bt"><a href="#">Try It Now</a></div>
+            </div>
+         </div>
+      </div>
+      <!-- portfolio section end -->
+      <!-- consulting section start -->
+      <div class="consulting_section layout_padding">
+         <div class="container">
+            <h1 class="what_text">Why Use Our Budget Tool?</h1>
+            <div class="consulting_section_2">
+               <div class="row">
+                  <div class="col-sm-6">
+                     <p class="lorem_text_1" style="text-align: justify;">
+                        Whether you're a student, freelancer, or working professional, our budget tool helps you take control of your finances. Track expenses, set savings goals, and gain insights — all in one place, built for Filipinos.
+                        </p>
+                     <div class="more_bt"><a href="#">Explore Features</a></div>
+                  </div>
+                  <div class="col-sm-6">
+                     <div class="image_8"><img src="{% static 'img/img-15.png' %}"></div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <!-- consulting section end -->
+  <!-- client section start -->
+  <div class="client_section layout_padding">
+   <div class="container">
+       <h1 class="what_text">What Our Users Say About Our Budget App</h1>
+       <div id="carouselExampleIndicators" class="carousel slide" data-ride="carousel">
+         <ol class="carousel-indicators">
+           <li data-target="#carouselExampleIndicators" data-slide-to="0" class="active"></li>
+           <li data-target="#carouselExampleIndicators" data-slide-to="1"></li>
+           <li data-target="#carouselExampleIndicators" data-slide-to="2"></li>
+         </ol>
+         <div class="carousel-inner">
+           <div class="carousel-item active">
+               <div class="client_section_2 layout_padding">
+                   <div class="row">
+                       <div class="col-lg-4 col-sm-12">
+                           <p class="ipsum_text">“I used to rely on guessing how much I had left by the end of the week. With this app, I finally see where every peso goes!”</p>
+                           <div class="image_16"><img src="{% static 'img/img-16.png' %}"></div>
+                           <div class="adipiscing_text">Drake<br>Student, Cebu</div>
+                       </div>
+                       <div class="col-lg-4 col-sm-12">
+                         <p class="ipsum_text">“What I love most is how simple and clean the interface is. Even without experience in budgeting, I picked it up in minutes.”</p>
+                           <div class="image_16"><img src="{% static 'img/img-17.png' %}"></div>
+                           <div class="adipiscing_text">Carlos<br>Freelancer, Baguio</div>
+                       </div>
+                       <div class="col-lg-4 col-sm-12">
+                           <p class="ipsum_text">“I started using this for a class project — now I use it every day. It really makes financial planning less stressful.”</p>
+                           <div class="image_16"><img src="{% static 'img/img-18.png' %}"></div>
+                           <div class="adipiscing_text">Ellian<br>Intern, Davao City</div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           <div class="carousel-item">
+               <div class="client_section_2 layout_padding">
+                   <div class="row">
+                       <div class="col-lg-4 col-sm-12">
+                           <p class="ipsum_text">“The daily spending tracker is a life saver. I've started saving small but consistent amounts every week.”</p>
+                           <div class="image_16"><img src="{% static 'img/img-16.1.png' %}"></div>
+                           <div class="adipiscing_text">Mark<br>Call Center Agent, Manila</div>
+                       </div>
+                       <div class="col-lg-4 col-sm-12">
+                         <p class="ipsum_text">“Perfect for students and young professionals. The app helped me budget my internship allowance and set aside savings for emergencies.”</p>
+                           <div class="image_16"><img src="{% static 'img/img-17.1.png' %}"></div>
+                           <div class="adipiscing_text">Bea<br>College Student, Iloilo</div>
+                       </div>
+                       <div class="col-lg-4 col-sm-12">
+                           <p class="ipsum_text">“Very beginner-friendly. I recommended it to my barkada and we're now comparing how much we've saved weekly!”</p>
+                           <div class="image_16"><img src="{% static 'img/img-18.1.png' %}"></div>
+                           <div class="adipiscing_text">Jerome<br>IT Graduate, Dumaguete</div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           <div class="carousel-item">
+               <div class="client_section_2 layout_padding">
+                   <div class="row">
+                       <div class="col-lg-4 col-sm-12">
+                           <p class="ipsum_text">“This is better than writing expenses in a notebook. The graphs and breakdowns give me more insight into my habits.”</p>
+                           <div class="image_16"><img src="{% static 'img/img-16.2.png' %}"></div>
+                           <div class="adipiscing_text">Migs<br>Student, Tagbilaran</div>
+                       </div>
+                       <div class="col-lg-4 col-sm-12">
+                           <p class="ipsum_text">“Finally an app that works offline and doesn't need registration. It just lets me focus on managing my money.”</p>
+                           <div class="image_16"><img src="{% static 'img/img-17.2.png' %}"></div>
+                           <div class="adipiscing_text">Lucky<br>Lecturer, Zamboanga</div>
+                       </div>
+                       <div class="col-lg-4 col-sm-12">
+                           <p class="ipsum_text">“From ₱50 a week savings to ₱500 a month — this app taught me that every coin counts. Highly recommend it and use to try it.”</p>
+                           <div class="image_16"><img src="{% static 'img/img-18.2.png' %}"></div>
+                           <div class="adipiscing_text">Angel<br>Working Student, Cagayan de Oro</div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+         </div>
+       </div>
+   </div>
+</div>
+<!-- client section end -->
+      <!-- contact section start -->
+      <div class="Contact_section layout_padding">
+         <div class="container">
+            <h1 class="categories_text">We'd Love to Hear From You</h1>
+            <p class="dummy_text">Got feedback or need help using the Budget App? Fill out the form below and we'll get back to you shortly.</p>
+            <div class="email_box">
+               <div class="input_main">
+                  <div class="container">
+                     <form action="/action_page.php">
+                        <div class="form-group">
+                           <input type="text" class="email-bt" placeholder="Name" name="Name">
+                        </div>
+                        <div class="form-group">
+                           <input type="text" class="email-bt" placeholder="Phone Number" name="Phone Number">
+                        </div>
+                        <div class="form-group">
+                           <input type="text" class="email-bt" placeholder="Email Address" name="Email Address">
+                        </div>
+                        <div class="form-group">
+                           <textarea class="massage-bt" placeholder="Massage" rows="5" id="comment" name="Massage"></textarea>
+                        </div>
+                     </form>
+                  </div>
+                  <div class="send_bt">
+                     <a href="#" onclick="alert('Thanks for reaching out! We\'ll be in touch soon.')">SEND</a>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <!-- contact section end -->
+      <!-- footer section start -->
+      <div class="footer_section layout_padding">
+         <div class="container">
+            <div class="row">
+               <div class="col-lg-3 col-sm-6">
+                  <h4 class="address_text">ADDRESS</h4>
+                  <p class="simply_text">University of the Philippines Cebu, Gorordo Avenue, Lahug, Cebu City 6000, Philippines</p>
+               </div>
+               <div class="col-lg-3 col-sm-6">
+                  <h4 class="address_text">QUICK LINKS</h4>
+                  <div class="footer_menu_main">
+                     <div class="footer_menu">
+                        <ul>
+                           <li><a href="{% url 'home' %}">Home</a></li>
+                           <li><a href="/finances/blog/">Blog</a></li>
+                           <li><a href="/finances/about/">About</a></li>
+                           <li><a href="/finances/services/">Services</a></li>
+                           <li><a href="/finances/contact/">Contact Us</a></li>
+                        </ul>
+                     </div>
+                  </div>
+               </div>
+               <div class="col-lg-6 col-sm-12">
+                  <div class="newsletter_section">
+                     <div class="newsletter_left">
+                        <h4 class="address_text">Newsletter</h4>
+                     </div>
+                     <div class="newsletter_right">
+                        <div class="social_icon">
+                           <ul>
+                              <li><a href="#"><img src="{% static 'img/fb-icon.png' %}"></a></li>
+                              <li><a href="#"><img src="{% static 'img/twitter-icon.png' %}"></a></li>
+                              <li><a href="#"><img src="{% static 'img/instagram-icon.png' %}"></a></li>
+                           </ul>
+                        </div>
+                     </div>
+                  </div>
+                  <input type="text" class="mail_bt" placeholder="Enter Your Email" name="Enter Your Email">
+                  <input type="text" class="mail_bt" placeholder="Phone" name="Phone">
+                  <div class="subscribe_bt"><a href="#">Subscribe</a></div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <!-- footer section end -->
+      <!-- copyright section start -->
+      <div class="copyright_section">
+         <div class="copyright_text">© 2025 Budget App. All rights reserved. Designed and developed at UP Cebu.</div>
+      </div>
+      <!-- copyright section end -->
+      <!-- Javascript files-->
+      <script src="{% static 'js/jquery.min.js' %}"></script>
+      <script src="{% static 'js/popper.min.js' %}"></script>
+      <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+      <script src="{% static 'js/jquery-3.0.0.min.js' %}"></script>
+      <script src="{% static 'js/plugin.js' %}"></script>
+      <!-- sidebar -->
+      <script src="{% static 'js/jquery.mCustomScrollbar.concat.min.js' %}"></script>
+      <script src="{% static 'js/custom.js' %}"></script>
+      <!-- javascript --> 
+      <script src="{% static 'js/owl.carousel.js' %}"></script>
+      <!-- <script src="{% static 'js/jquery.fancybox.min.js' %}"></script> -->
+      <script>
+         $(document).ready(function(){
+            $(".fancybox").fancybox({
+               openEffect: "none",
+               closeEffect: "none"
+            });
+            $(".zoom").hover(function(){
+               $(this).addClass('transition');
+            }, function(){
+               $(this).removeClass('transition');
+            });
+         });
+      </script>
+      <script>
+         function openNav() {
+         document.getElementById("myNav").style.width = "100%";
+         }
+         function closeNav() {
+         document.getElementById("myNav").style.width = "0%";
+         }
+      </script>
+
+<!-- Login/Signup Modal -->
+<div id="authModal" class="modal" style="display: none;">
+   <div class="modal-content-auth">
+     <span class="modal-close" onclick="closeModal()">&times;</span>
+     <h2 class="modal-title">Welcome Back</h2>
+ 
+     <form class="modal-form" method="POST" action="{% url 'login' %}">
+       {% csrf_token %}
+       {% if form_errors and form_type == 'login' %}
+         <div class="modal-error">{{ form_errors }}</div>
+       {% endif %}
+       <div class="input-group-modal">
+         <label for="username"><strong>Username</strong></label>
+         <div class="input-icon-wrapper">
+           <i class="fa fa-user input-icon"></i>
+           <input type="text" id="username" name="username" placeholder="Enter your username" required />
+         </div>
+       </div>
+ 
+       <div class="input-group-modal">
+         <label for="password"><strong>Password</strong></label>
+         <div class="input-icon-wrapper">
+           <i class="fa fa-lock input-icon"></i>
+           <input type="password" id="password" name="password" placeholder="Enter your password" required />
+         </div>
+       </div>
+ 
+       <button type="submit" class="modal-btn">Sign In</button>
+ 
+       <p class="modal-note"><a href="#" onclick="openForgotModal()">Forgot password?</a></p>
+       <p class="modal-note">Don't have an account? <a href="#" onclick="switchToSignup()">Sign Up</a></p>
+     </form>
+   </div>
+ </div>
+
+ <!-- Forgot Password Modal -->
+<div id="forgotModal" class="modal" style="display: none;">
+   <div class="modal-content-auth">
+     <span class="modal-close" onclick="closeForgotModal()">&times;</span>
+     <h2 class="modal-title">Reset Your Password</h2>
+ 
+     <form class="modal-form">
+       <div class="input-group-modal">
+         <label for="forgot-email"><strong>Email Address</strong></label>
+         <div class="input-icon-wrapper">
+           <i class="fa fa-envelope input-icon"></i>
+           <input type="email" id="forgot-email" placeholder="Enter your registered email" required>
+         </div>
+       </div>
+ 
+       <button type="submit" class="modal-btn">Send Reset Link</button>
+ 
+       <p class="modal-note">Remembered your password? <a href="#" onclick="switchToLoginFromForgot()">Sign In</a></p>
+     </form>
+   </div>
+ </div>
+ 
+<!-- Sign Up Modal -->
+<div id="signupModal" class="modal" style="display: none;">
+   <div class="modal-content-auth">
+     <span class="modal-close" onclick="closeSignupModal()">&times;</span>
+     <h2 class="modal-title">Create Your Account</h2>
+ 
+     <form id="signupModalForm" class="modal-form" method="POST" action="{% url 'signup' %}">
+       {% csrf_token %}
+       {% if form_errors and form_type == 'register' %}
+         <div class="modal-error">{{ form_errors }}</div>
+       {% endif %}
+       <div id="signup-modal-errors" class="modal-error"></div>
+       <div class="input-group-modal">
+         <label for="signup-username"><strong>Username</strong></label>
+         <div class="input-icon-wrapper">
+           <i class="fa fa-user input-icon"></i>
+           <input type="text" id="signup-username" name="username" placeholder="Choose a username" required>
+         </div>
+       </div>
+ 
+       <div class="input-group-modal">
+         <label for="signup-email"><strong>Email</strong></label>
+         <div class="input-icon-wrapper">
+           <i class="fa fa-envelope input-icon"></i>
+           <input type="email" id="signup-email" name="email" placeholder="Enter your email" required>
+         </div>
+       </div>
+ 
+       <div class="input-group-modal">
+         <label for="signup-password1"><strong>Password</strong></label>
+         <div class="input-icon-wrapper">
+           <i class="fa fa-lock input-icon"></i>
+           <input type="password" id="signup-password1" name="password1" placeholder="Create a password" required>
+         </div>
+       </div>
+ 
+       <div class="input-group-modal">
+         <label for="signup-password2"><strong>Confirm Password</strong></label>
+         <div class="input-icon-wrapper">
+           <i class="fa fa-lock input-icon"></i>
+           <input type="password" id="signup-password2" name="password2" placeholder="Repeat your password" required>
+         </div>
+       </div>
+ 
+       <button type="submit" class="modal-btn">Sign Up</button>
+ 
+       <p class="modal-note">Already have an account? <a href="#" onclick="switchToLogin()">Sign In</a></p>
+       <p class="modal-note small">
+         By signing up, you agree to our 
+         <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+       </p>
+     </form>
+   </div>
+ </div>
+ 
+ <script>
+   function openModal() {
+     document.getElementById('authModal').style.display = 'flex';
+   }
+ 
+   function closeModal() {
+     document.getElementById('authModal').style.display = 'none';
+   }
+ 
+   function openSignupModal() {
+     document.getElementById('signupModal').style.display = 'flex';
+   }
+ 
+   function closeSignupModal() {
+     document.getElementById('signupModal').style.display = 'none';
+   }
+ 
+   function switchToSignup() {
+     closeModal();
+     openSignupModal();
+   }
+ 
+   function switchToLogin() {
+     closeSignupModal();
+     openModal();
+   }
+
+   function openForgotModal() {
+    closeModal(); // close login modal
+    document.getElementById('forgotModal').style.display = 'flex';
+  }
+
+  function closeForgotModal() {
+    document.getElementById('forgotModal').style.display = 'none';
+  }
+
+  function switchToLoginFromForgot() {
+    closeForgotModal();
+    openModal();
+  }
+ 
+   document.addEventListener('DOMContentLoaded', function () {
+     // Dedicated Login button
+     const loginBtn = document.querySelector('.login-btn');
+     if (loginBtn) {
+       loginBtn.addEventListener('click', function (e) {
+         e.preventDefault();
+         openModal();
+       });
+     }
+     // Dedicated Signup button
+     const signupBtn = document.querySelector('.signup-btn');
+     if (signupBtn) {
+       signupBtn.addEventListener('click', function (e) {
+         e.preventDefault();
+         openSignupModal();
+       });
+     }
+     // Existing Try It Now buttons
+     const tryButtons = document.querySelectorAll('.contact_bt a');
+     tryButtons.forEach(button => {
+       button.addEventListener('click', function (e) {
+         e.preventDefault();
+         openModal();
+       });
+     });
+     // AJAX Signup Modal
+     const signupForm = document.getElementById('signupModalForm');
+     if (signupForm) {
+         signupForm.addEventListener('submit', function (e) {
+             e.preventDefault();
+             const formData = new FormData(signupForm);
+             fetch(signupForm.action, {
+                 method: 'POST',
+                 headers: {
+                     'X-Requested-With': 'XMLHttpRequest'
+                 },
+                 body: formData
+             })
+             .then(response => response.json())
+             .then(data => {
+                 const errorDiv = document.getElementById('signup-modal-errors');
+                 if (data.success) {
+                     // Set a flag to open login modal after reload
+                     localStorage.setItem('openLoginModal', '1');
+                     window.location.reload();
+                 } else if (data.errors) {
+                     errorDiv.innerHTML = data.errors;
+                 }
+             })
+             .catch(error => {
+                 document.getElementById('signup-modal-errors').innerHTML = 'An error occurred. Please try again.';
+             });
+         });
+     }
+     // On page load, if openLoginModal flag is set, open login modal and clear flag
+     if (localStorage.getItem('openLoginModal') === '1') {
+         localStorage.removeItem('openLoginModal');
+         openModal();
+     }
+   });
+ </script>
+
+   {% if open_signup_modal %}
+     {% if form_errors %}
+       <script>var SIGNUP_MODAL_ERRORS = `{{ form_errors|escapejs|safe }}`;</script>
+     {% endif %}
+     <script>
+       document.addEventListener('DOMContentLoaded', function() {
+         openSignupModal();
+         var errorDiv = document.getElementById('signup-modal-errors');
+         if (typeof SIGNUP_MODAL_ERRORS !== 'undefined' && errorDiv) {
+           errorDiv.innerHTML = SIGNUP_MODAL_ERRORS;
+         }
+       });
+     </script>
+   {% endif %}
+
+   </body>
+</html>

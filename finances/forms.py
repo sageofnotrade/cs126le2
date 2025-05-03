@@ -104,6 +104,10 @@ class ScheduledTransactionForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        # Force repeats to 1 for one-time transactions
+        if cleaned_data.get('repeat_type') == 'once':
+            cleaned_data['repeats'] = 1
+        
         account = cleaned_data.get('account')
         amount = cleaned_data.get('amount')
         transaction_type = cleaned_data.get('transaction_type')

@@ -1,0 +1,395 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- basic -->
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- site metas -->
+<title>Services</title>
+<meta name="keywords" content="">
+<meta name="description" content="">
+<meta name="author" content=""> 
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<!-- style css (local) -->
+<link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+<!-- Responsive (local) -->
+<link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+<!-- fevicon (local) -->
+<link rel="icon" href="{% static 'img/fevicon.png' %}" type="image/gif" />
+<!-- Scrollbar Custom CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/malihu-custom-scrollbar-plugin@3.1.5/jquery.mCustomScrollbar.min.css">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<!-- Owl Carousel CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
+<!-- Fancybox CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css" media="screen">
+</head>
+<body>
+  <!--header section start -->
+    <div class="header_section background_bg">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-md-3">
+            <div class="logo"><a href="/" ><img src="{% static 'img/logofinal.png' %}"></a></div>
+          </div>
+          <div class="col-md-9">
+            <div class="menu_text">
+              <ul>
+                <div id="myNav" class="overlay">
+                <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+                <div class="overlay-content">
+                  <a href="{% url 'home' %}">Home</a>
+                  <a href="/finances/blog/">Blog</a>
+                  <a href="/finances/about/">About</a>
+                  <a href="/finances/services/">Services</a>
+                  <a href="/finances/client/">Client</a>
+                  <a href="/finances/contact/">Contact Us</a>
+                </div>
+                </div>
+                <span class="navbar-toggler-icon"></span>
+                <span onclick="openNav()"><img src="{% static 'img/toogle-icon.png' %}" class="toggle_menu"></span>
+                </div>  
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+    </div>
+    <!-- header section end -->
+    <!-- portfolio section start -->
+    <div class="portfolio_section layout_padding">
+        <div class="container">
+            <h1 class="what_text">Behind the Build</h1>
+        </div>
+        <div class="container-fluid">
+            <div class="images_section">
+                <div class="row">
+                    <div class="col-sm-4 padding_0">
+                        <div class="container_1">
+                            <img src="{% static 'img/img-9.png' %}" alt="Avatar" class="image" style="width:100%">
+                            <div class="middle">
+                              <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 padding_0">
+                        <div class="container_1">
+                            <img src="{% static 'img/img-10.png' %}" alt="Avatar" class="image" style="width:100%">
+                            <div class="middle">
+                              <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 padding_0">
+                        <div class="container_1">
+                            <img src="{% static 'img/img-11.png' %}" alt="Avatar" class="image" style="width:100%">
+                            <div class="middle">
+                              <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-4 padding_0">
+                        <div class="container_1">
+                            <img src="{% static 'img/img-12.png' %}" alt="Avatar" class="image" style="width:100%">
+                            <div class="middle">
+                              <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 padding_0">
+                        <div class="container_1">
+                            <img src="{% static 'img/img-13.png' %}" alt="Avatar" class="image" style="width:100%">
+                            <div class="middle">
+                              <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 padding_0">
+                        <div class="container_1">
+                            <img src="{% static 'img/img-14.png' %}" alt="Avatar" class="image" style="width:100%">
+                            <div class="middle">
+                              <div class="text"><img src="{% static 'img/search-icon.png' %}"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="portfolio_section_2 layout_padding">
+            <div class="container">
+              <h1 class="best_taital">What We Offer</h1>
+              <p class="best_text custom_justify_center">
+                From easy expense tracking to smart budgeting insights, our Budget App is built to empower everyday Filipinos to take control of their finances. Whether you're a student, freelancer, or working professional, our services are designed to help you spend wisely, save consistently, and build better financial habits—anytime, anywhere.
+              </p>
+              <div class="get_bt"><a href="#" class="open-modal">Try It Now</a></div>
+            </div>
+        </div>
+    </div>
+    <!-- portfolio section end -->
+    <!-- footer section start -->
+    <div class="footer_section layout_padding">
+    	<div class="container">
+    		<div class="row">
+    			<div class="col-lg-3 col-sm-6">
+    				<h4 class="address_text">ADDRESS</h4>
+    				<p class="simply_text">University of the Philippines Cebu, Gorordo Avenue, Lahug, Cebu City 6000, Philippines</p>
+    			</div>
+    			<div class="col-lg-3 col-sm-6">
+    				<h4 class="address_text">QUICK LINKS</h4>
+    				<div class="footer_menu_main">
+    				    <div class="footer_menu">
+    				    	<ul>
+    				    		<li><a href="{% url 'home' %}">Home</a></li>
+    				    		<li><a href="/finances/blog/">Blog</a></li>
+    				    		<li><a href="/finances/about/">About</a></li>
+    				    		<li><a href="/finances/services/">Services</a></li>
+    				    		<li><a href="/finances/contact/">Contact Us</a></li>
+    				    	</ul>
+    				    </div>
+    				</div>
+    			</div>
+    			<div class="col-lg-6 col-sm-12">
+    				<div class="newsletter_section">
+    					<div class="newsletter_left">
+    						<h4 class="address_text">Newsletter</h4>
+    					</div>
+    					<div class="newsletter_right">
+    						<div class="social_icon">
+    				    	    <ul>
+    				    	    	<li><a href="#"><img src="{% static 'img/fb-icon.png' %}"></a></li>
+    				    	    	<li><a href="#"><img src="{% static 'img/twitter-icon.png' %}"></a></li>
+    				    	    	<li><a href="#"><img src="{% static 'img/instagram-icon.png' %}"></a></li>
+    				    	    </ul>
+    				        </div>
+    					</div>
+    				</div>
+    				<input type="text" class="mail_bt" placeholder="Enter Your Email" name="Enter Your Email">
+    				<input type="text" class="mail_bt" placeholder="Phone" name="Phone">
+    				<div class="subscribe_bt"><a href="#">Subscribe</a></div>
+    			</div>
+    		</div>
+    	</div>
+    </div>
+    <!-- footer section end -->
+    <!-- copyright section start -->
+    <div class="copyright_section">
+    	<div class="copyright_text">© 2025 Budget App. All rights reserved. Designed and developed at UP Cebu.</div>
+    </div>
+    <!-- copyright section end -->
+    <!-- Javascript files-->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/malihu-custom-scrollbar-plugin@3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-meanmenu/2.0.8/jquery.meanmenu.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.nicescroll/3.7.6/jquery.nicescroll.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.sticky/1.0.4/jquery.sticky.min.js"></script>
+    <!-- custom project JS (local) -->
+    <script src="{% static 'js/custom.js' %}"></script>
+    <script>
+    $(document).ready(function(){
+    $(".fancybox").fancybox({
+    openEffect: "none",
+    closeEffect: "none"
+    });
+         
+    $(".zoom").hover(function(){
+         
+    $(this).addClass('transition');
+    }, function(){
+         
+    $(this).removeClass('transition');
+    });
+    });
+    </script> 
+    <script>
+     function openNav() {
+     document.getElementById("myNav").style.width = "100%";
+    }
+     function closeNav() {
+     document.getElementById("myNav").style.width = "0%";
+    }
+    </script> 
+
+<!-- Login/Signup Modal -->
+<div id="authModal" class="modal" style="display: none;">
+  <div class="modal-content-auth">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2 class="modal-title">Welcome Back</h2>
+
+    <form class="modal-form">
+      <div class="input-group-modal">
+        <label for="username"><strong>Username</strong></label>
+        <div class="input-icon-wrapper">
+          <i class="fa fa-user input-icon"></i>
+          <input type="text" id="username" placeholder="Enter your username" required />
+        </div>
+      </div>
+
+      <div class="input-group-modal">
+        <label for="password"><strong>Password</strong></label>
+        <div class="input-icon-wrapper">
+          <i class="fa fa-lock input-icon"></i>
+          <input type="password" id="password" placeholder="Enter your password" required />
+        </div>
+      </div>
+
+      <button type="submit" class="modal-btn">Sign In</button>
+
+      <p class="modal-note"><a href="#" onclick="openForgotModal()">Forgot password?</a></p>
+      <p class="modal-note">Don't have an account? <a href="#" onclick="switchToSignup()">Sign Up</a></p>
+    </form>
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div id="forgotModal" class="modal" style="display: none;">
+  <div class="modal-content-auth">
+    <span class="modal-close" onclick="closeForgotModal()">&times;</span>
+    <h2 class="modal-title">Reset Your Password</h2>
+
+    <form class="modal-form">
+      <div class="input-group-modal">
+        <label for="forgot-email"><strong>Email Address</strong></label>
+        <div class="input-icon-wrapper">
+          <i class="fa fa-envelope input-icon"></i>
+          <input type="email" id="forgot-email" placeholder="Enter your registered email" required>
+        </div>
+      </div>
+
+      <button type="submit" class="modal-btn">Send Reset Link</button>
+
+      <p class="modal-note">Remembered your password? <a href="#" onclick="switchToLoginFromForgot()">Sign In</a></p>
+    </form>
+  </div>
+</div>
+
+<!-- Sign Up Modal -->
+<div id="signupModal" class="modal" style="display: none;">
+  <div class="modal-content-auth">
+    <span class="modal-close" onclick="closeSignupModal()">&times;</span>
+    <h2 class="modal-title">Create Your Account</h2>
+
+    <form class="modal-form">
+      <div class="input-group-modal">
+        <label for="signup-username"><strong>Username</strong></label>
+        <div class="input-icon-wrapper">
+          <i class="fa fa-user input-icon"></i>
+          <input type="text" id="signup-username" placeholder="Choose a username" required>
+        </div>
+      </div>
+
+      <div class="input-group-modal">
+        <label for="signup-email"><strong>Email</strong></label>
+        <div class="input-icon-wrapper">
+          <i class="fa fa-envelope input-icon"></i>
+          <input type="email" id="signup-email" placeholder="Enter your email" required>
+        </div>
+      </div>
+
+      <div class="input-group-modal">
+        <label for="signup-password1"><strong>Password</strong></label>
+        <div class="input-icon-wrapper">
+          <i class="fa fa-lock input-icon"></i>
+          <input type="password" id="signup-password1" placeholder="Create a password" required>
+        </div>
+      </div>
+
+      <div class="input-group-modal">
+        <label for="signup-password2"><strong>Confirm Password</strong></label>
+        <div class="input-icon-wrapper">
+          <i class="fa fa-lock input-icon"></i>
+          <input type="password" id="signup-password2" placeholder="Repeat your password" required>
+        </div>
+      </div>
+
+      <button type="submit" class="modal-btn">Sign Up</button>
+
+      <p class="modal-note">Already have an account? <a href="#" onclick="switchToLogin()">Sign In</a></p>
+      <p class="modal-note small">
+        By signing up, you agree to our 
+        <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      </p>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openModal() {
+    document.getElementById('authModal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('authModal').style.display = 'none';
+  }
+
+  function openSignupModal() {
+    document.getElementById('signupModal').style.display = 'flex';
+  }
+
+  function closeSignupModal() {
+    document.getElementById('signupModal').style.display = 'none';
+  }
+
+  function switchToSignup() {
+    closeModal();
+    openSignupModal();
+  }
+
+  function switchToLogin() {
+    closeSignupModal();
+    openModal();
+  }
+
+  function openForgotModal() {
+   closeModal(); // close login modal
+   document.getElementById('forgotModal').style.display = 'flex';
+ }
+
+ function closeForgotModal() {
+   document.getElementById('forgotModal').style.display = 'none';
+ }
+
+ function switchToLoginFromForgot() {
+   closeForgotModal();
+   openModal();
+ }
+
+ document.addEventListener('DOMContentLoaded', function () {
+  const tryButtons = document.querySelectorAll('.contact_bt a');
+  tryButtons.forEach(button => {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      openModal();
+    });
+  });
+
+  const openModalLinks = document.querySelectorAll('.open-modal');
+  openModalLinks.forEach(link => {
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      openModal();
+    });
+  });
+
+  const forgotLink = document.querySelector('#authModal .modal-note a[href="#"]');
+  if (forgotLink) {
+    forgotLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      openForgotModal();
+    });
+  }
+});
+</script>
+
+  </body>
+</html>
