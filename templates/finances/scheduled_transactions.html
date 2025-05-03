@@ -301,6 +301,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('scheduled-transaction-form');
     if (form) {
         form.addEventListener('submit', function(e) {
+            // Always enable the repeats field before submitting to ensure it's included in the form data
+            repeatsField.removeAttribute('readonly');
+            repeatsField.removeAttribute('disabled');
+            
             const dateField = document.getElementById('scheduled-transaction-date');
             const now = new Date();
             const selected = new Date(dateField.value);

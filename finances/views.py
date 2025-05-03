@@ -173,7 +173,12 @@ def scheduled_transactions(request):
 @login_required
 def create_scheduled_transaction(request):
     if request.method == 'POST':
-        form = ScheduledTransactionForm(request.POST, user=request.user)
+        # Check if the request is missing the 'repeats' field but has 'repeat_type'
+        post_data = request.POST.copy()
+        if 'repeat_type' in post_data and post_data.get('repeat_type') == 'once' and 'repeats' not in post_data:
+            post_data['repeats'] = '1'
+            
+        form = ScheduledTransactionForm(post_data, user=request.user)
         if form.is_valid():
             scheduled_transaction = form.save(commit=False)
             scheduled_transaction.user = request.user
@@ -694,6 +699,23 @@ def process_scheduled_transactions(user):
 
 @login_required
 def dashboard(request):
+    # Get user's active budgets
+    budgets = Budget.objects.filter(
+        user=request.user,
+        end_date__gte=timezone.now().date()
+    ).select_related('category', 'subcategory').order_by('end_date')
+
+    # Separate weekly and monthly budgets
+    weekly_budgets = []
+    monthly_budgets = []
+    for budget in budgets:
+        budget.spent = budget.get_spent_amount()
+        budget.percentage_used = (budget.spent / budget.amount * 100) if budget.amount > 0 else 0
+        if budget.duration == '1 week':
+            weekly_budgets.append(budget)
+        elif budget.duration == '1 month':
+            monthly_budgets.append(budget)
+
     process_scheduled_transactions(request.user)
     dashboard_preference, created = DashboardPreference.objects.get_or_create(user=request.user)
 
@@ -720,7 +742,125 @@ def dashboard(request):
     # Recent transactions
     recent_transactions = Transaction.objects.filter(user=request.user).order_by('-date', '-time')[:5]
 
-    return render(request, 'finances/dashboard.html', {
+    # Get upcoming scheduled transactions for the user
+    upcoming_scheduled_transactions = ScheduledTransaction.objects.filter(
+        user=request.user,
+        status='scheduled',
+        date_scheduled__gte=timezone.now()
+    ).order_by('date_scheduled')[:5]  # Limit to 5 upcoming transactions
+    
+    # Get user's debts
+    debts = Debt.objects.filter(
+        user=request.user,
+        paid=False
+    ).order_by('date_payback')[:5]  # Limit to 5 unpaid debts
+    
+    # Get last 7 days data for balance chart
+    today = timezone.now().date()
+    week_ago = today - timezone.timedelta(days=7)
+    
+    last_7_days_data = {
+        'labels': [],
+        'income': [],
+        'expenses': []
+    }
+    
+    # Generate data for each day
+    for i in range(7):
+        current_date = week_ago + timezone.timedelta(days=i+1)
+        last_7_days_data['labels'].append(current_date.strftime('%a'))
+        
+        # Get transactions for this day
+        day_transactions = Transaction.objects.filter(user=request.user, date=current_date)
+        
+        # Calculate income and expenses for this day
+        day_income = sum(t.amount for t in day_transactions if t.type == 'income')
+        day_expenses = sum(t.amount for t in day_transactions if t.type == 'expense')
+        
+        last_7_days_data['income'].append(float(day_income))
+        last_7_days_data['expenses'].append(float(day_expenses))
+    
+    # Get future projection data (next 30 days)
+    future_balance_data = {
+        'labels': [],
+        'values': []
+    }
+    
+    # Calculate starting balance
+    current_balance = Decimal('0')
+    for account in Account.objects.filter(user=request.user):
+        if hasattr(account, 'debitaccount'):
+            current_balance += account.debitaccount.balance
+        elif hasattr(account, 'wallet'):
+            current_balance += account.wallet.balance
+        elif hasattr(account, 'creditaccount'):
+            current_balance -= account.creditaccount.current_usage
+    
+    # Get scheduled transactions for next 30 days
+    end_date = today + timezone.timedelta(days=30)
+    scheduled_txns = ScheduledTransaction.objects.filter(
+        user=request.user,
+        status='scheduled',
+        date_scheduled__gte=today,
+        date_scheduled__lte=end_date
+    ).order_by('date_scheduled')
+    
+    # Prepare projection
+    projection_days = 30
+    daily_amounts = [0] * projection_days
+    
+    # Add scheduled transactions to daily amounts
+    for txn in scheduled_txns:
+        day_index = (txn.date_scheduled.date() - today).days
+        if 0 <= day_index < projection_days:
+            if txn.transaction_type == 'income':
+                daily_amounts[day_index] += float(txn.amount)
+            else:
+                daily_amounts[day_index] -= float(txn.amount)
+    
+    # Generate labels and calculate running balance
+    balance = float(current_balance)
+    for i in range(projection_days):
+        future_date = today + timezone.timedelta(days=i)
+        future_balance_data['labels'].append(future_date.strftime('%d %b'))
+        
+        balance += daily_amounts[i]
+        future_balance_data['values'].append(balance)
+    
+    # Get category data for pie chart (last 30 days)
+    month_ago = today - timezone.timedelta(days=30)
+    categories_data = []
+    
+    # Get expense transactions for the last 30 days
+    expense_transactions = Transaction.objects.filter(
+        user=request.user,
+        type='expense',
+        date__gte=month_ago
+    ).select_related('category')
+    
+    # Group transactions by category
+    category_totals = {}
+    for transaction in expense_transactions:
+        category_name = transaction.category.name if transaction.category else 'Uncategorized'
+        if category_name in category_totals:
+            category_totals[category_name] += float(transaction.amount)
+        else:
+            category_totals[category_name] = float(transaction.amount)
+    
+    # Convert to list format for the chart
+    for category, amount in category_totals.items():
+        categories_data.append({
+            'category': category,
+            'amount': amount
+        })
+    
+    # Sort by amount (descending)
+    categories_data.sort(key=lambda x: x['amount'], reverse=True)
+    
+    # Limit to top 5 categories
+    categories_data = categories_data[:5]
+
+    context = {
         'accounts_summary': accounts_summary,
         'total_balance': total_balance,
         'current_month': current_month,
@@ -734,7 +874,17 @@ def dashboard(request):
         'budget_warnings': budget_warnings,
         'recent_transactions': recent_transactions,
         'dashboard_preference': dashboard_preference,
-    })
+        'budgets': budgets,
+        'weekly_budgets': weekly_budgets,
+        'monthly_budgets': monthly_budgets,
+        'upcoming_scheduled_transactions': upcoming_scheduled_transactions,
+        'debts': debts,
+        'last_7_days_data': json.dumps(last_7_days_data),
+        'future_balance_data': json.dumps(future_balance_data),
+        'categories_data': json.dumps(categories_data),
+    }
+    
+    return render(request, 'finances/dashboard.html', context)
 
 @login_required
 def save_dashboard_preferences(request):
@@ -2388,9 +2538,9 @@ def charts_data_future(request):
     balances.append(float(current_balance))
     for t in transactions:
         if t['type'] == 'income':
-            current_balance += t['amount']
+            current_balance += Decimal(str(t['amount']))
         else:
-            current_balance -= t['amount']
+            current_balance -= Decimal(str(t['amount']))
         balances.append(float(current_balance))
 
     # For now, fill other arrays with zeros (same length as labels)

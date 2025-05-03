@@ -44,6 +44,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize form controls
     initScheduledTransactionFormControls();
+
+    // Add listener to form submission to enable repeats field before submitting
+    const form = document.getElementById('scheduled-transaction-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Enable the repeats field before submission to ensure it's included in the form data
+            const repeatsField = document.getElementById('scheduled-transaction-repeats');
+            if (repeatsField) {
+                repeatsField.removeAttribute('readonly');
+                repeatsField.removeAttribute('disabled');
+            }
+        });
+    }
 });
 
 function initScheduledTransactionFormControls() {
@@ -299,9 +312,9 @@ function updateRepeatsField() {
     if (repeatType && repeats) {
         if (repeatType.value === 'once') {
             repeats.value = 1;
-            repeats.setAttribute('disabled', 'disabled');
+            repeats.setAttribute('readonly', 'readonly');
         } else {
-            repeats.removeAttribute('disabled');
+            repeats.removeAttribute('readonly');
         }
     }
 }
