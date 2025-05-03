@@ -74,7 +74,7 @@
   <rect width="800" height="600" fill="#f8f9fa" rx="10" ry="10"/>
   
   <!-- Title -->
-  <text x="400" y="40" class="title">Monthly Budget Overview</text>
+  <text x="400" y="40" class="title">Monthly Budget Dashboard</text>
   
   <!-- Left section: Bar chart -->
   <g transform="translate(80, 100)">

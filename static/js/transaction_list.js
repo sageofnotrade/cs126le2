@@ -37,6 +37,9 @@ window.transactionState = {
             params.push(`types=${this.types.join(',')}`);
         }
         
+        // Always include sorting by newest ID first
+        params.push('order=-id');
+        
         return params.join('&');
     }
 };
@@ -547,6 +550,12 @@ function updateTransactionList(data) {
         return;
     }
     
+    // Prioritize sorting by ID first (newest ID at top) to ensure newly added transactions appear first
+    data.transactions.sort((a, b) => {
+        // Sort by ID descending (newest first)
+        return b.id - a.id;
+    });
+    
     // Build transaction list HTML
     let transactionsHTML = '';
     
@@ -581,7 +590,7 @@ function updateTransactionList(data) {
                 <div class="d-flex align-items-center">
                     <div class="text-end me-3">
                         <div class="text-${transaction.type === 'income' ? 'success' : 'danger'} fw-bold">
-                            ${transaction.type === 'income' ? '+' : '-'}$${parseFloat(transaction.amount).toFixed(2)}
+                            ${transaction.type === 'income' ? '+' : '-'}₱${parseFloat(transaction.amount).toFixed(2)}
                         </div>
                         <small class="text-muted">${formattedDate}</small>
                     </div>
@@ -627,7 +636,7 @@ function updateTransactionSummary(data) {
         
         // Format with the appropriate color and sign
         transactionTotalElement.className = totalBalance >= 0 ? 'text-success' : 'text-danger';
-        transactionTotalElement.textContent = `$${formattedBalance}`;
+        transactionTotalElement.textContent = `₱${formattedBalance}`;
         
         // Add animation for changes
         transactionTotalElement.classList.add('balance-updated');

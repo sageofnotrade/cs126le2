@@ -58,21 +58,169 @@
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
     
-    /* Improve transaction list item */
+    /* Enhanced card and layout styling */
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        border: none;
+        overflow: hidden;
+    }
+    
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .card-header {
+        background-color: #fff;
+        padding: 1.2rem 1.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        font-weight: 600;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    /* Improved transaction list item */
     .transaction-item {
-        transition: background-color 0.2s ease;
+        padding: 1rem 1.5rem;
+        transition: all 0.2s ease;
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+        margin-bottom: 0;
+        border-top: none;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
     
     .transaction-item:hover {
-        background-color: rgba(0, 0, 0, 0.03);
+        background-color: transparent;
+        transform: none;
     }
     
+    /* Enhanced icon styling */
     .icon-wrapper {
         display: flex;
         align-items: center;
         justify-content: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Transaction indicator styling */
+    .transaction-indicator {
+        border-radius: 0 0.375rem 0.375rem 0;
+        width: 5px !important;
+    }
+    
+    /* Enhance buttons */
+    .btn {
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-success, .btn-danger {
+        padding: 0.5rem 1.25rem;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Month navigation styling */
+    #prev-month-btn, #next-month-btn {
         width: 36px;
         height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        padding: 0;
+    }
+    
+    #current-month {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #333;
+    }
+    
+    /* Better spacing */
+    .page-header {
+        margin-bottom: 1.5rem !important;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Transaction type filter buttons */
+    .btn-group [data-filter].active {
+        font-weight: bold;
+    }
+    
+    .btn-outline-success.active {
+        box-shadow: 0 0 0 0.15rem rgba(25, 135, 84, 0.15);
+    }
+    
+    .btn-outline-danger.active {
+        box-shadow: 0 0 0 0.15rem rgba(220, 53, 69, 0.15);
+    }
+    
+    .btn-outline-secondary.active {
+        box-shadow: 0 0 0 0.15rem rgba(108, 117, 125, 0.15);
+    }
+    
+    /* Dropdown toggle button styling */
+    .dropdown-toggle::after {
+        display: inline-block !important;
+        margin-left: 0.255em;
+        vertical-align: 0.255em;
+        content: "" !important;
+        border-top: 0.3em solid;
+        border-right: 0.3em solid transparent;
+        border-bottom: 0;
+        border-left: 0.3em solid transparent;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+    
+    /* Ensure dropdown buttons have minimum dimensions and proper styling */
+    .btn.btn-sm.btn-light.dropdown-toggle {
+        min-width: 34px;
+        min-height: 34px;
+        padding: 0.25rem 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        background: #f8f9fa;
+    }
+    
+    .btn.btn-sm.btn-light.dropdown-toggle:hover {
+        background: #e9ecef;
+    }
+    
+    /* Improve dropdown menu styling */
+    .dropdown-menu {
+        padding: 0.5rem 0;
+        min-width: 10rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        border: none;
+    }
+    
+    .dropdown-item {
+        padding: 0.6rem 1.5rem;
+        font-size: 0.95rem;
+    }
+    
+    .dropdown-item:hover {
+        background-color: #f8f9fa;
     }
     
     /* Animation for updated balance */
@@ -89,6 +237,51 @@
     /* Loading overlay */
     #transactions-loading-overlay {
         transition: opacity 0.3s ease;
+    }
+    
+    /* Modal styling improvements */
+    .modal-content {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .modal-header {
+        padding: 1.2rem 1.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+    }
+    
+    .modal-footer {
+        padding: 1.2rem 1.5rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Form styling */
+    .form-control, .form-select {
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.2);
+        border-color: #0d6efd;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Transaction amount styling */
+    .text-success.fw-bold, .text-danger.fw-bold {
+        font-size: 1.05rem;
     }
     
     /* Fix modal display issues */
@@ -125,125 +318,6 @@
         z-index: 1051;
     }
     
-    /* Emergency fix button for modal issues */
-    #emergency-fix {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 9999;
-        padding: 10px 15px;
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-weight: bold;
-        cursor: pointer;
-        display: none; /* Hidden by default */
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    
-    /* Show the button when body has modal-open class for more than 10 seconds */
-    body.modal-open #emergency-fix {
-        display: block;
-    }
-    
-    /* Hide the emergency button when it's not needed */
-    body:not(.modal-open) #emergency-fix {
-        display: none !important;
-    }
-    
-    /* Transaction type filter buttons */
-    .btn-group [data-filter].active {
-        font-weight: bold;
-    }
-    
-    .btn-outline-success.active {
-        box-shadow: 0 0 0 0.15rem rgba(25, 135, 84, 0.15);
-    }
-    
-    .btn-outline-danger.active {
-        box-shadow: 0 0 0 0.15rem rgba(220, 53, 69, 0.15);
-    }
-    
-    .btn-outline-secondary.active {
-        box-shadow: 0 0 0 0.15rem rgba(108, 117, 125, 0.15);
-    }
-    
-    /* Dropdown toggle button styling */
-    .dropdown-toggle::after {
-        display: inline-block !important;
-        margin-left: 0.255em;
-        vertical-align: 0.255em;
-        content: "" !important;
-        border-top: 0.3em solid;
-        border-right: 0.3em solid transparent;
-        border-bottom: 0;
-        border-left: 0.3em solid transparent;
-        opacity: 1 !important;
-        visibility: visible !important;
-    }
-    
-    /* Ensure dropdown buttons have minimum dimensions and proper styling */
-    .btn.btn-sm.btn-light.dropdown-toggle {
-        min-width: 30px;
-        min-height: 30px;
-        padding: 0.25rem 0.5rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    /* Transaction indicator styling */
-    .transaction-indicator {
-        border-radius: 0 0.375rem 0.375rem 0;
-    }
-    
-    /* Form validation styling */
-    .form-control.is-valid, .form-select.is-valid {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right calc(0.375em + 0.1875rem) center;
-        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-        padding-right: calc(1.5em + 0.75rem) !important;
-    }
-    
-    .form-control.is-invalid, .form-select.is-invalid {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right calc(0.375em + 0.1875rem) center;
-        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-        padding-right: calc(1.5em + 0.75rem) !important;
-    }
-    
-    /* Ensure validation icons are visible on selects */
-    .form-select.is-valid, .form-select.is-invalid {
-        background-position: right 1.75rem center, center right 2.75rem;
-    }
-    
-    /* Highlight fields with validation styling */
-    .form-control:focus.is-valid, .form-select:focus.is-valid {
-        border-color: #198754;
-        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
-    }
-    
-    .form-control:focus.is-invalid, .form-select:focus.is-invalid {
-        border-color: #dc3545;
-        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
-    }
-    
-    /* Better error message display */
-    .invalid-feedback {
-        display: none;
-        width: 100%;
-        margin-top: 0.25rem;
-        font-size: 0.875em;
-        color: #dc3545;
-    }
-    
-    .invalid-feedback.d-block {
-        display: block !important;
-    }
-    
     /* Toast notification styling */
     .toast-container {
         z-index: 1080 !important;
@@ -251,7 +325,7 @@
     
     .toast {
         border: none;
-        border-radius: 0.5rem;
+        border-radius: 10px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         overflow: hidden;
         margin-bottom: 0.75rem;
@@ -267,23 +341,6 @@
     .toast-body {
         padding: 0.75rem 1rem;
         opacity: 0.9;
-    }
-    
-    .bg-success {
-        background-color: #198754 !important;
-    }
-    
-    .bg-danger {
-        background-color: #dc3545 !important;
-    }
-    
-    .bg-warning {
-        background-color: #ffc107 !important;
-        color: #212529 !important;
-    }
-    
-    .bg-primary {
-        background-color: #0d6efd !important;
     }
     
     /* Toast animation */
@@ -309,33 +366,71 @@
 
 {% block content %}
 <header class="page-header mb-4 d-flex justify-content-between align-items-center">
-    <h1 class="h2">Transactions</h1>
+    <h1 class="h2 mb-0"><i class="bi bi-calendar-check me-2"></i>Transactions</h1>
     <div class="actions">
-        <!-- Test button for delete modal - Commented out -->
-        <!--
-        <button type="button" class="btn btn-outline-primary me-2" id="test-delete-modal">
-            <i class="bi bi-bug"></i> Test Delete Modal
-        </button>
-        -->
-        
         <button type="button" class="btn btn-success" id="add-income-btn">
-            <i class="bi bi-plus-circle"></i> Add Income
+            <i class="bi bi-plus-circle me-1"></i> Add Income
         </button>
-        <button type="button" class="btn btn-danger" id="add-expense-btn">
-            <i class="bi bi-dash-circle"></i> Add Expense
+        <button type="button" class="btn btn-danger ms-2" id="add-expense-btn">
+            <i class="bi bi-dash-circle me-1"></i> Add Expense
         </button>
     </div>
 </header>
+
+<!-- Quick Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-arrow-up-circle text-success fs-4"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Total Income</h6>
+                    <h5 class="mb-0">₱{{ total_income|default:'0.00'|floatformat:2 }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="rounded-circle bg-danger bg-opacity-10 p-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-arrow-down-circle text-danger fs-4"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Total Expenses</h6>
+                    <h5 class="mb-0">₱{{ total_expenses|default:'0.00'|floatformat:2 }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3" style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-wallet2 text-primary fs-4"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Net Balance</h6>
+                    <h5 class="mb-0 {% if total_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        ₱{{ total_balance|default:'0.00'|floatformat:2 }}
+                    </h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="row">
     <!-- Filter Container -->
     <div class="col-md-3">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header">
-                <h2 class="h5 mb-0">Filter</h2>
+                <h2 class="h5 mb-0"><i class="bi bi-funnel me-2"></i>Filter</h2>
             </div>
             <!-- Transaction Type Filters -->
-            <div class="card-body py-2 border-bottom">
+            <div class="card-body py-3 border-bottom">
                 <div class="btn-group w-100" role="group" aria-label="Transaction Type Filters">
                     <button type="button" class="btn btn-sm btn-outline-secondary active" id="filter-all" data-filter="all">All</button>
                     <button type="button" class="btn btn-sm btn-outline-success" id="filter-income" data-filter="income">Income</button>
@@ -345,7 +440,9 @@
             <div class="card-body">
                 <form id="transaction-filter-form">
                     <div class="mb-3">
-                        <label for="category-filter" class="form-label">Category</label>
+                        <label for="category-filter" class="form-label">
+                            <i class="bi bi-tags me-1"></i>Category
+                        </label>
                         <select id="category-filter" class="form-select" tabindex="1">
                             <option value="">All Categories</option>
                             {% for category in categories %}
@@ -358,7 +455,9 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="from-to-filter" class="form-label">Search</label>
+                        <label for="from-to-filter" class="form-label">
+                            <i class="bi bi-search me-1"></i>Search
+                        </label>
                         <div class="input-group">
                             <input type="text" id="from-to-filter" class="form-control" placeholder="Search by title or notes">
                             <button class="btn btn-outline-secondary d-none" type="button" id="clear-search-btn">
@@ -368,7 +467,9 @@
                     </div>
                     
                     <div class="d-grid">
-                        <button type="button" id="clear-filters-btn" class="btn btn-outline-secondary">Reset All Filters</button>
+                        <button type="button" id="clear-filters-btn" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset All Filters
+                        </button>
                     </div>
                 </form>
             </div>
@@ -383,7 +484,7 @@
                 <button type="button" id="prev-month-btn" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-chevron-left"></i>
                 </button>
-                <div>
+                <div class="text-center">
                     <h3 id="current-month" class="h5 mb-0">{{ current_month_name }} {{ current_year }}</h3>
                     <div id="current-month-data" data-month="{{ current_month }}" data-year="{{ current_year }}" class="d-none"></div>
                 </div>
@@ -394,20 +495,20 @@
             
             <!-- Transactions Summary -->
             <div class="card-body pb-0">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="p-2 bg-light rounded-3">
                         <span class="fw-bold">Transactions: </span>
-                        <span id="transaction-count">{{ transactions.count }}</span>
+                        <span id="transaction-count" class="badge bg-secondary rounded-pill">{{ transactions.count }}</span>
                     </div>
-                    <div>
+                    <div class="p-2 bg-light rounded-3">
                         <span class="fw-bold">Total: </span>
-                        <span id="transaction-total" class="{% if total_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
-                            ${{ total_balance|floatformat:2 }}
+                        <span id="transaction-total" class="badge {% if total_balance >= 0 %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                            ₱{{ total_balance|floatformat:2 }}
                         </span>
                     </div>
                 </div>
                 <!-- Add select all option -->
-                <div class="mt-3 d-flex justify-content-between align-items-center border-bottom pb-2">
+                <div class="mt-2 d-flex justify-content-between align-items-center border-bottom pb-3">
                     <div class="d-flex align-items-center">
                         <div class="custom-checkbox me-2" style="min-width: 24px;">
                             <input class="select-all-transactions" type="checkbox" id="select-all-transactions">
@@ -419,7 +520,7 @@
                     </div>
                     <div class="batch-actions invisible">
                         <button class="btn btn-sm btn-danger batch-delete" type="button">
-                            Delete Selected (<span class="selected-count">0</span>)
+                            <i class="bi bi-trash me-1"></i>Delete Selected (<span class="selected-count">0</span>)
                         </button>
                     </div>
                 </div>
@@ -431,41 +532,48 @@
                     {% for transaction in transactions %}
                     <div class="list-group-item d-flex justify-content-between align-items-center transaction-item position-relative">
                         <div class="d-flex align-items-center">
-                            <div class="custom-checkbox me-2">
+                            <div class="custom-checkbox me-3">
                                 <input class="transaction-check" type="checkbox" value="{{ transaction.id }}" id="check-{{ transaction.id }}">
                                 <label class="custom-checkbox-label" for="check-{{ transaction.id }}"></label>
                             </div>
                             <div class="d-flex align-items-center">
                                 <div class="transaction-icon me-3">
-                                    <span class="icon-wrapper rounded-circle bg-{% if transaction.type == 'income' %}success{% else %}danger{% endif %} p-2">
-                                        <i class="{% if transaction.subcategory %}{{ transaction.subcategory.icon }}{% elif transaction.category %}{{ transaction.category.icon }}{% else %}bi bi-tag{% endif %} text-white"></i>
+                                    <span class="icon-wrapper bg-{% if transaction.type == 'income' %}success{% else %}danger{% endif %} p-2">
+                                        <i class="{% if transaction.subcategory %}{{ transaction.subcategory.icon }}{% elif transaction.category %}{{ transaction.category.icon }}{% else %}bi bi-tag{% endif %} text-white fs-5"></i>
                                     </span>
                                 </div>
                                 <div>
                                     <div class="fw-bold">{{ transaction.title }}</div>
-                                    <small class="text-muted">
+                                    <small class="text-muted d-flex align-items-center">
+                                        <i class="bi bi-tag-fill me-1 opacity-50"></i>
                                         {% if transaction.subcategory %}{{ transaction.subcategory.name }}{% elif transaction.category %}{{ transaction.category.name }}{% else %}Uncategorized{% endif %}
-                                        {% if transaction.notes %}- {{ transaction.notes }}{% endif %}
+                                        {% if transaction.notes %}
+                                        <span class="mx-1">•</span>
+                                        <i class="bi bi-journal-text me-1 opacity-50"></i>{{ transaction.notes }}
+                                        {% endif %}
                                     </small>
                                 </div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center">
                             <div class="text-end me-3">
-                                <div class="{% if transaction.type == 'income' %}text-success{% else %}text-danger{% endif %} fw-bold">
-                                    {% if transaction.type == 'income' %}+{% else %}-{% endif %}${{ transaction.amount|floatformat:2 }}
+                                <div class="text-{% if transaction.type == 'income' %}success{% else %}danger{% endif %} fw-bold">
+                                    {% if transaction.type == 'income' %}+{% else %}-{% endif %}₱{{ transaction.amount|floatformat:2 }}
                                 </div>
-                                <small class="text-muted">{{ transaction.date|date:"m/d/Y" }}</small>
+                                <small class="text-muted d-flex align-items-center justify-content-end">
+                                    <i class="bi bi-calendar-date me-1"></i>{{ transaction.date|date:"m/d/Y" }}
+                                </small>
                             </div>
                             <!-- Transaction Actions -->
                             <div class="dropdown ms-3">
                                 <button class="btn btn-sm btn-light dropdown-toggle" type="button" id="dropdownMenuButton-{{ transaction.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-three-dots-vertical"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton-{{ transaction.id }}">
-                                    <li><a class="dropdown-item edit-transaction" href="#" data-id="{{ transaction.id }}">Edit</a></li>
-                                    <li><a class="dropdown-item duplicate-transaction" href="#" data-id="{{ transaction.id }}">Duplicate</a></li>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="dropdownMenuButton-{{ transaction.id }}">
+                                    <li><a class="dropdown-item edit-transaction" href="#" data-id="{{ transaction.id }}"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                    <li><a class="dropdown-item duplicate-transaction" href="#" data-id="{{ transaction.id }}"><i class="bi bi-copy me-2"></i>Duplicate</a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item delete-transaction text-danger" href="#" data-id="{{ transaction.id }}">Delete</a></li>
+                                    <li><a class="dropdown-item delete-transaction text-danger" href="#" data-id="{{ transaction.id }}"><i class="bi bi-trash me-2"></i>Delete</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -474,8 +582,12 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div class="list-group-item py-4 text-center">
-                        <p class="mb-0">No transactions found for this period</p>
+                    <div class="list-group-item py-5 text-center">
+                        <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
+                        <p class="mb-0 text-muted">No transactions found for this period</p>
+                        <button type="button" class="btn btn-outline-primary mt-3" id="{% if selected_type == 'income' %}add-income-btn{% else %}add-expense-btn{% endif %}">
+                            <i class="bi bi-plus-circle me-1"></i> Add {% if selected_type == 'income' %}Income{% else %}Expense{% endif %}
+                        </button>
                     </div>
                 {% endif %}
             </div>

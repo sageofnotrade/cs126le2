@@ -369,71 +369,43 @@ function hideModalManually(modalElement) {
 }
 
 function saveTransaction() {
-    // Get the form
+    console.log('Submitting transaction form...');
+    
     const form = document.getElementById('transaction-form');
     
-    // Validate all fields
-    const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
-    let isValid = true;
-    
-    inputs.forEach(input => {
-        validateField(input);
-        if (!input.checkValidity()) {
-            isValid = false;
-        }
-    });
-    
     // Check form validity
-    if (!isValid) {
-        // Add the was-validated class to show all validation messages
+    if (!form.checkValidity()) {
         form.classList.add('was-validated');
-        
-        // Show an error toast
-        if (typeof showToast === 'function') {
-            showToast('Validation Error', 'Please fill in all required fields correctly.', 'danger');
-        }
-        
-        // Focus the first invalid field
-        const firstInvalid = form.querySelector('.is-invalid');
-        if (firstInvalid) {
-            firstInvalid.focus();
-        }
-        
-        return;
+        console.log('Form is invalid');
+        return false;
     }
     
-    // If we're here, the form is valid
-    
-    // Extract the form values
+    // Get form data
     const formData = new FormData(form);
-    const transactionId = document.getElementById('transaction-id').value;
     
-    // Determine if this is an edit or a new transaction
-    const isEdit = transactionId && transactionId !== '';
+    // Get transaction ID to determine if it's a create or update operation
+    const transactionId = formData.get('id');
     
-    // Disable the save button to prevent multiple submissions
-    const saveButton = document.getElementById('save-transaction-btn');
-    saveButton.disabled = true;
-    saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+    // Set the correct URL based on operation
+    let url = '/finances/transactions/api/create/';
+    if (transactionId) {
+        url = `/finances/transactions/api/${transactionId}/update/`;
+    }
     
-    // Determine the endpoint URL
-    const url = isEdit 
-        ? `/finances/transactions/api/${transactionId}/update/` 
-        : '/finances/transactions/api/create/';
+    // Show loading state on submit button
+    const submitButton = document.getElementById('transaction-submit');
+    const originalButtonText = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
     
-    // Get CSRF token 
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    // Log the data being sent
+    console.log('Sending form data:', Object.fromEntries(formData));
     
-    console.log('Saving transaction - Is Edit:', isEdit, 'ID:', transactionId);
-    
-    // Submit the form via AJAX
+    // Make the API request
     fetch(url, {
         method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': csrfToken
-        },
-        body: formData
+        body: formData,
+        credentials: 'same-origin'
     })
     .then(response => {
         if (!response.ok) {
@@ -442,95 +414,55 @@ function saveTransaction() {
         return response.json();
     })
     .then(data => {
-        // Handle the response from the server
-        if (data.success) {
-            console.log('Transaction saved successfully');
-            
-            // Hide the modal
-            try {
-            const transactionModal = document.getElementById('transactionModal');
-                const bsModal = bootstrap.Modal.getInstance(transactionModal);
-                if (bsModal) {
-                    bsModal.hide();
-                } else {
-                    hideModalManually(transactionModal);
-                }
-            } catch (error) {
-                console.error('Error hiding modal:', error);
-            }
-            
-            // Show success message
-            if (typeof showToast === 'function') {
-                showToast(
-                    isEdit ? 'Transaction Updated' : 'Transaction Created',
-                    isEdit ? 'Your transaction was updated successfully!' : 'Your transaction was created successfully!',
-                    'success'
-                );
-            }
-            
-            // Refresh the transaction list
-            if (typeof loadTransactions === 'function') {
-                setTimeout(() => {
-                    loadTransactions();
-                }, 500);
+        console.log('Transaction saved successfully:', data);
+        
+        // Hide the modal
+        if (window.bootstrap && window.bootstrap.Modal) {
+            const modalElement = document.getElementById('transactionModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
             } else {
-                // If loadTransactions isn't available, reload the page
-                window.location.reload();
+                document.getElementById('close-transaction-modal').click();
             }
         } else {
-            // Handle validation errors from the server
-            console.error('Server validation errors:', data.errors);
-            
-            if (data.errors) {
-                // Show the first error in a toast
-                if (typeof showToast === 'function') {
-                    const errorMessage = typeof data.errors === 'string' 
-                        ? data.errors 
-                        : Object.values(data.errors)[0];
-                    showToast('Error', errorMessage, 'danger');
-                }
+            // Fallback if Bootstrap JS is not available
+            document.getElementById('close-transaction-modal').click();
+        }
+        
+        // Refresh the transaction list
+        if (typeof loadTransactions === 'function') {
+            // Add a short delay to ensure modal is closed before refreshing
+            setTimeout(() => {
+                loadTransactions();
                 
-                // If specific field errors are provided, mark the fields as invalid
-                if (typeof data.errors === 'object') {
-                    for (const field in data.errors) {
-                        const inputField = document.getElementById(`transaction-${field}`);
-                        if (inputField) {
-                            inputField.classList.add('is-invalid');
-                            inputField.classList.remove('is-valid');
-                            
-                            // Get feedback element
-                            const feedbackElement = inputField.parentNode.querySelector('.invalid-feedback');
-                            if (feedbackElement) {
-                                feedbackElement.textContent = data.errors[field];
-                                feedbackElement.classList.add('d-block');
-                            }
-                            
-                            // Focus the first invalid field
-                            if (field === Object.keys(data.errors)[0]) {
-                                inputField.focus();
-                            }
-                        }
-                    }
-                }
-            } else {
+                // Show success toast
                 if (typeof showToast === 'function') {
-                    showToast('Error', 'There was a problem saving your transaction. Please try again.', 'danger');
+                    showToast('Success', 'Transaction saved successfully', 'success');
                 }
-            }
+            }, 100);
+        } else {
+            // Fallback to page reload
+            window.location.reload();
         }
     })
     .catch(error => {
         console.error('Error saving transaction:', error);
         
+        // Show error message
         if (typeof showToast === 'function') {
-            showToast('Error', 'Failed to save transaction: ' + error.message, 'danger');
+            showToast('Error', `Failed to save transaction: ${error.message}`, 'danger');
+        } else {
+            alert(`Error saving transaction: ${error.message}`);
         }
     })
     .finally(() => {
-        // Re-enable the save button
-        saveButton.disabled = false;
-        saveButton.innerHTML = 'Save';
+        // Reset button state
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
     });
+    
+    return false; // Prevent form submission
 }
 
 /**
@@ -1033,7 +965,7 @@ function validateAmountForAccountType() {
             // First check if balance is already below maintaining balance
             if (balance <= maintainingBalance) {
                 // Balance is already below or equal to maintaining balance, block any withdrawal
-                const message = `Cannot withdraw from this account. Current balance ($${balance.toFixed(2)}) is below the minimum required amount ($${maintainingBalance.toFixed(2)}).`;
+                const message = `Cannot withdraw from this account. Current balance (₱${balance.toFixed(2)}) is below the minimum required amount (₱${maintainingBalance.toFixed(2)}).`;
                 this.setCustomValidity(message);
                 this.classList.add('is-invalid');
                 this.classList.remove('is-valid');
@@ -1044,7 +976,7 @@ function validateAmountForAccountType() {
             // Otherwise, ensure withdrawal doesn't drop below maintaining balance
             const availableForWithdrawal = balance - maintainingBalance;
             if (amount > availableForWithdrawal) {
-                const message = `Amount exceeds available balance. Maximum withdrawal: $${availableForWithdrawal.toFixed(2)} to maintain minimum required amount of $${maintainingBalance.toFixed(2)}.`;
+                const message = `Amount exceeds available balance. Maximum withdrawal: ₱${availableForWithdrawal.toFixed(2)} to maintain minimum required amount of ₱${maintainingBalance.toFixed(2)}.`;
                 this.setCustomValidity(message);
                 this.classList.add('is-invalid');
                 this.classList.remove('is-valid');
@@ -1055,7 +987,7 @@ function validateAmountForAccountType() {
             // Ensure credit amount doesn't exceed available credit
             const availableCredit = creditLimit - currentUsage;
             if (amount > availableCredit) {
-                const message = `Amount exceeds available credit. Maximum: $${availableCredit.toFixed(2)}`;
+                const message = `Amount exceeds available credit. Maximum: ₱${availableCredit.toFixed(2)}`;
                 this.setCustomValidity(message);
                 this.classList.add('is-invalid');
                 this.classList.remove('is-valid');
@@ -1065,7 +997,7 @@ function validateAmountForAccountType() {
         } else if (type === 'wallet') {
             // Ensure wallet expense doesn't exceed balance
             if (amount > balance) {
-                const message = `Amount exceeds wallet balance. Maximum: $${balance.toFixed(2)}`;
+                const message = `Amount exceeds wallet balance. Maximum: ₱${balance.toFixed(2)}`;
                 this.setCustomValidity(message);
                 this.classList.add('is-invalid');
                 this.classList.remove('is-valid');
