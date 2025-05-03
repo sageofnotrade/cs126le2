@@ -114,19 +114,14 @@ document.addEventListener('DOMContentLoaded', function() {
  * Set up event listeners for the filter form
  */
 function setupFilterHandlers() {
-    const applyFiltersBtn = document.getElementById('apply-filters-btn');
     const clearFiltersBtn = document.getElementById('clear-filters-btn');
     const categoryFilter = document.getElementById('category-filter');
     const searchFilter = document.getElementById('from-to-filter');
-    const expenseCheck = document.getElementById('expense-check');
-    const incomeCheck = document.getElementById('income-check');
-
-    // Apply filters button click handler
-    if (applyFiltersBtn) {
-        applyFiltersBtn.addEventListener('click', function() {
-            applyFilters();
-        });
-    }
+    
+    // Transaction type filter buttons
+    const filterAllBtn = document.getElementById('filter-all');
+    const filterIncomeBtn = document.getElementById('filter-income');
+    const filterExpenseBtn = document.getElementById('filter-expense');
 
     // Clear filters button click handler
     if (clearFiltersBtn) {
@@ -134,44 +129,133 @@ function setupFilterHandlers() {
             // Reset all filter form elements
             if (categoryFilter) categoryFilter.value = '';
             if (searchFilter) searchFilter.value = '';
-            if (expenseCheck) expenseCheck.checked = true;
-            if (incomeCheck) incomeCheck.checked = true;
+            
+            // Hide clear search button
+            const clearSearchBtn = document.getElementById('clear-search-btn');
+            if (clearSearchBtn) clearSearchBtn.classList.add('d-none');
+            
+            // Reset transaction type buttons to default (all selected)
+            if (filterAllBtn) {
+                filterAllBtn.classList.add('active');
+                window.transactionState.types = ['expense', 'income'];
+            }
+            if (filterIncomeBtn) filterIncomeBtn.classList.remove('active');
+            if (filterExpenseBtn) filterExpenseBtn.classList.remove('active');
             
             // Apply the reset filters
             applyFilters();
         });
     }
 
-    // Quick filter changes for transaction types (without clicking Apply)
-    if (expenseCheck) {
-        expenseCheck.addEventListener('change', function() {
-            // If both are unchecked, check the one that was just clicked
-            if (!expenseCheck.checked && !incomeCheck.checked) {
-                expenseCheck.checked = true;
-            } else {
-                applyFilters();
-            }
+    // Transaction type filter buttons
+    if (filterAllBtn) {
+        filterAllBtn.addEventListener('click', function() {
+            // Show all transaction types
+            filterAllBtn.classList.add('active');
+            filterIncomeBtn.classList.remove('active');
+            filterExpenseBtn.classList.remove('active');
+            window.transactionState.types = ['expense', 'income'];
+            applyFilters();
+        });
+    }
+    
+    if (filterIncomeBtn) {
+        filterIncomeBtn.addEventListener('click', function() {
+            // Show only income
+            filterAllBtn.classList.remove('active');
+            filterIncomeBtn.classList.add('active');
+            filterExpenseBtn.classList.remove('active');
+            window.transactionState.types = ['income'];
+            applyFilters();
+        });
+    }
+    
+    if (filterExpenseBtn) {
+        filterExpenseBtn.addEventListener('click', function() {
+            // Show only expenses
+            filterAllBtn.classList.remove('active');
+            filterIncomeBtn.classList.remove('active');
+            filterExpenseBtn.classList.add('active');
+            window.transactionState.types = ['expense'];
+            applyFilters();
         });
     }
 
-    if (incomeCheck) {
-        incomeCheck.addEventListener('change', function() {
-            // If both are unchecked, check the one that was just clicked
-            if (!expenseCheck.checked && !incomeCheck.checked) {
-                incomeCheck.checked = true;
-            } else {
-                applyFilters();
-            }
-        });
-    }
-
-    // Enable pressing Enter in the search field to apply filters
+    // Enable searching as you type with debouncing
     if (searchFilter) {
+        let searchTimeout = null;
+        let previousValue = searchFilter.value.trim();
+        
+        searchFilter.addEventListener('input', function() {
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            const currentValue = this.value.trim();
+            
+            // If input was cleared (empty string), apply immediately
+            if (previousValue && currentValue === '') {
+                previousValue = currentValue;
+                applyFilters();
+                return;
+            }
+            
+            previousValue = currentValue;
+            
+            // Set a new timeout for 500ms
+            searchTimeout = setTimeout(function() {
+                applyFilters();
+            }, 500);
+        });
+        
+        // Also keep the Enter key functionality for immediate search
         searchFilter.addEventListener('keyup', function(event) {
             if (event.key === 'Enter') {
+                // Clear any pending timeout
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
                 applyFilters();
             }
         });
+    }
+
+    // Category filter change handler
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+            // Debug logging
+            console.log('Category filter changed:', this.value);
+            console.log('Selected option:', this.options[this.selectedIndex].text);
+            
+            // Apply filters immediately when a category is selected
+            applyFilters();
+        });
+    }
+
+    // Handle clear search button
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    if (searchFilter && clearSearchBtn) {
+        // Show/hide clear button based on if there's text in the search field
+        searchFilter.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                clearSearchBtn.classList.remove('d-none');
+            } else {
+                clearSearchBtn.classList.add('d-none');
+            }
+        });
+        
+        // Clear search field and apply filters when clicked
+        clearSearchBtn.addEventListener('click', function() {
+            searchFilter.value = '';
+            clearSearchBtn.classList.add('d-none');
+            applyFilters();
+        });
+        
+        // Initialize state on page load
+        if (searchFilter.value.trim() !== '') {
+            clearSearchBtn.classList.remove('d-none');
+        }
     }
 }
 
@@ -179,11 +263,15 @@ function setupFilterHandlers() {
  * Apply filters and load transactions with AJAX
  */
 function applyFilters() {
+    console.log('applyFilters called');
+    
     // Get filter values
     const categoryFilter = document.getElementById('category-filter');
     const searchFilter = document.getElementById('from-to-filter');
-    const expenseCheck = document.getElementById('expense-check');
-    const incomeCheck = document.getElementById('income-check');
+    
+    console.log('Current category filter value:', categoryFilter ? categoryFilter.value : 'not found');
+    console.log('Current search filter value:', searchFilter ? searchFilter.value : 'not found');
+    console.log('Current state before update:', { ...window.transactionState });
     
     // Update the state object with filter values
     
@@ -195,24 +283,28 @@ function applyFilters() {
         if (selectedOption.dataset.subcategoryId) {
             window.transactionState.subcategory = selectedOption.dataset.subcategoryId;
             window.transactionState.category = selectedOption.dataset.parentCategory;
+            console.log('Setting subcategory filter:', window.transactionState.subcategory);
+            console.log('Setting parent category:', window.transactionState.category);
         } else if (selectedOption.dataset.isCategory) {
             window.transactionState.category = selectedOption.value;
             window.transactionState.subcategory = null;
+            console.log('Setting category filter:', window.transactionState.category);
+            console.log('Clearing subcategory filter');
         }
     } else {
         // Clear category filters if none selected
         window.transactionState.category = null;
         window.transactionState.subcategory = null;
+        console.log('Clearing all category filters');
     }
     
     // Handle search filter
     window.transactionState.search = searchFilter && searchFilter.value.trim() ? searchFilter.value.trim() : null;
     
-    // Handle transaction types
-    const types = [];
-    if (expenseCheck && expenseCheck.checked) types.push('expense');
-    if (incomeCheck && incomeCheck.checked) types.push('income');
-    window.transactionState.types = types;
+    // Note: Transaction types are now set by the filter buttons directly
+    // The window.transactionState.types value is maintained from those buttons
+    console.log('State after update:', { ...window.transactionState });
+    console.log('API query string:', window.transactionState.getApiQueryString());
     
     // Load transactions with the updated state
     loadTransactions();
@@ -258,7 +350,8 @@ function navigateMonth(direction) {
 function loadTransactions() {
     // Get query string from state object
     const queryString = window.transactionState.getApiQueryString();
-    console.log('Loading transactions with state:', window.transactionState);
+    console.log('Loading transactions with query string:', queryString);
+    console.log('State at loadTransactions time:', { ...window.transactionState });
     
     // Show loading state
     const transactionList = document.querySelector('.list-group-flush');
@@ -273,6 +366,7 @@ function loadTransactions() {
     // Create the URL with cache-busting parameter to prevent browser caching
     const timestamp = new Date().getTime();
     const fetchUrl = `/finances/transactions/api/?${queryString}${queryString ? '&' : ''}cache_bust=${timestamp}`;
+    console.log('Fetching transactions from URL:', fetchUrl);
     
     // Fetch transactions data
     fetch(fetchUrl, {

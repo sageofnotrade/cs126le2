@@ -563,23 +563,38 @@ function addFilterCategoryListStyles() {
 // Function to apply the filters
 function applyFilters() {
     const categoryId = document.getElementById('category-filter').value;
-    const subcategoryId = document.getElementById('subcategory-filter').value;
+    const subcategoryId = document.getElementById('subcategory-filter')?.value || '';
     const titleOrNotes = document.getElementById('from-to-filter').value;
-    const includeExpense = document.getElementById('expense-check').checked;
-    const includeIncome = document.getElementById('income-check').checked;
+    
+    // Determine transaction types based on which button is active
+    const filterAllBtn = document.getElementById('filter-all');
+    const filterIncomeBtn = document.getElementById('filter-income');
+    const filterExpenseBtn = document.getElementById('filter-expense');
+    
+    let transactionTypes = [];
+    if (filterAllBtn && filterAllBtn.classList.contains('active')) {
+        // All transactions
+        transactionTypes = ['expense', 'income'];
+    } else {
+        // Check individual type buttons
+        if (filterExpenseBtn && filterExpenseBtn.classList.contains('active')) {
+            transactionTypes.push('expense');
+        }
+        if (filterIncomeBtn && filterIncomeBtn.classList.contains('active')) {
+            transactionTypes.push('income');
+        }
+        // If no button is active, default to all types
+        if (transactionTypes.length === 0) {
+            transactionTypes = ['expense', 'income'];
+        }
+    }
     
     console.log('Applying filters:', { 
         categoryId, 
         subcategoryId, 
         titleOrNotes, 
-        includeExpense, 
-        includeIncome 
+        transactionTypes
     });
-    
-    // Build the transaction types string
-    let transactionTypes = [];
-    if (includeExpense) transactionTypes.push('expense');
-    if (includeIncome) transactionTypes.push('income');
     
     // Build the query string
     const params = new URLSearchParams(window.location.search);
@@ -603,7 +618,12 @@ function applyFilters() {
         params.delete('search');
     }
     
-    params.set('types', transactionTypes.join(','));
+    // Only set types if not showing all types
+    if (transactionTypes.length < 2) {
+        params.set('types', transactionTypes.join(','));
+    } else {
+        params.delete('types'); // Default is all types
+    }
     
     // Preserve the month parameter if it exists
     if (!params.has('month')) {
@@ -620,8 +640,28 @@ function applyFilters() {
 // Function to clear the filters
 function clearFilters() {
     document.getElementById('category-filter').value = '';
-    document.getElementById('subcategory-filter').value = '';
+    
+    const subcategoryField = document.getElementById('subcategory-filter');
+    if (subcategoryField) {
+        subcategoryField.value = '';
+    }
+    
     document.getElementById('from-to-filter').value = '';
-    document.getElementById('expense-check').checked = true;
-    document.getElementById('income-check').checked = true;
+    
+    // Reset the transaction type buttons to default state (All selected)
+    const filterAllBtn = document.getElementById('filter-all');
+    const filterIncomeBtn = document.getElementById('filter-income');
+    const filterExpenseBtn = document.getElementById('filter-expense');
+    
+    if (filterAllBtn) {
+        filterAllBtn.classList.add('active');
+    }
+    
+    if (filterIncomeBtn) {
+        filterIncomeBtn.classList.remove('active');
+    }
+    
+    if (filterExpenseBtn) {
+        filterExpenseBtn.classList.remove('active');
+    }
 } 

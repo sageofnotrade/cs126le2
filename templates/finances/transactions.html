@@ -151,6 +151,23 @@
     body:not(.modal-open) #emergency-fix {
         display: none !important;
     }
+    
+    /* Transaction type filter buttons */
+    .btn-group [data-filter].active {
+        font-weight: bold;
+    }
+    
+    .btn-outline-success.active {
+        box-shadow: 0 0 0 0.15rem rgba(25, 135, 84, 0.15);
+    }
+    
+    .btn-outline-danger.active {
+        box-shadow: 0 0 0 0.15rem rgba(220, 53, 69, 0.15);
+    }
+    
+    .btn-outline-secondary.active {
+        box-shadow: 0 0 0 0.15rem rgba(108, 117, 125, 0.15);
+    }
 </style>
 {% endblock %}
 
@@ -181,40 +198,42 @@
             <div class="card-header">
                 <h2 class="h5 mb-0">Filter</h2>
             </div>
+            <!-- Transaction Type Filters -->
+            <div class="card-body py-2 border-bottom">
+                <div class="btn-group w-100" role="group" aria-label="Transaction Type Filters">
+                    <button type="button" class="btn btn-sm btn-outline-secondary active" id="filter-all" data-filter="all">All</button>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="filter-income" data-filter="income">Income</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="filter-expense" data-filter="expense">Expenses</button>
+                </div>
+            </div>
             <div class="card-body">
                 <form id="transaction-filter-form">
                     <div class="mb-3">
                         <label for="category-filter" class="form-label">Category</label>
-                        <select id="category-filter" class="form-select">
+                        <select id="category-filter" class="form-select" tabindex="1">
                             <option value="">All Categories</option>
                             {% for category in categories %}
                             <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-type="{{ category.type }}" data-is-category="true">{{ category.name }}</option>
                                 {% for subcategory in category.subcategories.all %}
-                                <option value="{{ category.id }}" data-icon="{{ subcategory.icon|default:category.icon }}" data-type="{{ category.type }}" data-parent-category="{{ category.id }}" data-subcategory-id="{{ subcategory.id }}">{{ subcategory.name }}</option>
+                                <option value="{{ subcategory.id }}" data-icon="{{ subcategory.icon|default:category.icon }}" data-type="{{ category.type }}" data-parent-category="{{ category.id }}" data-subcategory-id="{{ subcategory.id }}">{{ subcategory.name }}</option>
                                 {% endfor %}
                             {% endfor %}
                         </select>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="from-to-filter" class="form-label">Title or Notes</label>
-                        <input type="text" id="from-to-filter" class="form-control" placeholder="Search by title or notes">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label d-block">Type</label>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" id="expense-check" value="expense" checked>
-                            <label class="form-check-label" for="expense-check">Expenses</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" id="income-check" value="income" checked>
-                            <label class="form-check-label" for="income-check">Income</label>
+                        <label for="from-to-filter" class="form-label">Search</label>
+                        <div class="input-group">
+                            <input type="text" id="from-to-filter" class="form-control" placeholder="Search by title or notes">
+                            <button class="btn btn-outline-secondary d-none" type="button" id="clear-search-btn">
+                                <i class="bi bi-x"></i>
+                            </button>
                         </div>
                     </div>
                     
-                    <button type="button" id="apply-filters-btn" class="btn btn-primary w-100">Apply Filters</button>
-                    <button type="button" id="clear-filters-btn" class="btn btn-outline-secondary w-100 mt-2">Clear Filters</button>
+                    <div class="d-grid">
+                        <button type="button" id="clear-filters-btn" class="btn btn-outline-secondary">Reset All Filters</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -391,7 +410,7 @@
                                 {% for category in categories %}
                                 <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-type="{{ category.type }}" data-is-category="true">{{ category.name }}</option>
                                     {% for subcategory in category.subcategories.all %}
-                                    <option value="{{ category.id }}" data-icon="{{ subcategory.icon|default:category.icon }}" data-type="{{ category.type }}" data-parent-category="{{ category.id }}" data-subcategory-id="{{ subcategory.id }}">{{ subcategory.name }}</option>
+                                    <option value="{{ subcategory.id }}" data-icon="{{ subcategory.icon|default:category.icon }}" data-type="{{ category.type }}" data-parent-category="{{ category.id }}" data-subcategory-id="{{ subcategory.id }}">{{ subcategory.name }}</option>
                                     {% endfor %}
                                 {% endfor %}
                             </select>
