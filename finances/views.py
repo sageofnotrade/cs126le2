@@ -1968,25 +1968,37 @@ def api_accounts(request):
             if hasattr(account, 'debitaccount'):
                 account_instance = account.debitaccount
                 balance = account_instance.balance
-                account_type = 'debit'
+                account_data.append({
+                    'id': account.id,
+                    'name': account.name,
+                    'type': 'debit',
+                    'balance': float(balance),
+                    'maintaining_balance': float(account_instance.maintaining_balance) if account_instance.maintaining_balance is not None else 0
+                })
             elif hasattr(account, 'creditaccount'):
                 account_instance = account.creditaccount
-                balance = account_instance.credit_limit - account_instance.current_usage
-                account_type = 'credit'
+                available_balance = account_instance.credit_limit - account_instance.current_usage
+                account_data.append({
+                    'id': account.id,
+                    'name': account.name,
+                    'type': 'credit',
+                    'balance': float(available_balance),
+                    'credit_limit': float(account_instance.credit_limit),
+                    'current_usage': float(account_instance.current_usage)
+                })
             elif hasattr(account, 'wallet'):
                 account_instance = account.wallet
                 balance = account_instance.balance
-                account_type = 'wallet'
+                account_data.append({
+                    'id': account.id,
+                    'name': account.name,
+                    'type': 'wallet',
+                    'balance': float(balance)
+                })
             else:
                 continue  # Skip if not a valid account type
-                
-            account_data.append({
-                'id': account.id,
-                'name': account.name,
-                'type': account_type,
-                'balance': float(balance)
-            })
         except Exception as e:
+            print(f"Error processing account {account.id}: {e}")
             continue  # Skip if there's any error getting the account details
     
     return JsonResponse(account_data, safe=False)

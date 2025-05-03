@@ -51,8 +51,9 @@ function initScheduledTransactionFormControls() {
     const transactionTypeSelect = document.getElementById('scheduled-transaction-type');
     if (transactionTypeSelect) {
         transactionTypeSelect.addEventListener('change', function() {
-            filterAccountsByTransactionType(this.value);
-            filterCategoriesByTransactionType(this.value, true); // Always reset when manually changing type
+            const transactionType = this.value;
+            checkAndUpdateAccountsDropdown(transactionType);
+            filterCategoriesByTransactionType(transactionType, true); // Always reset when manually changing type
         });
     }
     
@@ -119,6 +120,10 @@ function openScheduledTransactionModal() {
     
     // Initialize repeats field based on repeat type
     updateRepeatsField();
+    
+    // Check for accounts and update the dropdown
+    const transactionType = document.getElementById('scheduled-transaction-type').value;
+    checkAndUpdateAccountsDropdown(transactionType);
     
     // Show the modal
     showScheduledModal();
@@ -252,33 +257,39 @@ function populateScheduledTransactionForm(data) {
         document.getElementById('scheduled-transaction-category').value = data.category;
     }
     
-    // Set subcategory if available
+    // Set subcategory if present
     if (data.subcategory) {
         document.getElementById('scheduled-transaction-subcategory').value = data.subcategory;
-    } else {
-        document.getElementById('scheduled-transaction-subcategory').value = '';
     }
     
     // Set account
-    if (data.account) {
-        document.getElementById('scheduled-transaction-account').value = data.account;
-    }
+    // First check for accounts and update the dropdown
+    checkAndUpdateAccountsDropdown(data.transaction_type || 'expense');
     
-    // Set repeat type and number of repeats
-    if (data.repeat_type) {
-        document.getElementById('scheduled-transaction-repeat-type').value = data.repeat_type;
-        document.getElementById('scheduled-transaction-repeats').value = data.repeats || 1;
-        updateRepeatsField();
-    }
+    // Set selected account after a short delay to ensure the dropdown is populated
+    setTimeout(() => {
+        if (data.account) {
+            document.getElementById('scheduled-transaction-account').value = data.account;
+        }
+    }, 100);
     
     // Set notes
-    if (data.note) {
-        document.getElementById('scheduled-transaction-note').value = data.note;
+    if (data.notes) {
+        document.getElementById('scheduled-transaction-notes').value = data.notes;
     }
     
-    // Filter accounts and categories based on transaction type
-    filterAccountsByTransactionType(data.transaction_type);
-    filterCategoriesByTransactionType(data.transaction_type, false); // Pass false to prevent resetting values
+    // Set repeat fields
+    document.getElementById('scheduled-transaction-repeat-type').value = data.repeat_type || 'none';
+    document.getElementById('scheduled-transaction-repeats').value = data.repeats || '0';
+    
+    // Update any conditional form elements
+    updateRepeatsField();
+    
+    // Adjust validation state
+    const form = document.getElementById('scheduled-transaction-form');
+    if (form) {
+        form.classList.remove('was-validated');
+    }
 }
 
 function updateRepeatsField() {
@@ -296,24 +307,24 @@ function updateRepeatsField() {
 }
 
 function filterAccountsByTransactionType(type) {
+    // Only show relevant accounts based on transaction type
+    // For example, don't show credit accounts for income transactions
     const accountSelect = document.getElementById('scheduled-transaction-account');
+    const options = accountSelect.querySelectorAll('option');
     
-    if (accountSelect) {
-        const options = accountSelect.querySelectorAll('option');
+    options.forEach(option => {
+        const accountType = option.getAttribute('data-account-type');
+        const isAddAccountOption = option.getAttribute('data-action') === 'add-account';
         
-        options.forEach(option => {
-            if (option.value === '') return; // Skip the placeholder option
-            
-            const accountType = option.getAttribute('data-account-type');
-            
-            // For income, hide credit accounts
-            if (type === 'income' && accountType === 'credit') {
-                option.style.display = 'none';
-            } else {
-                option.style.display = '';
-            }
-        });
-    }
+        if (isAddAccountOption) return; // Always show the add account option
+        if (!accountType || option.value === '') return; // Skip the placeholder option
+        
+        if (type === 'income' && accountType === 'credit') {
+            option.style.display = 'none';
+        } else {
+            option.style.display = '';
+        }
+    });
 }
 
 function filterCategoriesByTransactionType(type, shouldReset = true) {
@@ -1051,5 +1062,505 @@ function showToast(title, message, type = 'info') {
             toast.style.display = 'none';
             toastContainer.removeChild(toast);
         }, 5000);
+    }
+}
+
+// Function to check if accounts exist and update the dropdown accordingly
+function checkAndUpdateAccountsDropdown(transactionType, forceRefresh = false) {
+    console.log(`Checking accounts for transaction type: ${transactionType}, force refresh: ${forceRefresh}`);
+    
+    // Get the account select element
+    const accountSelect = document.getElementById('scheduled-transaction-account');
+    if (!accountSelect) return;
+    
+    // Add a cache-busting parameter if forceRefresh is true
+    const cacheBuster = forceRefresh ? `&_=${Date.now()}` : '';
+    
+    // Fetch accounts from the API with transaction type
+    fetch(`/finances/api/accounts/?transaction_type=${transactionType}${cacheBuster}`)
+        .then(response => response.json())
+        .then(accounts => {
+            console.log('Fetched accounts:', accounts);
+            
+            // Clear existing options except the placeholder
+            while (accountSelect.options.length > 1) {
+                accountSelect.remove(1);
+            }
+            
+            // Filter accounts based on transaction type
+            // For income transactions, exclude credit accounts
+            if (transactionType === 'income') {
+                accounts = accounts.filter(account => account.type !== 'credit');
+            }
+            
+            // Check if there are any accounts after filtering
+            if (accounts.length === 0) {
+                console.log('No accounts found for transaction type ' + transactionType + ', adding the "Add Account" option');
+                
+                // Add the "Add Account" option
+                const addAccountOption = document.createElement('option');
+                addAccountOption.value = "add_account";
+                addAccountOption.textContent = "➕ Add New Account";
+                addAccountOption.setAttribute('data-icon', 'bi-plus-circle');
+                addAccountOption.setAttribute('data-action', 'add-account');
+                accountSelect.appendChild(addAccountOption);
+                
+                // Add event listener to detect when this option is selected
+                accountSelect.addEventListener('change', handleAccountSelectionChange);
+            } else {
+                // Remove any change event listeners to avoid duplication
+                const newAccountSelect = accountSelect.cloneNode(true);
+                accountSelect.parentNode.replaceChild(newAccountSelect, accountSelect);
+                
+                // Add event listener for account change
+                newAccountSelect.addEventListener('change', handleAccountChange);
+                
+                // Populate dropdown with accounts
+                accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = account.name;
+                    option.setAttribute('data-account-type', account.type);
+                    option.setAttribute('data-balance', account.balance);
+                    
+                    // Store account details for validation with better handling of maintaining balance
+                    if (account.type === 'debit') {
+                        // Make sure maintaining_balance is explicitly set to 0 if it's undefined or null
+                        option.setAttribute('data-maintaining-balance', account.maintaining_balance !== undefined && account.maintaining_balance !== null ? 
+                            account.maintaining_balance : 0);
+                    } else if (account.type === 'credit') {
+                        option.setAttribute('data-credit-limit', account.credit_limit);
+                        option.setAttribute('data-current-usage', account.current_usage || 0);
+                    }
+                    
+                    // Set appropriate icon based on account type
+                    let icon = 'bi-bank';
+                    if (account.type === 'credit') {
+                        icon = 'bi-credit-card';
+                    } else if (account.type === 'wallet') {
+                        icon = 'bi-wallet2';
+                    } else if (account.type === 'debit') {
+                        icon = 'bi-piggy-bank';
+                    }
+                    option.setAttribute('data-icon', icon);
+                    
+                    newAccountSelect.appendChild(option);
+                });
+                
+                // Select the first account option by default
+                if (newAccountSelect.options.length > 1) {
+                    newAccountSelect.selectedIndex = 1;
+                    
+                    // Initialize the amount validation with the selected account
+                    setTimeout(() => {
+                        const event = new Event('change');
+                        newAccountSelect.dispatchEvent(event);
+                    }, 100);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching accounts:', error);
+            // Show error message to user
+            if (typeof showToast === 'function') {
+                showToast('Error', 'Failed to load accounts. Please try again.', 'danger');
+            }
+        });
+}
+
+// Handle account selection change
+function handleAccountSelectionChange(event) {
+    const selectedValue = event.target.value;
+    
+    if (selectedValue === 'add_account') {
+        console.log('Add Account option selected');
+        
+        // Reset the selection to the placeholder
+        event.target.value = '';
+        
+        // Open the account modal
+        openAccountModal();
+    }
+}
+
+// Handle account change for amount validation
+function handleAccountChange(event) {
+    const accountSelect = event.target;
+    const selectedOption = accountSelect.options[accountSelect.selectedIndex];
+    
+    if (!selectedOption || selectedOption.value === '' || selectedOption.value === 'add_account') {
+        return;
+    }
+    
+    const accountType = selectedOption.getAttribute('data-account-type');
+    const transactionType = document.getElementById('scheduled-transaction-type').value;
+    const amountField = document.getElementById('scheduled-transaction-amount');
+    
+    // Store account details for validation
+    window.currentAccountDetails = {
+        id: selectedOption.value,
+        type: accountType,
+        balance: parseFloat(selectedOption.getAttribute('data-balance') || 0),
+        maintainingBalance: selectedOption.hasAttribute('data-maintaining-balance') ? 
+            parseFloat(selectedOption.getAttribute('data-maintaining-balance')) : 0,
+        creditLimit: parseFloat(selectedOption.getAttribute('data-credit-limit') || 0),
+        currentUsage: parseFloat(selectedOption.getAttribute('data-current-usage') || 0)
+    };
+    
+    // Add debug logging to check the raw attribute value
+    console.log('Raw maintaining balance attribute:', selectedOption.getAttribute('data-maintaining-balance'));
+    console.log('Current account details:', window.currentAccountDetails);
+    
+    // Add custom validation for the amount field
+    if (amountField) {
+        // Clear previous custom validation message
+        amountField.setCustomValidity('');
+        
+        // Remove previous event listener (if any)
+        amountField.removeEventListener('input', validateAmountForAccountType);
+        
+        // Set up the input event to validate as user types
+        amountField.addEventListener('input', validateAmountForAccountType);
+        
+        // Trigger validation if there's already a value
+        if (amountField.value) {
+            validateAmountForAccountType.call(amountField);
+        }
+    }
+}
+
+// Validate the amount based on account type
+function validateAmountForAccountType() {
+    if (!window.currentAccountDetails) {
+        return true;
+    }
+    
+    const amount = parseFloat(this.value);
+    if (isNaN(amount) || amount <= 0) {
+        this.setCustomValidity('Amount must be greater than 0');
+        this.classList.add('is-invalid');
+        this.classList.remove('is-valid');
+        
+        // Show feedback message
+        updateAmountFeedbackMessage(this, 'Amount must be greater than 0.');
+        return false;
+    }
+    
+    const transactionType = document.getElementById('scheduled-transaction-type').value;
+    const { type, balance, maintainingBalance, creditLimit, currentUsage } = window.currentAccountDetails;
+    
+    console.log('Validating amount:', amount, 'for account type:', type);
+    console.log('Account details - balance:', balance, 'maintaining balance:', maintainingBalance);
+    
+    if (transactionType === 'expense') {
+        // Check account-specific limitations for expenses
+        if (type === 'debit') {
+            // First check if balance is already below maintaining balance
+            if (balance <= maintainingBalance) {
+                // Balance is already below or equal to maintaining balance, block any withdrawal
+                const message = `Cannot withdraw from this account. Current balance ($${balance.toFixed(2)}) is below the minimum required amount ($${maintainingBalance.toFixed(2)}).`;
+                this.setCustomValidity(message);
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+                updateAmountFeedbackMessage(this, message);
+                return false;
+            }
+            
+            // Otherwise, ensure withdrawal doesn't drop below maintaining balance
+            const availableForWithdrawal = balance - maintainingBalance;
+            if (amount > availableForWithdrawal) {
+                const message = `Amount exceeds available balance. Maximum withdrawal: $${availableForWithdrawal.toFixed(2)} to maintain minimum required amount of $${maintainingBalance.toFixed(2)}.`;
+                this.setCustomValidity(message);
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+                updateAmountFeedbackMessage(this, message);
+                return false;
+            }
+        } else if (type === 'credit') {
+            // Ensure credit amount doesn't exceed available credit
+            const availableCredit = creditLimit - currentUsage;
+            if (amount > availableCredit) {
+                const message = `Amount exceeds available credit. Maximum: $${availableCredit.toFixed(2)}`;
+                this.setCustomValidity(message);
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+                updateAmountFeedbackMessage(this, message);
+                return false;
+            }
+        } else if (type === 'wallet') {
+            // Ensure wallet expense doesn't exceed balance
+            if (amount > balance) {
+                const message = `Amount exceeds wallet balance. Maximum: $${balance.toFixed(2)}`;
+                this.setCustomValidity(message);
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+                updateAmountFeedbackMessage(this, message);
+                return false;
+            }
+        }
+    }
+    
+    // All validations passed
+    this.setCustomValidity('');
+    this.classList.remove('is-invalid');
+    this.classList.add('is-valid');
+    
+    // Clear any feedback message
+    updateAmountFeedbackMessage(this, '');
+    return true;
+}
+
+// Update feedback message for amount field
+function updateAmountFeedbackMessage(field, message) {
+    // Find the feedback element - it might be in the parent node or parent's parent (for input groups)
+    let feedbackElement = field.parentNode.querySelector('.invalid-feedback');
+    if (!feedbackElement && field.parentNode.parentNode) {
+        feedbackElement = field.parentNode.parentNode.querySelector('.invalid-feedback');
+    }
+    
+    if (feedbackElement) {
+        feedbackElement.textContent = message;
+        if (message) {
+            feedbackElement.classList.add('d-block');
+        } else {
+            feedbackElement.classList.remove('d-block');
+        }
+    }
+}
+
+// Function to open the account modal
+function openAccountModal() {
+    console.log('Opening account modal');
+    
+    // Store reference to the current transaction modal
+    const scheduledModal = document.getElementById('scheduledTransactionModal');
+    let scheduledModalInstance = null;
+    
+    // Hide the transaction modal temporarily
+    try {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            scheduledModalInstance = bootstrap.Modal.getInstance(scheduledModal);
+            if (scheduledModalInstance) {
+                scheduledModalInstance.hide();
+            }
+        } else {
+            hideModalManually(scheduledModal);
+        }
+    } catch (error) {
+        console.error('Error hiding scheduled transaction modal:', error);
+    }
+    
+    // Check if the account modal already exists, if not, create it
+    let accountModal = document.getElementById('addAccountModal');
+    
+    if (!accountModal) {
+        // Create a new modal if it doesn't exist
+        console.log('Account modal does not exist, creating it');
+        
+        // Create the modal HTML
+        const modalHTML = `
+        <div class="modal fade" id="addAccountModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">New Account</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-account-form" method="post">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('[name=csrfmiddlewaretoken]').value}">
+                            <div class="mb-3">
+                                <label>Name:</label>
+                                <input type="text" class="form-control" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>Description:</label>
+                                <input type="text" class="form-control" name="description">
+                            </div>
+
+                            <input type="hidden" id="id_account_type" name="account_type" value="Debit">
+
+                            <ul class="nav nav-tabs" id="accountTab">
+                                <li class="nav-item">
+                                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#debit" type="button">Debit</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#credit" type="button">Credit</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#wallet" type="button">Wallet</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content pt-3">
+                                <div class="tab-pane fade show active" id="debit">
+                                    <div class="mb-3">
+                                        <label>Balance:</label>
+                                        <input type="number" step="0.01" class="form-control" name="balance" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>Maintaining Balance:</label>
+                                        <input type="number" step="0.01" class="form-control" name="maintaining_balance">
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="credit">
+                                    <div class="mb-3">
+                                        <label>Current Usage:</label>
+                                        <input type="number" step="0.01" class="form-control" name="current_usage" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label>Credit Limit:</label>
+                                        <input type="number" step="0.01" class="form-control" name="credit_limit" required>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="wallet">
+                                    <div class="mb-3">
+                                        <label>Balance:</label>
+                                        <input type="number" step="0.01" class="form-control" name="balance" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Create</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        
+        // Append the modal to the body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Get the newly created modal
+        accountModal = document.getElementById('addAccountModal');
+        
+        // Initialize the tabs
+        const tabs = accountModal.querySelectorAll('#accountTab button');
+        const accountTypeInput = accountModal.querySelector('#id_account_type');
+        const tabPanes = accountModal.querySelectorAll('.tab-pane');
+        
+        function updateTabState(selectedTab) {
+            accountTypeInput.value = selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1);
+            
+            tabPanes.forEach(pane => {
+                pane.querySelectorAll('input').forEach(input => {
+                    if (pane.id === selectedTab) {
+                        input.disabled = false;
+                        if (input.name !== 'maintaining_balance' && input.name !== 'description') {
+                            input.setAttribute('required', 'required');
+                        }
+                    } else {
+                        input.disabled = true;
+                        input.removeAttribute('required');
+                    }
+                });
+            });
+        }
+        
+        updateTabState('debit');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const selectedTab = tab.getAttribute('data-bs-target').substring(1);
+                updateTabState(selectedTab);
+            });
+        });
+        
+        // Handle form submission
+        const accountForm = accountModal.querySelector('#add-account-form');
+        accountForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(accountForm);
+            
+            // Send the request to create a new account
+            fetch('/finances/accounts/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // Success - account created
+                    console.log('Account created successfully');
+                    
+                    // Close the account modal
+                    try {
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                            const bsModal = bootstrap.Modal.getInstance(accountModal);
+                            if (bsModal) {
+                                bsModal.hide();
+                            }
+                        } else {
+                            hideModalManually(accountModal);
+                        }
+                    } catch (error) {
+                        console.error('Error hiding account modal:', error);
+                    }
+                    
+                    // Show success message
+                    if (typeof showToast === 'function') {
+                        showToast('Account Created', 'Your account was created successfully!', 'success');
+                    }
+                    
+                    // Re-open the scheduled transaction modal
+                    setTimeout(() => {
+                        try {
+                            if (scheduledModalInstance) {
+                                scheduledModalInstance.show();
+                            } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                const newModal = new bootstrap.Modal(scheduledModal);
+                                newModal.show();
+                            } else {
+                                showModalManually(scheduledModal);
+                            }
+                            
+                            // Get the current transaction type and refresh the accounts dropdown
+                            // This will now fetch and show the newly created account
+                            const transactionType = document.getElementById('scheduled-transaction-type').value;
+                            
+                            // First invalidate any cache or wait for backend to process the new account
+                            setTimeout(() => {
+                                checkAndUpdateAccountsDropdown(transactionType, true);
+                            }, 500);
+                        } catch (error) {
+                            console.error('Error showing scheduled transaction modal:', error);
+                        }
+                    }, 300);
+                } else {
+                    // There was an error - show validation errors or other issues
+                    console.error('Error creating account');
+                    
+                    if (typeof showToast === 'function') {
+                        showToast('Error', 'Failed to create account. Please check your inputs.', 'danger');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error creating account:', error);
+                
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'Failed to create account. Please try again.', 'danger');
+                }
+            });
+        });
+    }
+    
+    // Show the account modal
+    try {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modal = new bootstrap.Modal(accountModal);
+            modal.show();
+        } else {
+            showModalManually(accountModal);
+        }
+    } catch (error) {
+        console.error('Error showing account modal:', error);
+        // If there's an error, re-show the scheduled transaction modal
+        if (scheduledModalInstance) {
+            scheduledModalInstance.show();
+        }
     }
 } 
