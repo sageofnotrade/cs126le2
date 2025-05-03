@@ -384,7 +384,7 @@ function saveTransaction() {
     const formData = new FormData(form);
     
     // Get transaction ID to determine if it's a create or update operation
-    const transactionId = formData.get('id');
+    const transactionId = document.getElementById('transaction-id').value;
     
     // Set the correct URL based on operation
     let url = '/finances/transactions/api/create/';
@@ -393,7 +393,7 @@ function saveTransaction() {
     }
     
     // Show loading state on submit button
-    const submitButton = document.getElementById('transaction-submit');
+    const submitButton = document.getElementById('save-transaction-btn');
     const originalButtonText = submitButton.innerHTML;
     submitButton.disabled = true;
     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
@@ -423,11 +423,18 @@ function saveTransaction() {
             if (modalInstance) {
                 modalInstance.hide();
             } else {
-                document.getElementById('close-transaction-modal').click();
+                // Fallback to using the close button
+                const closeButton = document.querySelector('#transactionModal .btn-close, #transactionModal .btn-secondary');
+                if (closeButton) {
+                    closeButton.click();
+                }
             }
         } else {
             // Fallback if Bootstrap JS is not available
-            document.getElementById('close-transaction-modal').click();
+            const closeButton = document.querySelector('#transactionModal .btn-close, #transactionModal .btn-secondary');
+            if (closeButton) {
+                closeButton.click();
+            }
         }
         
         // Refresh the transaction list
@@ -435,6 +442,21 @@ function saveTransaction() {
             // Add a short delay to ensure modal is closed before refreshing
             setTimeout(() => {
                 loadTransactions();
+                
+                // Update summary cards immediately for a responsive UX
+                if (typeof window.updateSummaryCards === 'function') {
+                    // Get the updated amounts from the API response if available
+                    if (data.summary) {
+                        window.updateSummaryCards(
+                            data.summary.total_income, 
+                            data.summary.total_expenses, 
+                            data.summary.total_balance
+                        );
+                    } else {
+                        // Otherwise trigger an update with recalculation
+                        window.updateSummaryCards();
+                    }
+                }
                 
                 // Show success toast
                 if (typeof showToast === 'function') {

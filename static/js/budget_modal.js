@@ -90,19 +90,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    // Handle HTML response (likely an error page)
+                    throw new Error('Server returned HTML instead of JSON. There might be a server-side error.');
+                }
+            })
             .then(data => {
                 if (data.success) {
                     // Close modal and reload page
                     $('#deleteBudgetModal').modal('hide');
                     window.location.reload();
                 } else {
-                    alert('Error deleting budget: ' + data.message);
+                    alert('Error deleting budget: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while deleting the budget');
+                alert('An error occurred while deleting the budget. Please try again or contact support if the issue persists.');
             });
         });
     }
@@ -140,7 +149,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // Handle HTML response (likely an error page)
+                throw new Error('Server returned HTML instead of JSON. There might be a server-side error.');
+            }
+        })
         .then(data => {
             if (data.success) {
                 // Close modal and reload page
@@ -148,12 +166,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.reload();
             } else {
                 // Display error message
-                alert('Error saving budget: ' + data.message);
+                if (data.errors) {
+                    // Display form validation errors if available
+                    displayFormErrors($(form), data.errors);
+                } else {
+                    alert('Error saving budget: ' + (data.message || 'Unknown error'));
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while saving the budget');
+            alert('An error occurred while saving the budget. Please try again or contact support if the issue persists.');
         });
     }
 });
@@ -230,4 +253,50 @@ $('#editBudgetModal').on('show.bs.modal', function (event) {
 $(document).ready(function() {
     // Hide the original subcategory select
     $('#id_subcategory').hide();
+    
+    // Add hover effects to budget cards
+    $('.budget-card').hover(
+        function() {
+            $(this).addClass('shadow');
+            $(this).css('transform', 'translateY(-5px)');
+        },
+        function() {
+            $(this).removeClass('shadow');
+            $(this).css('transform', 'translateY(0)');
+        }
+    );
+    
+    // Add animation to progress bars that are near depletion
+    $('.progress-bar').each(function() {
+        const percentage = parseInt($(this).attr('aria-valuenow'));
+        if (percentage > 80) {
+            $(this).addClass('progress-animation');
+        }
+    });
+
+    // Add tooltips to budget cards
+    $('.budget-card').each(function() {
+        const percentage = $(this).data('percentage');
+        let tipContent = '';
+        
+        if (percentage >= 90) {
+            tipContent = 'Budget critically low! Consider adding more funds.';
+        } else if (percentage >= 75) {
+            tipContent = 'Budget running low. Monitor your spending.';
+        } else if (percentage >= 50) {
+            tipContent = 'Budget at halfway point.';
+        } else {
+            tipContent = 'Budget in good standing.';
+        }
+        
+        $(this).attr('data-bs-toggle', 'tooltip');
+        $(this).attr('data-bs-placement', 'top');
+        $(this).attr('title', tipContent);
+    });
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });

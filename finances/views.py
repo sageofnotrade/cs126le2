@@ -306,12 +306,16 @@ def delete_scheduled_transaction(request, pk):
 
 @login_required
 def debts_list(request):
+    from datetime import date
+    today = date.today()
+    
     debts = Debt.objects.filter(user=request.user)
 
     debt_type = request.GET.get('type', '')
     search = request.GET.get('search', '')
     sort_by = request.GET.get('sort_by', 'date_issued')
     order = request.GET.get('order', 'asc')
+    is_ajax = request.GET.get('ajax', 'false') == 'true'
 
     if debt_type:
         debts = debts.filter(debt_type=debt_type)
@@ -344,15 +348,35 @@ def debts_list(request):
             debts = debts.order_by(sort_by)
             if order == 'desc':
                 debts = debts.reverse()
-                
+    
+    # Calculate summary totals
+    total_debt_amount = sum(debt.amount for debt in debts if debt.debt_type == 'debt')
+    total_credit_amount = sum(debt.amount for debt in debts if debt.debt_type == 'credit')
+    total_debt_paid = sum(debt.paid for debt in debts if debt.debt_type == 'debt')
+    net_position = total_credit_amount - total_debt_amount
+    
     for debt in debts:
+        # Calculate progress percentage
         debt.progress_percentage = (debt.paid / debt.amount) * 100 if debt.amount > 0 else 0
+        
+        # Calculate days until due
+        debt.days_until_due = (debt.date_payback - today).days
     
     context = {
         'debts': debts,
         'accounts': accounts,
+        'total_debt_amount': total_debt_amount,
+        'total_credit_amount': total_credit_amount,
+        'total_debt_paid': total_debt_paid,
+        'net_position': net_position,
+        'today': today,
     }
 
+    # If it's an AJAX request, return just the content part
+    if is_ajax:
+        return render(request, 'finances/debts_content.html', context)
+    
+    # Otherwise, return the full page
     return render(request, 'finances/debts.html', context)
 
 @login_required
@@ -2067,6 +2091,71 @@ def update_transaction_api(request, transaction_id):
             transaction.save()
             print(f"Transaction updated successfully with ID: {transaction.id}")
             
+            # --- Update account balance/usage after updating transaction ---
+            # First, revert the previous impact on the account
+            old_transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+            old_account = old_transaction.transaction_account
+            old_amount = Decimal(str(old_transaction.amount))
+            
+            if old_account:
+                # Revert the previous transaction's effect
+                if hasattr(old_account, 'debitaccount'):
+                    debit = old_account.debitaccount
+                    if old_transaction.type == 'expense':
+                        debit.balance += old_amount  # Add back the expense amount
+                    else:  # income
+                        debit.balance -= old_amount  # Subtract the income amount
+                    debit.save()
+                elif hasattr(old_account, 'creditaccount'):
+                    credit = old_account.creditaccount
+                    if old_transaction.type == 'expense':
+                        credit.current_usage -= old_amount  # Reduce the usage
+                    else:  # income
+                        credit.current_usage += old_amount  # Increase the usage
+                        if credit.current_usage > credit.credit_limit:
+                            credit.current_usage = credit.credit_limit
+                    credit.save()
+                elif hasattr(old_account, 'wallet'):
+                    wallet = old_account.wallet
+                    if old_transaction.type == 'expense':
+                        wallet.balance += old_amount  # Add back the expense amount
+                    else:  # income
+                        wallet.balance -= old_amount  # Subtract the income amount
+                    wallet.save()
+            
+            # Now apply the updated transaction to the selected account
+            if transaction.transaction_account:
+                account = transaction.transaction_account
+                amount_decimal = Decimal(str(transaction.amount))
+                
+                # Debit Account
+                if hasattr(account, 'debitaccount'):
+                    debit = account.debitaccount
+                    if transaction.type == 'expense':
+                        debit.balance -= amount_decimal
+                    else:  # income
+                        debit.balance += amount_decimal
+                    debit.save()
+                # Credit Account
+                elif hasattr(account, 'creditaccount'):
+                    credit = account.creditaccount
+                    if transaction.type == 'expense':
+                        credit.current_usage += amount_decimal
+                    else:  # income (rare)
+                        credit.current_usage -= amount_decimal
+                        if credit.current_usage < 0:
+                            credit.current_usage = 0
+                    credit.save()
+                # Wallet
+                elif hasattr(account, 'wallet'):
+                    wallet = account.wallet
+                    if transaction.type == 'expense':
+                        wallet.balance -= amount_decimal
+                    else:  # income
+                        wallet.balance += amount_decimal
+                    wallet.save()
+            # --- End account update logic ---
+            
             return JsonResponse({'success': True, 'transaction_id': transaction.id})
         except Exception as e:
             print(f"Error updating transaction: {e}")
@@ -2081,6 +2170,39 @@ def delete_transaction_api(request, transaction_id):
     
     if request.method == 'POST':
         try:
+            # --- Revert the effect on account balance/usage before deleting ---
+            account = transaction.transaction_account
+            if account:
+                amount_decimal = Decimal(str(transaction.amount))
+                
+                # Debit Account
+                if hasattr(account, 'debitaccount'):
+                    debit = account.debitaccount
+                    if transaction.type == 'expense':
+                        debit.balance += amount_decimal  # Add back the expense amount
+                    else:  # income
+                        debit.balance -= amount_decimal  # Subtract the income amount
+                    debit.save()
+                # Credit Account
+                elif hasattr(account, 'creditaccount'):
+                    credit = account.creditaccount
+                    if transaction.type == 'expense':
+                        credit.current_usage -= amount_decimal  # Reduce the usage
+                    else:  # income (rare)
+                        credit.current_usage += amount_decimal  # Increase the usage
+                        if credit.current_usage > credit.credit_limit:
+                            credit.current_usage = credit.credit_limit
+                    credit.save()
+                # Wallet
+                elif hasattr(account, 'wallet'):
+                    wallet = account.wallet
+                    if transaction.type == 'expense':
+                        wallet.balance += amount_decimal  # Add back the expense amount
+                    else:  # income
+                        wallet.balance -= amount_decimal  # Subtract the income amount
+                    wallet.save()
+            # --- End account update logic ---
+                
             transaction.delete()
             return JsonResponse({'success': True})
         except Exception as e:

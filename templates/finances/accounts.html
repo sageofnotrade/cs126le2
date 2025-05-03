@@ -3,140 +3,568 @@
 {% block navbar_title %}Accounts{% endblock %}
 {% load account_extras %}
 
+{% block extra_css %}
+<style>
+    /* Custom font sizes */
+    .fs-7 {
+        font-size: 0.85rem !important;
+    }
+    
+    /* Account card styling */
+    .account-card {
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
+        cursor: grab;
+    }
+    
+    .account-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .account-card:active {
+        cursor: grabbing;
+    }
+    
+    /* Improved typography and spacing for account cards */
+    .account-card .card-header {
+        padding: 1.25rem 1.5rem 0.75rem;
+    }
+    
+    .account-card .card-body {
+        padding: 1rem 1.5rem 1.5rem;
+    }
+    
+    .account-card .account-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0;
+        line-height: 1.3;
+    }
+    
+    .account-card .balance-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-gray-600);
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+    
+    .account-card .balance-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+        margin-bottom: 0.5rem;
+    }
+    
+    .account-card .meta-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-gray-600);
+    }
+    
+    .account-card .meta-value {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .account-card .progress {
+        height: 0.5rem;
+        border-radius: 0.25rem;
+        margin: 0.75rem 0;
+    }
+    
+    .account-card .account-description {
+        font-size: 0.8rem;
+        color: var(--bs-gray-600);
+        margin-bottom: 1rem;
+        font-style: italic;
+    }
+    
+    /* Chart container styling */
+    .chart-container {
+        position: relative;
+        margin: auto;
+        height: 280px;
+    }
+    
+    /* Summary card styling */
+    .summary-card {
+        transition: all 0.2s ease;
+    }
+    
+    .summary-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .summary-card .card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-bottom: 1.25rem;
+        color: var(--bs-gray-700);
+    }
+    
+    /* Account cards section */
+    .accounts-section {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+    
+    .accounts-container {
+        min-height: 100px;
+    }
+    
+    /* Empty state */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background-color: var(--bs-light);
+        border-radius: 0.5rem;
+        border: 1px dashed var(--bs-gray-300);
+    }
+    
+    .empty-state-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: var(--bs-gray-400);
+    }
+    
+    .empty-state h5 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--bs-gray-700);
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-state p {
+        font-size: 0.9rem;
+        color: var(--bs-gray-600);
+        max-width: 280px;
+        margin: 0 auto 1rem;
+    }
+    
+    /* Chart value display */
+    .chart-value-display {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        pointer-events: none;
+    }
+    
+    .chart-value-display .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        color: var(--bs-dark);
+    }
+    
+    .chart-value-display .label {
+        font-size: 0.7rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-gray-600);
+        margin-top: 0.25rem;
+    }
+    
+    /* Custom chart tooltip styling */
+    .custom-chart-tooltip {
+        position: absolute;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        border-radius: 6px;
+        pointer-events: none;
+        z-index: 1000;
+        font-size: 0.85rem;
+        max-width: 200px;
+        white-space: nowrap;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: opacity 0.15s ease;
+        opacity: 0;
+    }
+    
+    .custom-chart-tooltip.visible {
+        opacity: 1;
+    }
+    
+    .custom-chart-tooltip-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+    
+    .custom-chart-tooltip-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .custom-chart-tooltip-color {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .custom-chart-tooltip-label {
+        margin-right: 8px;
+        font-weight: 600;
+    }
+    
+    .custom-chart-tooltip-value {
+        font-weight: 500;
+    }
+    
+    /* Sortable ghost styling */
+    .sortable-ghost {
+        opacity: 0.4;
+    }
+    
+    .sortable-chosen {
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Improved account tab nav */
+    #accountTab .nav-link {
+        border-radius: 0;
+        border: 1px solid var(--bs-border-color);
+        background-color: var(--bs-light);
+        color: var(--bs-gray-700);
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    #accountTab .nav-link.active {
+        background-color: var(--bs-white);
+        border-bottom-color: transparent;
+        font-weight: 600;
+    }
+    
+    #accountTab .nav-link:not(.active):hover {
+        background-color: var(--bs-white);
+        color: var(--bs-dark);
+    }
+    
+    /* Custom button styling */
+    .btn-success-subtle {
+        background-color: rgba(25, 135, 84, 0.1);
+        border-color: rgba(25, 135, 84, 0.3);
+    }
+    
+    .btn-success-subtle:hover {
+        background-color: rgba(25, 135, 84, 0.2);
+        border-color: rgba(25, 135, 84, 0.4);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 767.98px) {
+        .chart-container {
+            height: 220px;
+        }
+    }
+    
+    /* Page header styling */
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--bs-gray-800);
+    }
+    
+    /* Section headers */
+    .accounts-section h4 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--bs-gray-800);
+    }
+</style>
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <h2 class="mt-4">Your Accounts</h2>
-
-    <div class="d-flex">
-        <div>
-            <!-- Total Balance by Account Type Pie Chart -->
-            <h5>Total Balance by Account Type</h5>
-            <canvas id="balancePieChart"></canvas>
+    <header class="page-header mb-4 d-flex justify-content-between align-items-center">
+        <h1 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Your Accounts</h1>
+        <div class="actions">
+            <button class="btn btn-success my-3" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+                <i class="bi bi-plus-circle me-1"></i> Add Account
+            </button>
         </div>
-        <div>
-            <!-- Individual Account Balances Pie Chart -->
-            <h5>Total Balance by Individual Accounts</h5>
-            <canvas id="accountPieChart"></canvas>
-        </div>
-    </div>
+    </header>
 
-    <button class="btn btn-primary my-3" data-bs-toggle="modal" data-bs-target="#addAccountModal">
-        <i class="bi bi-plus"></i> Add Account
-    </button>
-
-    {% for account_type in account_types %}
-        <h4 class="mt-4">{{ account_type }} Accounts</h4>
-        <div class="row">
-            {% for account in accounts|get_item:account_type %}
-                <div class="col-md-4 mb-3">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <strong>{{ account.name }}</strong>
-                            <div class="dropdown">
-                                <button class="btn btn-sm" data-bs-toggle="dropdown">
-                                    <i class="bi bi-three-dots"></i>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="{% url 'delete_account' account.id %}">Delete</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text">
-                                <strong>{{ account_type }}</strong><br>
-                                {% if account_type == 'Credit' %}
-                                    USD {{ account.current_usage }}
-                                {% else %}
-                                    USD {{ account.balance }}
-                                {% endif %}
-                            </p>
-                            {% if account.description %}
-                                <p class="card-text"><small>{{ account.description }}</small></p>
-                            {% endif %}
-
-                            {% if account_type == 'Debit' and account.maintaining_balance %}
-                                <p class="text-muted">Min. Amount: USD {{ account.maintaining_balance }}</p>
-                            {% endif %}
-
-                            {% if account_type == 'Credit' %}
-                                <div class="progress">
-                                    <div class="progress-bar" role="progressbar" style="width: {{ account.current_usage|div:account.credit_limit|mul:100|floatformat:0 }}%;"></div>
-                                </div>
-                                <small>{{ account.current_usage|div:account.credit_limit|mul:100|floatformat:0 }}% used of USD {{ account.credit_limit }}</small>
-                            {% endif %}
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100 summary-card">
+                <div class="card-body p-3">
+                    <!-- Total Balance by Account Type Pie Chart -->
+                    <h5 class="card-title">Total Balance by Account Type</h5>
+                    <div class="chart-container">
+                        <canvas id="balancePieChart"></canvas>
+                        <div class="chart-value-display">
+                            <div class="value">₱0.00</div>
+                            <div class="label">Total Balance</div>
                         </div>
                     </div>
                 </div>
-            {% empty %}
-                <p class="text-muted">No {{ account_type }} accounts yet.</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100 summary-card">
+                <div class="card-body p-3">
+                    <!-- Individual Account Balances Pie Chart -->
+                    <h5 class="card-title">Total Balance by Individual Accounts</h5>
+                    <div class="chart-container">
+                        <canvas id="accountPieChart"></canvas>
+                        <div class="chart-value-display">
+                            <div class="value" id="total-accounts-value">0</div>
+                            <div class="label">Total Accounts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% for account_type in account_types %}
+    <div class="accounts-section" id="accounts-section-{{ account_type|lower }}">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h4 class="mb-0 d-flex align-items-center">
+                {% if account_type == 'Debit' %}
+                    <i class="bi bi-piggy-bank me-2 text-primary"></i>
+                {% elif account_type == 'Credit' %}
+                    <i class="bi bi-credit-card me-2 text-danger"></i>
+                {% else %}
+                    <i class="bi bi-wallet me-2 text-success"></i>
+                {% endif %}
+                {{ account_type }} Accounts
+            </h4>
+            <button class="btn btn-outline-primary btn-sm d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addAccountModal" data-account-type="{{ account_type }}">
+                <i class="bi bi-plus-circle me-1"></i> Add {{ account_type }}
+            </button>
+        </div>
+        
+        {% with type_accounts=accounts|get_item:account_type %}
+        {% if type_accounts|length > 0 %}
+        <div class="row accounts-container" id="accounts-container-{{ account_type|lower }}">
+            {% for account in type_accounts %}
+            <div class="col-lg-4 col-md-6 mb-3 account-item" data-account-id="{{ account.id }}">
+                <div class="card border-0 shadow-sm h-100 position-relative account-card">
+                    {% if account_type == 'Debit' %}
+                        <div class="account-type-indicator position-absolute top-0 bottom-0 start-0" style="width: 5px; background-color: var(--bs-primary);"></div>
+                    {% elif account_type == 'Credit' %}
+                        <div class="account-type-indicator position-absolute top-0 bottom-0 start-0" style="width: 5px; background-color: var(--bs-danger);"></div>
+                    {% else %}
+                        <div class="account-type-indicator position-absolute top-0 bottom-0 start-0" style="width: 5px; background-color: var(--bs-success);"></div>
+                    {% endif %}
+                    <div class="card-header d-flex justify-content-between align-items-center bg-white border-0">
+                        <div class="d-flex align-items-center">
+                            {% if account_type == 'Debit' %}
+                                <i class="bi bi-piggy-bank fs-4 me-2 text-primary"></i>
+                            {% elif account_type == 'Credit' %}
+                                <i class="bi bi-credit-card fs-4 me-2 text-danger"></i>
+                            {% else %}
+                                <i class="bi bi-wallet fs-4 me-2 text-success"></i>
+                            {% endif %}
+                            <h5 class="account-name mb-0">{{ account.name }}</h5>
+                        </div>
+                            <div class="dropdown">
+                            <button class="btn btn-sm btn-light rounded-circle" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item text-danger" href="{% url 'delete_account' account.id %}"><i class="bi bi-trash me-2"></i>Delete</a></li>
+                                </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <span class="balance-label d-block">{{ account_type }} Balance</span>
+                            <div class="balance-value
+                            {% if account_type == 'Credit' %}text-danger
+                            {% elif account_type == 'Debit' and account.balance <= account.maintaining_balance %}text-warning
+                            {% else %}text-success{% endif %}">
+                                ₱{% if account_type == 'Credit' %}{{ account.current_usage|floatformat:2 }}{% else %}{{ account.balance|default:'0.00'|floatformat:2 }}{% endif %}
+                            </div>
+                        </div>
+
+                        {% if account.description %}
+                        <p class="account-description mb-3">{{ account.description }}</p>
+                        {% endif %}
+
+                        {% if account_type == 'Debit' and account.maintaining_balance %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="meta-label">Minimum Required</span>
+                            <span class="badge bg-light text-dark meta-value">₱{{ account.maintaining_balance|floatformat:2 }}</span>
+                        </div>
+                        {% if account.balance <= account.maintaining_balance %}
+                            <div class="alert alert-warning p-2 mb-0 fs-7">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                Account is at or below minimum balance
+                            </div>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if account_type == 'Credit' %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="meta-label">Credit Limit</span>
+                            <span class="badge bg-light text-dark meta-value">₱{{ account.credit_limit|floatformat:2 }}</span>
+                        </div>
+                        <div class="progress">
+                            {% with usage_percent=account.current_usage|div:account.credit_limit|mul:100|floatformat:0 %}
+                            <div class="progress-bar bg-danger progress-bar-credit" role="progressbar" 
+                                 data-width="{{ usage_percent }}"
+                                 aria-valuenow="{{ usage_percent }}" 
+                                 aria-valuemin="0" aria-valuemax="100"></div>
+                            {% endwith %}
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="meta-label">{{ account.current_usage|div:account.credit_limit|mul:100|floatformat:0 }}% used</small>
+                            <small class="meta-value">Available: ₱{{ account.credit_limit|sub:account.current_usage|floatformat:2 }}</small>
+                    </div>
+                    {% endif %}
+                    </div>
+                </div>
+            </div>
             {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                {% if account_type == 'Debit' %}
+                    <i class="bi bi-piggy-bank text-primary-subtle"></i>
+                {% elif account_type == 'Credit' %}
+                    <i class="bi bi-credit-card text-danger-subtle"></i>
+                {% else %}
+                    <i class="bi bi-wallet text-success-subtle"></i>
+                {% endif %}
+            </div>
+            <h5 class="text-muted">No {{ account_type }} accounts yet</h5>
+            <p class="text-muted mb-3">Add your first {{ account_type|lower }} account to get started.</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal" data-account-type="{{ account_type }}">
+                <i class="bi bi-plus-circle me-1"></i> Add {{ account_type }} Account
+            </button>
+        </div>
+        {% endif %}
+        {% endwith %}
         </div>
     {% endfor %}
 
     <!-- Modal for adding accounts -->
     <div class="modal fade" id="addAccountModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">New Account</h5>
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-wallet2 me-2"></i>New Account</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <form method="post">
+                <div class="modal-body px-4 py-4">
+                    <form method="post" id="add-account-form" class="needs-validation" novalidate>
                         {% csrf_token %}
+                        
                         <div class="mb-3">
-                            <label>Name:</label>
-                            <input type="text" class="form-control" name="name" required>
+                            <label class="form-label text-muted fs-7 mb-1">Account Name</label>
+                            <input type="text" class="form-control" name="name" id="account_name" placeholder="Enter account name" required>
+                            <div class="invalid-feedback">Please provide an account name</div>
                         </div>
+                        
                         <div class="mb-3">
-                            <label>Description:</label>
-                            <input type="text" class="form-control" name="description">
+                            <label class="form-label text-muted fs-7 mb-1">Description (Optional)</label>
+                            <input type="text" class="form-control" name="description" id="account_description" placeholder="Enter a short description">
                         </div>
 
                         <input type="hidden" id="id_account_type" name="account_type" value="Debit">
 
-                        <ul class="nav nav-tabs" id="accountTab">
+                        <!-- Improved account tab navigation -->
+                        <ul class="nav nav-tabs nav-fill mb-4" id="accountTab">
                             <li class="nav-item">
-                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#debit" type="button">Debit</button>
+                                <button class="nav-link active d-flex align-items-center justify-content-center py-2" data-bs-toggle="tab" data-bs-target="#debit" type="button">
+                                    <i class="bi bi-piggy-bank me-2"></i>Debit Account
+                                </button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#credit" type="button">Credit</button>
+                                <button class="nav-link d-flex align-items-center justify-content-center py-2" data-bs-toggle="tab" data-bs-target="#credit" type="button">
+                                    <i class="bi bi-credit-card me-2"></i>Credit Account
+                                </button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#wallet" type="button">Wallet</button>
+                                <button class="nav-link d-flex align-items-center justify-content-center py-2" data-bs-toggle="tab" data-bs-target="#wallet" type="button">
+                                    <i class="bi bi-wallet me-2"></i>Cash Wallet
+                                </button>
                             </li>
                         </ul>
 
-                        <div class="tab-content pt-3">
+                        <div class="tab-content pt-2">
                             <div class="tab-pane fade show active" id="debit">
                                 <div class="mb-3">
-                                    <label>Balance:</label>
-                                    <input type="number" step="0.01" class="form-control" name="balance" required>
+                                    <label class="form-label text-muted fs-7 mb-1">Initial Balance</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₱</span>
+                                        <input type="number" step="0.01" class="form-control" id="debit_balance" name="balance" placeholder="0.00" required>
+                                        <div class="invalid-feedback">Please enter an initial balance</div>
+                                    </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label>Maintaining Balance:</label>
-                                    <input type="number" step="0.01" class="form-control" name="maintaining_balance">
+                                    <label class="form-label text-muted fs-7 mb-1">Maintaining Balance (Optional)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₱</span>
+                                        <input type="number" step="0.01" class="form-control" id="maintaining_balance" name="maintaining_balance" placeholder="0.00">
+                                    </div>
+                                    <div class="form-text">Minimum amount you need to maintain in this account</div>
                                 </div>
                             </div>
                             <div class="tab-pane fade" id="credit">
                                 <div class="mb-3">
-                                    <label>Current Usage:</label>
-                                    <input type="number" step="0.01" class="form-control" name="current_usage" value="0">
+                                    <label class="form-label text-muted fs-7 mb-1">Current Usage</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₱</span>
+                                        <input type="number" step="0.01" class="form-control" id="credit_usage" name="current_usage" value="0" placeholder="0.00">
+                                    </div>
+                                    <div class="form-text">How much credit you've used already</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label>Credit Limit:</label>
-                                    <input type="number" step="0.01" class="form-control" name="credit_limit" required>
+                                    <label class="form-label text-muted fs-7 mb-1">Credit Limit</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₱</span>
+                                        <input type="number" step="0.01" class="form-control" id="credit_limit" name="credit_limit" placeholder="0.00" required>
+                                        <div class="invalid-feedback">Please enter your credit limit</div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="tab-pane fade" id="wallet">
                                 <div class="mb-3">
-                                    <label>Balance:</label>
-                                    <input type="number" step="0.01" class="form-control" name="balance" required>
+                                    <label class="form-label text-muted fs-7 mb-1">Initial Balance</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₱</span>
+                                        <input type="number" step="0.01" class="form-control" id="wallet_balance" name="balance" placeholder="0.00" required>
+                                        <div class="invalid-feedback">Please enter an initial balance</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">Create</button>
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-outline-success btn-success-subtle text-success py-2" id="create-account-btn">
+                                <i class="bi bi-plus-circle me-2"></i>Create Account
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -146,12 +574,280 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Setup form validation
+        const accountForm = document.getElementById('add-account-form');
+        const createAccountBtn = document.getElementById('create-account-btn');
+        
+        if (accountForm) {
+            accountForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                if (!validateAccountForm()) {
+                    return false;
+                }
+                
+                // Disable button and show loading state
+                createAccountBtn.disabled = true;
+                const originalButtonText = createAccountBtn.innerHTML;
+                createAccountBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating...';
+                
+                // Submit the form
+                this.submit();
+            });
+            
+            // Add real-time validation for form fields
+            const inputs = accountForm.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    validateField(this);
+                });
+                
+                input.addEventListener('blur', function() {
+                    validateField(this);
+                });
+            });
+            
+            // Special validation for maintaining balance
+            const maintainingBalanceInput = document.getElementById('maintaining_balance');
+            const debitBalanceInput = document.getElementById('debit_balance');
+            
+            if (maintainingBalanceInput && debitBalanceInput) {
+                maintainingBalanceInput.addEventListener('input', function() {
+                    validateMaintainingBalance();
+                });
+                
+                debitBalanceInput.addEventListener('input', function() {
+                    validateMaintainingBalance();
+                });
+            }
+            
+            // Special validation for credit limit and usage
+            const creditLimitInput = document.getElementById('credit_limit');
+            const creditUsageInput = document.getElementById('credit_usage');
+            
+            if (creditLimitInput && creditUsageInput) {
+                creditLimitInput.addEventListener('input', function() {
+                    validateCreditLimit();
+                });
+                
+                creditUsageInput.addEventListener('input', function() {
+                    validateCreditLimit();
+                });
+            }
+        }
+        
+        // Function to validate the entire form
+        function validateAccountForm() {
+            let isValid = true;
+            
+            // Get all required inputs based on current tab
+            const activeTab = document.querySelector('.tab-pane.active');
+            const currentInputs = activeTab.querySelectorAll('input');
+            
+            // Validate each input
+            currentInputs.forEach(input => {
+                if (input.hasAttribute('required') || input.value.trim() !== '') {
+                    if (!validateField(input)) {
+                        isValid = false;
+                    }
+                }
+            });
+            
+            // Additional cross-field validations
+            if (activeTab.id === 'debit' && !validateMaintainingBalance()) {
+                isValid = false;
+            }
+            
+            if (activeTab.id === 'credit' && !validateCreditLimit()) {
+                isValid = false;
+            }
+            
+            // Common fields validation
+            const accountName = document.getElementById('account_name');
+            if (!validateField(accountName)) {
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // Function to validate a single field
+        function validateField(field) {
+            if (!field.hasAttribute('required') && field.value.trim() === '') {
+                // Optional empty field is valid
+                field.classList.remove('is-invalid');
+                field.classList.remove('is-valid');
+                return true;
+            }
+            
+            // Check if field is numeric when needed
+            if (field.getAttribute('type') === 'number' && field.value.trim() !== '') {
+                const value = parseFloat(field.value);
+                if (isNaN(value) || value < 0) {
+                    field.classList.add('is-invalid');
+                    field.classList.remove('is-valid');
+                    
+                    // Get or create feedback element
+                    let feedback = field.parentNode.querySelector('.invalid-feedback');
+                    if (!feedback) {
+                        feedback = document.createElement('div');
+                        feedback.className = 'invalid-feedback';
+                        field.parentNode.appendChild(feedback);
+                    }
+                    feedback.textContent = 'Please enter a valid positive number';
+                    return false;
+                }
+            }
+            
+            // Check if required field is filled
+            if (field.hasAttribute('required') && field.value.trim() === '') {
+                field.classList.add('is-invalid');
+                field.classList.remove('is-valid');
+                return false;
+            }
+            
+            // If we get here, the field is valid
+            field.classList.remove('is-invalid');
+            field.classList.add('is-valid');
+            return true;
+        }
+        
+        // Validate maintaining balance against account balance
+        function validateMaintainingBalance() {
+            const maintainingBalance = document.getElementById('maintaining_balance');
+            const debitBalance = document.getElementById('debit_balance');
+            
+            if (!maintainingBalance || !debitBalance || maintainingBalance.value.trim() === '') {
+                // If no maintaining balance provided, it's valid
+                return true;
+            }
+            
+            const mbValue = parseFloat(maintainingBalance.value);
+            const balanceValue = parseFloat(debitBalance.value);
+            
+            if (isNaN(mbValue) || isNaN(balanceValue)) {
+                // Can't validate if values aren't numbers
+                return true;
+            }
+            
+            if (mbValue > balanceValue) {
+                maintainingBalance.classList.add('is-invalid');
+                maintainingBalance.classList.remove('is-valid');
+                
+                // Get or create feedback element
+                let feedback = maintainingBalance.parentNode.querySelector('.invalid-feedback');
+                if (!feedback) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    maintainingBalance.parentNode.appendChild(feedback);
+                }
+                feedback.textContent = 'Maintaining balance cannot exceed account balance';
+                return false;
+            }
+            
+            maintainingBalance.classList.remove('is-invalid');
+            if (mbValue >= 0) {
+                maintainingBalance.classList.add('is-valid');
+            }
+            return true;
+        }
+        
+        // Validate credit usage against credit limit
+        function validateCreditLimit() {
+            const creditLimit = document.getElementById('credit_limit');
+            const creditUsage = document.getElementById('credit_usage');
+            
+            if (!creditLimit || !creditUsage) {
+                return true;
+            }
+            
+            const limitValue = parseFloat(creditLimit.value);
+            const usageValue = parseFloat(creditUsage.value);
+            
+            if (isNaN(limitValue) || isNaN(usageValue)) {
+                // Can't validate if values aren't numbers
+                return true;
+            }
+            
+            if (usageValue > limitValue) {
+                creditUsage.classList.add('is-invalid');
+                creditUsage.classList.remove('is-valid');
+                
+                // Get or create feedback element
+                let feedback = creditUsage.parentNode.querySelector('.invalid-feedback');
+                if (!feedback) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    creditUsage.parentNode.appendChild(feedback);
+                }
+                feedback.textContent = 'Current usage cannot exceed credit limit';
+                return false;
+            }
+            
+            creditUsage.classList.remove('is-invalid');
+            if (usageValue >= 0) {
+                creditUsage.classList.add('is-valid');
+            }
+            return true;
+        }
+    
+        // Account type tab handling
         const tabs = document.querySelectorAll('#accountTab button');
         const accountTypeInput = document.getElementById('id_account_type');
         const tabPanes = document.querySelectorAll('.tab-pane');
+        
+        // When opening modal, check if we need to select a specific tab
+        const addAccountModal = document.getElementById('addAccountModal');
+        addAccountModal.addEventListener('show.bs.modal', function(event) {
+            // Reset validation styles when opening modal
+            const form = document.getElementById('add-account-form');
+            form.reset();
+            form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+                el.classList.remove('is-valid', 'is-invalid');
+            });
+            
+            const button = event.relatedTarget;
+            if (button) {
+                const accountType = button.getAttribute('data-account-type');
+                if (accountType) {
+                    const tabToSelect = accountType.toLowerCase();
+                    updateTabState(tabToSelect);
+                    
+                    // Trigger click on the tab button to ensure Bootstrap updates the UI
+                    tabs.forEach(tab => {
+                        if (tab.getAttribute('data-bs-target') === '#' + tabToSelect) {
+                            tab.click();
+                        }
+                    });
+                }
+            }
+        });
     
         function updateTabState(selectedTab) {
             accountTypeInput.value = selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1);
+    
+            // Update the tab button styling
+            tabs.forEach(tab => {
+                const target = tab.getAttribute('data-bs-target').substring(1);
+                if (target === selectedTab) {
+                    tab.classList.add('active');
+                    
+                    // Set appropriate icon color
+                    const icon = tab.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('text-primary', 'text-danger', 'text-success');
+                        if (selectedTab === 'debit') {
+                            icon.classList.add('text-primary');
+                        } else if (selectedTab === 'credit') {
+                            icon.classList.add('text-danger');
+                        } else if (selectedTab === 'wallet') {
+                            icon.classList.add('text-success');
+                        }
+                    }
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
     
             tabPanes.forEach(pane => {
                 pane.querySelectorAll('input').forEach(input => {
@@ -163,6 +859,9 @@
                     } else {
                         input.disabled = true;
                         input.removeAttribute('required');
+                        
+                        // Clear validation styling when tab changes
+                        input.classList.remove('is-valid', 'is-invalid');
                     }
                 });
             });
@@ -177,72 +876,269 @@
             });
         });
 
+        // Initialize Sortable for each account type container
+        document.querySelectorAll('.accounts-container').forEach(container => {
+            new Sortable(container, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                handle: '.account-card',
+                onEnd: function(evt) {
+                    saveAccountOrder(evt.from.id);
+                }
+            });
+        });
+        
+        // Function to save account order
+        function saveAccountOrder(containerId) {
+            const accountContainer = document.getElementById(containerId);
+            const accountItems = accountContainer.querySelectorAll('.account-item');
+            const accountOrder = [];
+            
+            accountItems.forEach((item, index) => {
+                accountOrder.push({
+                    id: item.getAttribute('data-account-id'),
+                    position: index
+                });
+            });
+            
+            // Here you would typically save this order to the server
+            console.log('New account order for', containerId, accountOrder);
+            
+            // If you implement server-side saving, you could use:
+            /*
+            fetch('/api/save-account-order/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    container: containerId,
+                    accounts: accountOrder
+                })
+            })
+            .then(response => response.json())
+            .then(data => console.log('Order saved', data))
+            .catch(error => console.error('Error saving order:', error));
+            */
+        }
+
+        // Chart data and rendering
         let data = JSON.parse("{{ chartdata | escapejs }}");
         const totalBalanceByType = data.total_balance_by_type;
         const accountTypeLabels = ['Debit', 'Credit', 'Wallet'];
+        const accountNames = data.account_names;
+        const accountBalances = data.account_balances;
+        
+        // Calculate total balance for center text
+        const totalBalance = totalBalanceByType.reduce((a, b) => a + b, 0);
+        document.querySelector('#balancePieChart').closest('.chart-container').querySelector('.chart-value-display .value').textContent = '₱' + totalBalance.toFixed(2);
+        
+        // Calculate total accounts
+        const totalAccounts = accountNames.length;
+        document.getElementById('total-accounts-value').textContent = totalAccounts;
+        
+        // Set width for credit card progress bars
+        document.querySelectorAll('.progress-bar-credit').forEach(bar => {
+            const width = bar.getAttribute('data-width');
+            if (width) {
+                bar.style.width = width + '%';
+            }
+        });
+        
+        // Custom colors with better contrast and visual hierarchy
+        const chartColors = {
+            backgrounds: [
+                'rgba(13, 110, 253, 0.7)',  // Primary (blue) for Debit
+                'rgba(220, 53, 69, 0.7)',   // Danger (red) for Credit
+                'rgba(25, 135, 84, 0.7)'    // Success (green) for Wallet
+            ],
+            borders: [
+                'rgba(13, 110, 253, 1)',
+                'rgba(220, 53, 69, 1)',
+                'rgba(25, 135, 84, 1)'
+            ],
+            hovers: [
+                'rgba(13, 110, 253, 0.9)',
+                'rgba(220, 53, 69, 0.9)',
+                'rgba(25, 135, 84, 0.9)'
+            ]
+        };
+        
+        // Generate colors for individual accounts based on type
+        const generateAccountColors = (accountNames) => {
+            const backgrounds = [];
+            const borders = [];
+            const hovers = [];
+            
+            accountNames.forEach((name, index) => {
+                // Cycle through colors with subtle variations based on index
+                const colorIndex = index % 3;
+                const opacity = 0.6 + (index % 3) * 0.1; // Subtle opacity differences
+                
+                backgrounds.push(chartColors.backgrounds[colorIndex]);
+                borders.push(chartColors.borders[colorIndex]);
+                hovers.push(chartColors.hovers[colorIndex]);
+            });
+            
+            return { backgrounds, borders, hovers };
+        };
+        
+        // Create custom tooltip container
+        const tooltipContainer = document.createElement('div');
+        tooltipContainer.className = 'custom-chart-tooltip';
+        document.body.appendChild(tooltipContainer);
+        
+        // Common chart options with custom tooltip
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 0, // Disable animations by setting duration to 0
+                easing: 'easeOutQuart'
+            },
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        font: {
+                            size: 12
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    enabled: false,
+                    external: function(context) {
+                        // Tooltip Element
+                        const {chart, tooltip} = context;
+                        
+                        // Hide if no tooltip
+                        if (tooltip.opacity === 0) {
+                            tooltipContainer.classList.remove('visible');
+                            return;
+                        }
+                        
+                        // Set Text
+                        if (tooltip.body) {
+                            const titleLines = tooltip.title || [];
+                            const bodyLines = tooltip.body.map(b => b.lines);
+                            
+                            // Calculate positioning
+                            const {offsetLeft: positionX, offsetTop: positionY} = chart.canvas;
+                            
+                            // Display, position, and set styles for font
+                            tooltipContainer.classList.add('visible');
+                            
+                            let innerHtml = '';
+                            
+                            // Get the correct data index from the tooltip
+                            const dataIndex = tooltip.dataPoints[0].dataIndex;
+                            const colors = tooltip.labelColors[0];
+                            const colorStyle = `background-color: ${colors.backgroundColor}`;
+                            const dataset = chart.data.datasets[tooltip.dataPoints[0].datasetIndex];
+                            const value = tooltip.dataPoints[0].raw;
+                            const total = dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            
+                            innerHtml += `<div class="custom-chart-tooltip-item">
+                                <span class="custom-chart-tooltip-color" style="${colorStyle}"></span>
+                                <span class="custom-chart-tooltip-label">${titleLines[0] || ''}</span>
+                                <span class="custom-chart-tooltip-value">₱${parseFloat(value).toFixed(2)} (${percentage}%)</span>
+                            </div>`;
+                            
+                            tooltipContainer.innerHTML = innerHtml;
+                            
+                            // Position tooltip correctly
+                            const canvasRect = chart.canvas.getBoundingClientRect();
+                            const tooltipRect = tooltipContainer.getBoundingClientRect();
+                            let left = canvasRect.left + window.scrollX + tooltip.caretX - (tooltipRect.width / 2);
+                            let top = canvasRect.top + window.scrollY + tooltip.caretY - tooltipRect.height - 10;
+                            
+                            // Ensure tooltip doesn't go offscreen
+                            const windowWidth = window.innerWidth;
+                            if (left + tooltipRect.width > windowWidth) {
+                                left = windowWidth - tooltipRect.width - 5;
+                            } else if (left < 5) {
+                                left = 5;
+                            }
+                            
+                            // Set tooltip position
+                            tooltipContainer.style.left = left + 'px';
+                            tooltipContainer.style.top = top + 'px';
+                        }
+                    }
+                }
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            }
+        };
 
+        // Create type balance chart
         const balancePieCtx = document.getElementById('balancePieChart').getContext('2d');
         const balancePieChart = new Chart(balancePieCtx, {
-            type: 'pie',
+            type: 'doughnut',
             data: {
                 labels: accountTypeLabels,
                 datasets: [{
                     label: 'Account Balance Distribution',
                     data: totalBalanceByType,
-                    backgroundColor: ['rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(75, 192, 192, 0.6)'],
-                    borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)'],
-                    borderWidth: 1
+                    backgroundColor: chartColors.backgrounds,
+                    borderColor: chartColors.borders,
+                    hoverBackgroundColor: chartColors.hovers,
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    hoverOffset: 8
                 }]
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(tooltipItem) {
-                                return tooltipItem.label + ': USD ' + tooltipItem.raw.toFixed(2);
-                            }
-                        }
-                    }
-                }
-            }
+            options: commonOptions
         });
 
-        const accountNames = data.account_names;
-        const accountBalances = data.account_balances;
-        
+        // Create individual accounts chart
+        const accountColors = generateAccountColors(accountNames);
         const accountChartCtx = document.getElementById('accountPieChart').getContext('2d');
         const accountPieChart = new Chart(accountChartCtx, {
-            type: 'pie',
+            type: 'doughnut',
             data: {
                 labels: accountNames,
                 datasets: [{
                     label: 'Individual Account Balance Distribution',
                     data: accountBalances,
-                    backgroundColor: ['rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(75, 192, 192, 0.6)'],
-                    borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)'],
-                    borderWidth: 1
+                    backgroundColor: accountColors.backgrounds,
+                    borderColor: accountColors.borders,
+                    hoverBackgroundColor: accountColors.hovers,
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    hoverOffset: 8
                 }]
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(tooltipItem) {
-                                return tooltipItem.label + ': USD ' + tooltipItem.raw.toFixed(2);
-                            }
-                        }
-                    }
-                }
-            }
+            options: commonOptions
         });
+    });
+</script>
+
+<!-- Refresh accounts data script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Force a page refresh when coming from the transactions page
+        const fromTransactions = document.referrer.includes('/finances/transactions');
+        const hasReloaded = sessionStorage.getItem('accountsPageReloaded');
+        
+        if (fromTransactions && !hasReloaded) {
+            console.log('Coming from transactions page - refreshing to get updated account data');
+            sessionStorage.setItem('accountsPageReloaded', 'true');
+            window.location.reload(true); // Force reload from server
+        } else {
+            // Clear the flag after page load
+            sessionStorage.removeItem('accountsPageReloaded');
+        }
     });
 </script>
 

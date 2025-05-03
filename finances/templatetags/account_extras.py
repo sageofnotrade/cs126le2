@@ -13,3 +13,7 @@ def div(value, arg):
 @register.filter
 def mul(value, arg):
     return float(value) * float(arg)
+
+@register.filter
+def sub(value, arg):
+    return float(value) - float(arg)

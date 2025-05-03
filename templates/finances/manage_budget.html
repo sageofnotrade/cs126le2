@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="{% static 'css/budget_category_selector.css' %}">
 <style>
     .budgets-list {
-        max-width: 800px;
+        max-width: 1200px;
         margin: 0 auto;
     }
     .budget-icon {
@@ -29,7 +29,7 @@
     }
     .card {
         border: none;
-        border-radius: 8px;
+        border-radius: 12px;
         transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
     }
     .card:hover {
@@ -62,36 +62,312 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
+        padding: 0 0.25rem;
+    }
+    .section-header h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
     }
     .action-buttons {
         display: flex;
         gap: 0.5rem;
     }
+    
+    /* Enhanced budget card styles with better typography */
+    .budget-card {
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .budget-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    /* Typography improvements */
+    .budget-card .card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #212529;
+        margin-bottom: 0.15rem;
+        line-height: 1.2;
+        text-align: center;
+    }
+    .budget-card .card-subtitle {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #0d6efd;
+        margin-top: 0.25rem;
+    }
+    .budget-card .date-range {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+        text-align: center;
+    }
+    .budget-card .label-text {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+    .budget-card .value-text {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    .budget-card .remaining-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .budget-card .remaining-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+    }
+    
+    .text-primary.fw-medium {
+        font-size: 0.85rem;
+    }
+    .progress-animation {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    .card-header {
+        padding-bottom: 0 !important;
+        border-bottom: none;
+    }
+    .badge {
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        padding: 0.4em 0.6em;
+        font-size: 0.75rem;
+    }
+    .progress {
+        margin-top: 5px;
+        margin-bottom: 10px !important;
+        height: 6px !important;
+        border-radius: 3px;
+    }
+    .progress-bar {
+        border-radius: 3px;
+    }
+    
+    /* Progress bar widths */
+    .progress-width-0 { width: 0%; }
+    .progress-width-1 { width: 1%; }
+    .progress-width-2 { width: 2%; }
+    .progress-width-3 { width: 3%; }
+    .progress-width-4 { width: 4%; }
+    .progress-width-5 { width: 5%; }
+    .progress-width-6 { width: 6%; }
+    .progress-width-7 { width: 7%; }
+    .progress-width-8 { width: 8%; }
+    .progress-width-9 { width: 9%; }
+    .progress-width-10 { width: 10%; }
+    .progress-width-11 { width: 11%; }
+    .progress-width-12 { width: 12%; }
+    .progress-width-13 { width: 13%; }
+    .progress-width-14 { width: 14%; }
+    .progress-width-15 { width: 15%; }
+    .progress-width-16 { width: 16%; }
+    .progress-width-17 { width: 17%; }
+    .progress-width-18 { width: 18%; }
+    .progress-width-19 { width: 19%; }
+    .progress-width-20 { width: 20%; }
+    .progress-width-21 { width: 21%; }
+    .progress-width-22 { width: 22%; }
+    .progress-width-23 { width: 23%; }
+    .progress-width-24 { width: 24%; }
+    .progress-width-25 { width: 25%; }
+    .progress-width-26 { width: 26%; }
+    .progress-width-27 { width: 27%; }
+    .progress-width-28 { width: 28%; }
+    .progress-width-29 { width: 29%; }
+    .progress-width-30 { width: 30%; }
+    .progress-width-31 { width: 31%; }
+    .progress-width-32 { width: 32%; }
+    .progress-width-33 { width: 33%; }
+    .progress-width-34 { width: 34%; }
+    .progress-width-35 { width: 35%; }
+    .progress-width-36 { width: 36%; }
+    .progress-width-37 { width: 37%; }
+    .progress-width-38 { width: 38%; }
+    .progress-width-39 { width: 39%; }
+    .progress-width-40 { width: 40%; }
+    .progress-width-41 { width: 41%; }
+    .progress-width-42 { width: 42%; }
+    .progress-width-43 { width: 43%; }
+    .progress-width-44 { width: 44%; }
+    .progress-width-45 { width: 45%; }
+    .progress-width-46 { width: 46%; }
+    .progress-width-47 { width: 47%; }
+    .progress-width-48 { width: 48%; }
+    .progress-width-49 { width: 49%; }
+    .progress-width-50 { width: 50%; }
+    .progress-width-51 { width: 51%; }
+    .progress-width-52 { width: 52%; }
+    .progress-width-53 { width: 53%; }
+    .progress-width-54 { width: 54%; }
+    .progress-width-55 { width: 55%; }
+    .progress-width-56 { width: 56%; }
+    .progress-width-57 { width: 57%; }
+    .progress-width-58 { width: 58%; }
+    .progress-width-59 { width: 59%; }
+    .progress-width-60 { width: 60%; }
+    .progress-width-61 { width: 61%; }
+    .progress-width-62 { width: 62%; }
+    .progress-width-63 { width: 63%; }
+    .progress-width-64 { width: 64%; }
+    .progress-width-65 { width: 65%; }
+    .progress-width-66 { width: 66%; }
+    .progress-width-67 { width: 67%; }
+    .progress-width-68 { width: 68%; }
+    .progress-width-69 { width: 69%; }
+    .progress-width-70 { width: 70%; }
+    .progress-width-71 { width: 71%; }
+    .progress-width-72 { width: 72%; }
+    .progress-width-73 { width: 73%; }
+    .progress-width-74 { width: 74%; }
+    .progress-width-75 { width: 75%; }
+    .progress-width-76 { width: 76%; }
+    .progress-width-77 { width: 77%; }
+    .progress-width-78 { width: 78%; }
+    .progress-width-79 { width: 79%; }
+    .progress-width-80 { width: 80%; }
+    .progress-width-81 { width: 81%; }
+    .progress-width-82 { width: 82%; }
+    .progress-width-83 { width: 83%; }
+    .progress-width-84 { width: 84%; }
+    .progress-width-85 { width: 85%; }
+    .progress-width-86 { width: 86%; }
+    .progress-width-87 { width: 87%; }
+    .progress-width-88 { width: 88%; }
+    .progress-width-89 { width: 89%; }
+    .progress-width-90 { width: 90%; }
+    .progress-width-91 { width: 91%; }
+    .progress-width-92 { width: 92%; }
+    .progress-width-93 { width: 93%; }
+    .progress-width-94 { width: 94%; }
+    .progress-width-95 { width: 95%; }
+    .progress-width-96 { width: 96%; }
+    .progress-width-97 { width: 97%; }
+    .progress-width-98 { width: 98%; }
+    .progress-width-99 { width: 99%; }
+    .progress-width-100 { width: 100%; }
+    
+    /* Improved spacing */
+    .card-body {
+        padding: 0.75rem 1rem;
+    }
+    .budget-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 0.75rem;
+        position: relative;
+    }
+    .budget-meta .budget-icon {
+        margin-bottom: 0.5rem;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        font-size: 1.25rem;
+    }
+    .budget-meta .dropdown {
+        position: absolute;
+        top: 0;
+        right: 0;
+    }
+    .budget-amounts {
+        margin-top: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+    .budget-footer {
+        padding-top: 0.5rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid rgba(0,0,0,0.08);
+    }
+    /* Card padding override */
+    .card-body {
+        padding: 0.75rem 1rem;
+    }
+    .budget-card .card-body.p-3 {
+        padding: 0.5rem 0.75rem !important;
+    }
+    /* More compact card design */
+    .budget-card .budget-amounts .d-flex {
+        margin-bottom: 0.1rem !important;
+    }
+    .budget-card .card-header {
+        padding: 0.5rem 0.75rem 0 !important;
+    }
+    .budget-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 0.75rem;
+        position: relative;
+    }
+    .budget-meta .budget-icon {
+        margin-bottom: 0.5rem;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        font-size: 1.25rem;
+    }
+    .budget-meta .dropdown {
+        position: absolute;
+        top: 0;
+        right: 0;
+    }
+    .budget-amounts {
+        margin-top: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+    .budget-footer {
+        padding-top: 0.5rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid rgba(0,0,0,0.08);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container-fluid px-4">
     <!-- Section headers with actions -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2 mb-0">Budget Management</h1>
-        <div class="actions">
-            <button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#notificationSettingsModal">
-                <i class="bi bi-bell me-1"></i> Notification Settings
-            </button>
-            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
-                <i class="bi bi-plus-lg me-1"></i> Add Budget
-            </button>
-        </div>
-    </div>
-
-    <!-- Search bar -->
-    <div class="row mb-4">
-        <div class="col-md-6 col-lg-4 mx-auto">
-            <div class="input-group">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Budget Management</h1>
+        <div class="d-flex align-items-center">
+            <div class="input-group me-3" style="width: 250px;">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text" id="budgetSearch" class="form-control" placeholder="Search budgets...">
+            </div>
+            <div class="actions">
+                <button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#notificationSettingsModal">
+                    <i class="bi bi-bell me-1"></i> Notifications
+                </button>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
+                    <i class="bi bi-plus-lg me-1"></i> Add Budget
+                </button>
             </div>
         </div>
     </div>
@@ -118,74 +394,83 @@
         </div>
         <div class="budgets-list" id="weeklyBudgets">
             {% if has_weekly_budgets %}
-                <div class="row row-cols-1 row-cols-md-2 g-3">
+                <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3">
             {% for budget in budgets %}
             {% if budget.duration == '1 week' %}
                 <div class="col">
                     <div class="card border-0 shadow-sm h-100 budget-card" data-id="{{ budget.id }}" data-category="{{ budget.subcategory.name }}" data-percentage="{{ budget.percentage_used }}" data-amount="{{ budget.amount }}">
+                        <div class="card-header bg-transparent border-0 pb-0">
+                            {% if budget.account %}
+                            <span class="badge {% if budget.account.get_account_type == 'credit' %}bg-danger{% elif budget.account.get_account_type == 'wallet' %}bg-success{% else %}bg-primary{% endif %} float-end">
+                                {{ budget.account.name }}
+                            </span>
+                            {% endif %}
+                        </div>
                         <div class="card-body p-3">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="budget-icon me-3">
-                                    <i class="bi {{ budget.subcategory.icon }}"></i>
-                        </div>
-                        <div>
-                                    <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
-                            <div class="text-muted small">
-                                        {{ budget.start_date|date:"M d" }} - {{ budget.end_date|date:"M d, Y" }}
+                            <div class="budget-meta">
+                                <div class="d-flex align-items-center justify-content-center mb-1">
+                                    <div class="budget-icon me-2">
+                                        <i class="bi {{ budget.category.icon }}"></i>
                                     </div>
+                                    <h3 class="card-title mb-0">{{ budget.category.name }}</h3>
                                 </div>
-                                <div class="ms-auto">
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-link text-muted" type="button" id="dropdownMenuButton{{ budget.id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="bi bi-three-dots-vertical"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ budget.id }}">
-                                            <li>
-                                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
-                                                        data-id="{{ budget.id }}"
-                                                        data-subcategory="{{ budget.subcategory.id }}"
-                                                        data-amount="{{ budget.amount }}"
-                                                        data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
-                                                        data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
-                                                        data-duration="{{ budget.duration }}">
-                                                    <i class="bi bi-pencil me-2"></i> Edit
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteBudgetModal"
-                                                        data-id="{{ budget.id }}">
-                                                    <i class="bi bi-trash me-2"></i> Delete
-                                                </button>
-                                            </li>
-                                        </ul>
+                                <div class="date-range">
+                                    {{ budget.start_date|date:"M d" }} - {{ budget.end_date|date:"M d, Y" }}
+                                </div>
+                                <div class="card-subtitle">
+                                    <i class="bi {{ budget.subcategory.icon }} me-1"></i> {{ budget.subcategory.name }}
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-muted" type="button" id="dropdownMenuButton{{ budget.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ budget.id }}">
+                                        <li>
+                                            <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
+                                                    data-id="{{ budget.id }}"
+                                                    data-subcategory="{{ budget.subcategory.id }}"
+                                                    data-amount="{{ budget.amount }}"
+                                                    data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
+                                                    data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
+                                                    data-duration="{{ budget.duration }}">
+                                                <i class="bi bi-pencil me-2"></i> Edit
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteBudgetModal"
+                                                    data-id="{{ budget.id }}">
+                                                <i class="bi bi-trash me-2"></i> Delete
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <div class="progress mb-2" style="height: 8px;">
-                        <div class="progress-bar {% if budget.percentage_used > 80 %}bg-danger{% elif budget.percentage_used > 60 %}bg-warning{% else %}bg-success{% endif %}"
-                             role="progressbar"
-                             style="width: {{ budget.percentage_used }}%;"
-                             aria-valuenow="{{ budget.percentage_used }}"
-                             aria-valuemin="0"
-                             aria-valuemax="100">
-                        </div>
-                    </div>
                             
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="text-muted small">Spent</div>
-                                <div class="text-muted small">Budget</div>
+                            <div class="progress mb-2">
+                                <div class="progress-bar {% if budget.percentage_used > 80 %}bg-danger{% elif budget.percentage_used > 60 %}bg-warning{% else %}bg-success{% endif %} progress-width-{{ budget.percentage_used }}"
+                                     role="progressbar"
+                                     aria-valuenow="{{ budget.percentage_used }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                </div>
                             </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center">
-                                <div class="expense-text">₱{{ budget.spent|floatformat:2 }}</div>
-                        <div>₱{{ budget.amount|floatformat:2 }}</div>
-                    </div>
-                    
-                            <div class="mt-3 pt-2 border-top">
+                            
+                            <div class="budget-amounts">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="label-text">Spent</div>
+                                    <div class="label-text">Budget</div>
+                                </div>
+                                
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fw-medium">Remaining</span>
-                                    <span class="fw-bold {% if budget.remaining >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    <div class="expense-text value-text">₱{{ budget.spent|floatformat:2 }}</div>
+                                    <div class="value-text">₱{{ budget.amount|floatformat:2 }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="budget-footer">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="remaining-label">Remaining</span>
+                                    <span class="remaining-value {% if budget.remaining >= 0 %}income-text{% else %}expense-text{% endif %}">
                                         ₱{{ budget.remaining|floatformat:2 }}
                                     </span>
                                 </div>
@@ -206,7 +491,7 @@
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
                         <i class="bi bi-plus-lg me-1"></i> Add Weekly Budget
                     </button>
-            </div>
+                </div>
             {% endif %}
         </div>
     </section>
@@ -233,62 +518,88 @@
         </div>
         <div class="budgets-list" id="monthlyBudgets">
             {% if has_monthly_budgets %}
-                <div class="row row-cols-1 row-cols-md-2 g-3">
+                <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3">
             {% for budget in budgets %}
             {% if budget.duration == '1 month' %}
                 <div class="col">
-            <div class="card shadow-sm mb-3">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="budget-icon me-3">
-                                    <i class="bi {{ budget.subcategory.parent_category.icon }} fs-4"></i>
+                    <div class="card border-0 shadow-sm h-100 budget-card" data-id="{{ budget.id }}" data-category="{{ budget.subcategory.name }}" data-percentage="{{ budget.percentage_used }}" data-amount="{{ budget.amount }}">
+                        <div class="card-header bg-transparent border-0 pb-0">
+                            {% if budget.account %}
+                            <span class="badge {% if budget.account.get_account_type == 'credit' %}bg-danger{% elif budget.account.get_account_type == 'wallet' %}bg-success{% else %}bg-primary{% endif %} float-end">
+                                {{ budget.account.name }}
+                            </span>
+                            {% endif %}
                         </div>
-                        <div>
-                                    <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
-                            <div class="text-muted small">
-                                {{ budget.start_date|date:"m/d/Y" }} - {{ budget.end_date|date:"m/d/Y" }}
+                        <div class="card-body p-3">
+                            <div class="budget-meta">
+                                <div class="d-flex align-items-center justify-content-center mb-1">
+                                    <div class="budget-icon me-2">
+                                        <i class="bi {{ budget.category.icon }}"></i>
+                                    </div>
+                                    <h3 class="card-title mb-0">{{ budget.category.name }}</h3>
+                                </div>
+                                <div class="date-range">
+                                    {{ budget.start_date|date:"M d" }} - {{ budget.end_date|date:"M d, Y" }}
+                                </div>
+                                <div class="card-subtitle">
+                                    <i class="bi {{ budget.subcategory.icon }} me-1"></i> {{ budget.subcategory.name }}
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-muted" type="button" id="dropdownMenuButton{{ budget.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ budget.id }}">
+                                        <li>
+                                            <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
+                                                    data-id="{{ budget.id }}"
+                                                    data-subcategory="{{ budget.subcategory.id }}"
+                                                    data-amount="{{ budget.amount }}"
+                                                    data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
+                                                    data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
+                                                    data-duration="{{ budget.duration }}">
+                                                <i class="bi bi-pencil me-2"></i> Edit
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteBudgetModal"
+                                                    data-id="{{ budget.id }}">
+                                                <i class="bi bi-trash me-2"></i> Delete
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="progress mb-2">
+                                <div class="progress-bar {% if budget.percentage_used > 80 %}bg-danger{% elif budget.percentage_used > 60 %}bg-warning{% else %}bg-success{% endif %} progress-width-{{ budget.percentage_used }}"
+                                     role="progressbar"
+                                     aria-valuenow="{{ budget.percentage_used }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            
+                            <div class="budget-amounts">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="label-text">Spent</div>
+                                    <div class="label-text">Budget</div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="expense-text value-text">₱{{ budget.spent|floatformat:2 }}</div>
+                                    <div class="value-text">₱{{ budget.amount|floatformat:2 }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="budget-footer">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="remaining-label">Remaining</span>
+                                    <span class="remaining-value {% if budget.remaining >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                        ₱{{ budget.remaining|floatformat:2 }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="progress mb-2" style="height: 8px;">
-                        <div class="progress-bar {% if budget.percentage_used > 80 %}bg-danger{% elif budget.percentage_used > 60 %}bg-warning{% else %}bg-success{% endif %}"
-                             role="progressbar"
-                             style="width: {{ budget.percentage_used }}%;"
-                             aria-valuenow="{{ budget.percentage_used }}"
-                             aria-valuemin="0"
-                             aria-valuemax="100">
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>₱{{ budget.spent|floatformat:2 }}</div>
-                        <div>₱{{ budget.amount|floatformat:2 }}</div>
-                    </div>
-                    
-                    <div class="mt-2">
-                        <p class="mb-1">Residual amount: ₱{{ budget.remaining|floatformat:2 }}</p>
-                        <div class="d-flex justify-content-end">
-                            <button class="btn btn-sm btn-link me-2" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
-                                    data-id="{{ budget.id }}"
-                                    data-subcategory="{{ budget.subcategory.id }}"
-                                    data-amount="{{ budget.amount }}"
-                                    data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
-                                    data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
-                                    data-duration="{{ budget.duration }}">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-link text-danger" data-bs-toggle="modal" data-bs-target="#deleteBudgetModal"
-                                    data-id="{{ budget.id }}">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="text-end mt-2">
-                        <small class="text-muted">₱{{ budget.spent|floatformat:2 }} / ₱{{ budget.amount|floatformat:2 }}</small>
-                    </div>
-                </div>
                     </div>
                 </div>
                 {% endif %}
@@ -304,7 +615,7 @@
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
                         <i class="bi bi-plus-lg me-1"></i> Add Monthly Budget
                     </button>
-            </div>
+                </div>
             {% endif %}
         </div>
     </section>
@@ -336,7 +647,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                            </div>
+                    </div>
                     
                     <!-- Category Selection -->
                     <div class="mb-3">
@@ -392,7 +703,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                            </div>
+                    </div>
                     
                     <!-- Category Selection -->
                     <div class="mb-3">

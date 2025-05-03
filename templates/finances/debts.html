@@ -1,156 +1,443 @@
 {% extends 'base.html' %}
-{% block title %}Debts{% endblock %}
-{% block navbar_title %}Debts{% endblock %}
+{% load static %}
+{% load account_extras %}
+
+{% block title %}Debts & Credits{% endblock %}
+{% block navbar_title %}Debts & Credits{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Card styles matching dashboard */
+.debts-grid .card {
+    transition: all 0.25s ease-in-out;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    height: 100%;
+}
+
+.debts-grid .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.debts-grid .card-header {
+    cursor: grab;
+    background: linear-gradient(to right, rgba(67, 97, 238, 0.05), rgba(67, 97, 238, 0.1));
+    border-bottom: 1px solid rgba(67, 97, 238, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1.25rem;
+}
+
+.debts-grid .card-header:active {
+    cursor: grabbing;
+    background-color: rgba(67, 97, 238, 0.15);
+}
+
+.debts-grid .card-header .title-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.debts-grid .card-header .fs-6 {
+    margin: 0;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* Card body */
+.debts-grid .card-body {
+    padding: 1.25rem;
+}
+
+/* Font hierarchy */
+.value-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.amount-value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.total-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    padding: 0.25rem 0.4rem;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* Progress bar styling */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    background-color: rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 8px;
+    border-radius: 4px;
+}
+
+.debt-progress {
+    background-color: #4361ee;
+}
+
+.credit-progress {
+    background-color: #10b981;
+}
+
+/* Card type styling */
+.card.debt-card {
+    border-top: 3px solid #4361ee;
+}
+
+.card.credit-card {
+    border-top: 3px solid #10b981;
+}
+
+/* Summary section */
+.summary-section {
+    background: linear-gradient(to right, rgba(67, 97, 238, 0.05), rgba(67, 97, 238, 0.02));
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    height: 100%;
+}
+
+.summary-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.debt-text {
+    color: #4361ee;
+}
+
+.credit-text {
+    color: #10b981;
+}
+
+.debt-badge {
+    background-color: rgba(67, 97, 238, 0.15);
+    color: #4361ee;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.credit-badge {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+/* Enhanced buttons */
+.action-btn {
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 500;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+}
+
+.action-btn i {
+    font-size: 0.9rem;
+}
+
+/* Card actions section */
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Divider */
+.h-divider {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    margin: 1rem 0;
+}
+
+/* Status indicator */
+.status-indicator {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-indicator.due-soon {
+    background-color: #ffc107;
+}
+
+.status-indicator.overdue {
+    background-color: #dc3545;
+}
+
+.status-indicator.good {
+    background-color: #10b981;
+}
+
+.card-info-section {
+    margin-bottom: 1rem;
+}
+
+/* Filter section */
+.filter-section {
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.filter-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #c8e6c9;
+}
+
+.sortable-chosen {
+    background-color: #e3f2fd;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+
+.sortable-drag {
+    opacity: 0.8;
+    transform: rotate(1deg);
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <h2 class="mt-4">Your Debts and Credits</h2>
-
-    <!-- Search/Filter Button -->
-    <button class="btn btn-secondary my-3" id="toggleFilterBtn">
-        <i class="bi bi-filter"></i> Filter & Search
-    </button>
-
-    <!-- Filter/Search Form -->
-    <div id="filterForm" style="display:none;">
-        <form method="GET" id="filterFormContent">
-            <div class="row">
-                <div class="col-md-3">
-                    <label>Type</label>
-                    <select class="form-control" name="type">
-                        <option value="">All</option>
-                        <option value="debt" {% if request.GET.type == 'debt' %}selected{% endif %}>Debt</option>
-                        <option value="credit" {% if request.GET.type == 'credit' %}selected{% endif %}>Credit</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label>Account</label>
-                    <select class="form-control" name="account">
-                        <option value="">All</option>
-                        {% for account in accounts %}
-                            <option value="{{ account.id }}" {% if request.GET.account == account.id %}selected{% endif %}>{{ account.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label>Search</label>
-                    <input type="text" class="form-control" name="search" value="{{ request.GET.search }}" placeholder="Search by person, amount, or notes">
-                </div>
-                <div class="col-md-3">
-                    <label>Sort By</label>
-                    <select class="form-control" name="sort_by">
-                        <option value="date_issued" {% if request.GET.sort_by == 'date_issued' %}selected{% endif %}>Date Issued</option>
-                        <option value="date_payback" {% if request.GET.sort_by == 'date_payback' %}selected{% endif %}>Date Payback</option>
-                        <option value="residual_amount" {% if request.GET.sort_by == 'residual_amount' %}selected{% endif %}>Residual Amount</option>
-                        <option value="amount" {% if request.GET.sort_by == 'amount' %}selected{% endif %}>Amount</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label>Order</label>
-                    <select class="form-control" name="order">
-                        <option value="asc" {% if request.GET.order == 'asc' %}selected{% endif %}>Ascending</option>
-                        <option value="desc" {% if request.GET.order == 'desc' %}selected{% endif %}>Descending</option>
-                    </select>
+    <!-- Header section -->
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
+        <h2 class="m-0 h4">Your Debts & Credits</h2>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary action-btn" data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+            <button class="btn btn-sm btn-primary action-btn" data-bs-toggle="modal" data-bs-target="#addDebtModal">
+                <i class="bi bi-plus-lg"></i> New Entry
+            </button>
+        </div>
+    </div>
+    
+    <!-- Active filters display -->
+    {% if request.GET.type or request.GET.account or request.GET.search %}
+    <div class="active-filters alert alert-light d-flex align-items-center mb-3">
+        <i class="bi bi-funnel-fill me-2"></i>
+        <span>Active filters:</span>
+        {% if request.GET.type %}
+        <span class="badge bg-primary ms-2">Type: {{ request.GET.type|title }}</span>
+        {% endif %}
+        {% if request.GET.account %}
+        <span class="badge bg-primary ms-2">Account: 
+            {% for account in accounts %}
+                {% if account.id|stringformat:"s" == request.GET.account %}
+                    {{ account.name }}
+                {% endif %}
+            {% endfor %}
+        </span>
+        {% endif %}
+        {% if request.GET.search %}
+        <span class="badge bg-primary ms-2">Search: "{{ request.GET.search }}"</span>
+        {% endif %}
+        <a href="{% url 'debts_list' %}" class="btn btn-sm btn-outline-secondary ms-auto">
+            <i class="bi bi-x-circle"></i> Clear Filters
+        </a>
+    </div>
+    {% endif %}
+    
+    <!-- Summary section with totals -->
+    <div class="summary-section">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="summary-card">
+                    <div class="summary-title">TOTAL DEBTS</div>
+                    <div class="summary-value debt-text">
+                        ₱ {{ total_debt_amount|default:"0.00" }}
+                    </div>
+                    <div class="value-label">Amount you owe to others</div>
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary mt-2">Apply Filter</button>
-        </form>
+            <div class="col-md-3">
+                <div class="summary-card">
+                    <div class="summary-title">TOTAL CREDITS</div>
+                    <div class="summary-value credit-text">
+                        ₱ {{ total_credit_amount|default:"0.00" }}
+                    </div>
+                    <div class="value-label">Amount others owe to you</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="summary-card">
+                    <div class="summary-title">PAID DEBTS</div>
+                    <div class="summary-value">
+                        ₱ {{ total_debt_paid|default:"0.00" }}
+                    </div>
+                    <div class="value-label">Total amount you've paid</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="summary-card">
+                    <div class="summary-title">NET POSITION</div>
+                    <div class="summary-value {% if total_credit_amount > total_debt_amount %}credit-text{% else %}debt-text{% endif %}">
+                        ₱ {{ net_position|default:"0.00" }}
+                    </div>
+                    <div class="value-label">Credits minus Debts</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Add Debt/Credit Button -->
-    <button class="btn btn-primary my-3" data-bs-toggle="modal" data-bs-target="#addDebtModal">
-        <i class="bi bi-plus"></i> Add Debt/Credit
-    </button>
-
-    <div class="row">
+    <!-- Debts Grid with draggable cards -->
+    <div id="debts-grid" class="debts-grid row g-4">
         {% for debt in debts %}
-            <div class="col-md-4 mb-3">
-                <div class="card {% if debt.debt_type == 'debt' %}border-primary{% else %}border-success{% endif %}">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <strong>
+        <div class="col-md-4">
+            <div class="card {% if debt.debt_type == 'debt' %}debt-card{% else %}credit-card{% endif %}">
+                <div class="card-header">
+                    <div class="title-section">
+                        <div class="{% if debt.debt_type == 'debt' %}debt-badge{% else %}credit-badge{% endif %}">
+                            {% if debt.debt_type == 'debt' %}Debt{% else %}Credit{% endif %}
+                        </div>
+                        <h5 class="fs-6 mb-0">
                             {% if debt.debt_type == 'debt' %}
-                                You → {{ debt.person }}
+                                To: {{ debt.person }}
                             {% else %}
-                                {{ debt.person }} → You
+                                From: {{ debt.person }}
                             {% endif %}
-                        </strong>
-                        <div>
-                            <!-- Edit Debt Button -->
-                            <a href="{% url 'edit_debt' debt.id %}" class="btn btn-light btn-sm">
+                        </h5>
+                    </div>
+                    <i class="bi bi-grip-horizontal"></i>
+                    
+                    <!-- Status indicator based on payback date -->
+                    {% if debt.days_until_due <= 7 and debt.days_until_due > 0 %}
+                        <div class="status-indicator due-soon" title="Due soon ({{ debt.days_until_due }} days)"></div>
+                    {% elif debt.days_until_due <= 0 %}
+                        <div class="status-indicator overdue" title="Overdue ({{ debt.days_until_due|mul:-1 }} days)"></div>
+                    {% else %}
+                        <div class="status-indicator good" title="On track"></div>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <!-- Amount section -->
+                    <div class="card-info-section">
+                        <div class="row g-3 mb-2">
+                            <div class="col-6">
+                                <div class="value-label">Amount</div>
+                                <div class="amount-value">₱ {{ debt.amount }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="value-label">Paid</div>
+                                <div class="amount-value">₱ {{ debt.paid }}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress bar -->
+                        <div class="progress mt-2">
+                            <div class="progress-bar {% if debt.debt_type == 'debt' %}debt-progress{% else %}credit-progress{% endif %}" style="width: {{ debt.progress_percentage }}%"></div>
+                        </div>
+                        
+                        <!-- Remaining amount -->
+                        <div class="d-flex justify-content-between align-items-center mt-2 mb-2">
+                            <div class="value-label">Remaining</div>
+                            <div class="fw-bold {% if debt.debt_type == 'debt' %}debt-text{% else %}credit-text{% endif %}">
+                                ₱ {{ debt.residual_amount }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="h-divider"></div>
+                    
+                    <!-- Dates section -->
+                    <div class="card-info-section">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="value-label">Date Issued</div>
+                                <div class="amount-value">{{ debt.date_issued|date:"M d, Y" }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="value-label">Payback Date</div>
+                                <div class="amount-value">{{ debt.date_payback|date:"M d, Y" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Notes section if any -->
+                    {% if debt.notes %}
+                    <div class="h-divider"></div>
+                    <div class="card-info-section">
+                        <div class="value-label">Notes</div>
+                        <div class="mt-1">{{ debt.notes }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="h-divider"></div>
+                    
+                    <!-- Actions section -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="card-actions">
+                            <a href="{% url 'edit_debt' debt.id %}" class="btn btn-sm btn-outline-primary action-btn">
                                 <i class="bi bi-pencil"></i> Edit
                             </a>
-                            <form method="POST" action="{% url 'delete_debt' debt.id %}" style="display:inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="bi bi-trash"></i> Delete
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2">
-                            <div class="d-flex flex-column">
-                                <span><strong>Amount:</strong> USD {{ debt.amount }}</span>
-                                <span><strong>Paid:</strong> USD {{ debt.paid }}</span>
-                                <span><strong>Residual:</strong> USD {{ debt.residual_amount }}</span>
-                            </div>
-                            <!-- Progress Bar -->
-                            <div class="progress" style="height: 10px; width: 60%;">
-                                <div class="progress-bar {% if debt.debt_type == 'debt' %}bg-primary{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ debt.progress_percentage }}%" aria-valuenow="{{ debt.progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3">
-                            <span><strong>Date Issued:</strong> {{ debt.date_issued }}</span>
-                            <span><strong>Payback Date:</strong> {{ debt.date_payback }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="text-muted">Residual Amount: USD {{ debt.residual_amount }}</div>
-                            <!-- Update Payment Button -->
-                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#updateDebtModal{{ debt.id }}">
-                                Update Payment
+                            <button class="btn btn-sm btn-outline-danger action-btn" data-bs-toggle="modal" data-bs-target="#deleteDebtModal{{ debt.id }}">
+                                <i class="bi bi-trash"></i> Delete
                             </button>
                         </div>
+                        <button class="btn btn-sm btn-warning action-btn" data-bs-toggle="modal" data-bs-target="#updateDebtModal{{ debt.id }}">
+                            <i class="bi bi-cash-coin"></i> Update Payment
+                        </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Edit Debt Modal -->
-            <div class="modal fade" id="editDebtModal{{ debt.id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Edit Debt Entry</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form method="POST" action="{% url 'edit_transaction' debt.id %}">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <label>Person:</label>
-                                    <input type="text" class="form-control" name="person" value="{{ debt.person }}" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label>Amount:</label>
-                                    <input type="number" class="form-control" name="amount" value="{{ debt.amount }}" step="0.01" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label>Date Issued:</label>
-                                    <input type="date" class="form-control" name="date_issued" value="{{ debt.date_issued }}" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label>Payback Date:</label>
-                                    <input type="date" class="form-control" name="date_payback" value="{{ debt.date_payback }}" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-    
+            
             <!-- Update Payment Modal -->
             <div class="modal fade" id="updateDebtModal{{ debt.id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog">
+                <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">Update Payment</h5>
@@ -160,25 +447,57 @@
                             <form method="POST" action="{% url 'update_payment' debt.id %}">
                                 {% csrf_token %}
                                 <div class="mb-3">
-                                    <label>Amount Paid:</label>
-                                    <input type="number" class="form-control" name="paid_amount" step="0.01" required>
+                                    <label class="form-label">Amount to Pay</label>
+                                    <input type="number" class="form-control" name="paid_amount" step="0.01" max="{{ debt.residual_amount }}" required>
+                                    <div class="form-text">Remaining: ₱ {{ debt.residual_amount }}</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label>Bank Account:</label>
-                                    <select class="form-control" name="account">
+                                    <label class="form-label">Bank Account</label>
+                                    <select class="form-select" name="account" required>
                                         {% for account in accounts %}
                                             <option value={{account.id}}>{{ account.name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <button type="submit" class="btn btn-primary">Update Payment</button>
+                                <div class="d-flex justify-content-end">
+                                    <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Update Payment</button>
+                                </div>
                             </form>
                         </div>
                     </div>
                 </div>
-            </div>            
+            </div>
+            
+            <!-- Delete Debt Modal -->
+            <div class="modal fade" id="deleteDebtModal{{ debt.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirm Deletion</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to delete this {{ debt.debt_type }} with {{ debt.person }}?</p>
+                            <p class="text-danger">This action cannot be undone.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <form method="POST" action="{% url 'delete_debt' debt.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% empty %}
-            <p class="text-muted">No debts found.</p>
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i> No debts or credits found. Use the "New Entry" button to add one.
+            </div>
+        </div>
         {% endfor %}
     </div>
 </div>
@@ -195,58 +514,261 @@
                 <form method="POST" action="{% url 'add_debt' %}">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label>Person:</label>
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="debt_type" id="debtType" value="debt" checked>
+                                <label class="form-check-label" for="debtType">
+                                    Debt (You owe someone)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="debt_type" id="creditType" value="credit">
+                                <label class="form-check-label" for="creditType">
+                                    Credit (Someone owes you)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Person/Entity</label>
                         <input type="text" class="form-control" name="person" required>
                     </div>
                     <div class="mb-3">
-                        <label>Amount:</label>
+                        <label class="form-label">Amount</label>
                         <input type="number" step="0.01" class="form-control" name="amount" required>
                     </div>
-                    <div class="mb-3">
-                        <label>Date Issued:</label>
-                        <input type="date" class="form-control" name="date_issued" required>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Date Issued</label>
+                            <input type="date" class="form-control" name="date_issued" value="{{ today|date:'Y-m-d' }}" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Payback Date</label>
+                            <input type="date" class="form-control" name="date_payback" required>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label>Payback Date:</label>
-                        <input type="date" class="form-control" name="date_payback" required>
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
                     </div>
-                    <div class="mb-3">
-                        <label>Notes:</label>
-                        <textarea class="form-control" name="notes"></textarea>
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
                     </div>
-
-                    <!-- Toggle between Debt and Credit -->
-                    <label> Type</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="debt_type" id="debtType" value="debt" checked>
-                        <label class="form-check-label" for="debtType">
-                            Debt
-                        </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="debt_type" id="creditType" value="credit">
-                        <label class="form-check-label" for="creditType">
-                            Credit
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Create</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
 
-<script>
-    // Toggle the filter form visibility
-    document.getElementById("toggleFilterBtn").addEventListener("click", function() {
-        const filterForm = document.getElementById("filterForm");
-        if (filterForm.style.display === "none" || filterForm.style.display === "") {
-            filterForm.style.display = "block";
-        } else {
-            filterForm.style.display = "none";
-        }
-    });
-</script>
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Filter & Search</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="filterForm" method="GET">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" name="type" id="filterType">
+                                <option value="">All</option>
+                                <option value="debt" {% if request.GET.type == 'debt' %}selected{% endif %}>Debt</option>
+                                <option value="credit" {% if request.GET.type == 'credit' %}selected{% endif %}>Credit</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Account</label>
+                            <select class="form-select" name="account" id="filterAccount">
+                                <option value="">All</option>
+                                {% for account in accounts %}
+                                    <option value="{{ account.id }}" {% if request.GET.account == account.id %}selected{% endif %}>{{ account.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Search</label>
+                            <input type="text" class="form-control" name="search" id="filterSearch" value="{{ request.GET.search }}" placeholder="Search by person, amount, or notes">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sort By</label>
+                            <select class="form-select" name="sort_by" id="filterSortBy">
+                                <option value="date_issued" {% if request.GET.sort_by == 'date_issued' %}selected{% endif %}>Date Issued</option>
+                                <option value="date_payback" {% if request.GET.sort_by == 'date_payback' %}selected{% endif %}>Date Payback</option>
+                                <option value="residual_amount" {% if request.GET.sort_by == 'residual_amount' %}selected{% endif %}>Residual Amount</option>
+                                <option value="amount" {% if request.GET.sort_by == 'amount' %}selected{% endif %}>Amount</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-end">
+                        <button type="button" id="clearFilters" class="btn btn-outline-secondary me-2">
+                            <i class="bi bi-x-circle"></i> Clear Filters
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" id="applyFilters" class="btn btn-primary action-btn" data-bs-dismiss="modal">
+                            <i class="bi bi-filter"></i> Apply Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Sortable.js for draggable cards
+    const debtsGrid = document.getElementById('debts-grid');
+    if (debtsGrid) {
+        new Sortable(debtsGrid, {
+            animation: 150,
+            handle: '.card-header',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag'
+        });
+    }
+    
+    // AJAX filtering
+    const filterForm = document.getElementById('filterForm');
+    const applyFiltersBtn = document.getElementById('applyFilters');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const filterModal = document.getElementById('filterModal');
+    const filterType = document.getElementById('filterType');
+    const filterAccount = document.getElementById('filterAccount');
+    const filterSearch = document.getElementById('filterSearch');
+    const filterSortBy = document.getElementById('filterSortBy');
+    
+    // Handle apply filters button click
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', function() {
+            loadFilteredDebts();
+        });
+    }
+    
+    // Handle clear filters button click
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', function() {
+            filterType.value = '';
+            filterAccount.value = '';
+            filterSearch.value = '';
+            filterSortBy.value = 'date_issued';
+            loadFilteredDebts();
+        });
+    }
+    
+    // Function to load debts with AJAX
+    function loadFilteredDebts() {
+        const type = filterType.value;
+        const account = filterAccount.value;
+        const search = filterSearch.value;
+        const sortBy = filterSortBy.value;
+        
+        // Show loading indicator
+        debtsGrid.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        
+        // Build query string
+        const params = new URLSearchParams();
+        if (type) params.append('type', type);
+        if (account) params.append('account', account);
+        if (search) params.append('search', search);
+        if (sortBy) params.append('sort_by', sortBy);
+        
+        // Update URL without reload
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.pushState({}, '', newUrl);
+        
+        // Fetch the filtered content
+        fetch('/finances/debts/?' + params.toString() + '&ajax=true')
+            .then(response => response.text())
+            .then(html => {
+                // Create a temporary container
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+                
+                // Extract the debts grid content
+                const newDebtsGrid = temp.querySelector('#debts-grid');
+                if (newDebtsGrid) {
+                    debtsGrid.innerHTML = newDebtsGrid.innerHTML;
+                }
+                
+                // Update the active filters section
+                const activeFilters = temp.querySelector('.active-filters');
+                const currentActiveFilters = document.querySelector('.active-filters');
+                
+                if (activeFilters) {
+                    if (currentActiveFilters) {
+                        currentActiveFilters.outerHTML = activeFilters.outerHTML;
+                    } else {
+                        // Insert active filters after the header section
+                        const headerSection = document.querySelector('.d-flex.justify-content-between.align-items-center.mt-4.mb-4');
+                        headerSection.insertAdjacentHTML('afterend', activeFilters.outerHTML);
+                    }
+                } else if (currentActiveFilters) {
+                    currentActiveFilters.remove();
+                }
+                
+                // Update summary section
+                const newSummarySection = temp.querySelector('.summary-section');
+                const currentSummarySection = document.querySelector('.summary-section');
+                if (newSummarySection && currentSummarySection) {
+                    currentSummarySection.outerHTML = newSummarySection.outerHTML;
+                }
+                
+                // Re-initialize Sortable
+                new Sortable(debtsGrid, {
+                    animation: 150,
+                    handle: '.card-header',
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    dragClass: 'sortable-drag'
+                });
+                
+                // Re-initialize payment form validation
+                setupPaymentValidation();
+            })
+            .catch(error => {
+                console.error('Error loading filtered debts:', error);
+                debtsGrid.innerHTML = '<div class="col-12"><div class="alert alert-danger">Error loading data. Please try again.</div></div>';
+            });
+    }
+    
+    // Function to setup payment validation for dynamically loaded content
+    function setupPaymentValidation() {
+        const paymentForms = document.querySelectorAll('form[action*="update_payment"]');
+        paymentForms.forEach(form => {
+            const amountInput = form.querySelector('input[name="paid_amount"]');
+            if (amountInput) {
+                amountInput.addEventListener('input', function() {
+                    const max = parseFloat(this.getAttribute('max'));
+                    const value = parseFloat(this.value);
+                    if (value > max) {
+                        this.value = max;
+                    }
+                });
+            }
+        });
+    }
+    
+    // Initialize payment validation
+    setupPaymentValidation();
+    
+    // Add date helper function
+    function diffDays(date) {
+        const today = new Date();
+        const paybackDate = new Date(date);
+        const diffTime = paybackDate - today;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+});
+</script>
+{% endblock %}
+

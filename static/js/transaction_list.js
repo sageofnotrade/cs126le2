@@ -366,9 +366,9 @@ function loadTransactions() {
     // Show loading indicator
     showLoadingIndicator();
     
-    // Create the URL with cache-busting parameter to prevent browser caching
+    // Create the URL with cache-busting parameter and include summary data
     const timestamp = new Date().getTime();
-    const fetchUrl = `/finances/transactions/api/?${queryString}${queryString ? '&' : ''}cache_bust=${timestamp}`;
+    const fetchUrl = `/finances/transactions/api/?${queryString}${queryString ? '&' : ''}include_summary=true&cache_bust=${timestamp}`;
     console.log('Fetching transactions from URL:', fetchUrl);
     
     // Fetch transactions data
@@ -627,15 +627,77 @@ function updateTransactionSummary(data) {
         transactionCountElement.textContent = data.transactions ? data.transactions.length : 0;
     }
     
-    // Update total balance
-    const transactionTotalElement = document.getElementById('transaction-total');
-    if (transactionTotalElement) {
-        // Use the correct property from API response - 'total' instead of 'total_balance'
-        const totalBalance = data.total || 0;
-        const formattedBalance = parseFloat(totalBalance).toFixed(2);
+    // If API doesn't provide summary data, calculate it from the transactions
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    
+    // Use provided values if available, otherwise calculate from transactions
+    if (data.total_income !== undefined) {
+        totalIncome = parseFloat(data.total_income || 0);
+    } else if (data.transactions && data.transactions.length > 0) {
+        // Calculate income from transaction data
+        totalIncome = data.transactions
+            .filter(t => t.type === 'income')
+            .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    }
+    
+    if (data.total_expenses !== undefined) {
+        totalExpenses = parseFloat(data.total_expenses || 0);
+    } else if (data.transactions && data.transactions.length > 0) {
+        // Calculate expenses from transaction data
+        totalExpenses = data.transactions
+            .filter(t => t.type === 'expense')
+            .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    }
+    
+    // Calculate total balance if not provided
+    let totalBalance = 0;
+    if (data.total !== undefined) {
+        totalBalance = parseFloat(data.total || 0);
+    } else {
+        totalBalance = totalIncome - totalExpenses;
+    }
+    
+    // Format values for display
+    const formattedIncome = totalIncome.toFixed(2);
+    const formattedExpenses = totalExpenses.toFixed(2);
+    const formattedBalance = totalBalance.toFixed(2);
+    
+    // Update total income - using both ID and position-based selector for backward compatibility
+    const totalIncomeElement = document.getElementById('total-income') || 
+                               document.querySelector('.summary-card:nth-child(1) .fs-4');
+    if (totalIncomeElement) {
+        totalIncomeElement.textContent = `₱${formattedIncome}`;
         
-        // Format with the appropriate color and sign
-        transactionTotalElement.className = totalBalance >= 0 ? 'text-success' : 'text-danger';
+        // Add animation for changes
+        totalIncomeElement.classList.add('balance-updated');
+        setTimeout(() => {
+            totalIncomeElement.classList.remove('balance-updated');
+        }, 1000);
+    }
+    
+    // Update total expenses - using both ID and position-based selector for backward compatibility
+    const totalExpensesElement = document.getElementById('total-expenses') || 
+                                document.querySelector('.summary-card:nth-child(2) .fs-4');
+    if (totalExpensesElement) {
+        totalExpensesElement.textContent = `₱${formattedExpenses}`;
+        
+        // Add animation for changes
+        totalExpensesElement.classList.add('balance-updated');
+        setTimeout(() => {
+            totalExpensesElement.classList.remove('balance-updated');
+        }, 1000);
+    }
+    
+    // Update net balance - using both ID and position-based selector for backward compatibility
+    const netBalanceElement = document.getElementById('net-balance') || 
+                             document.querySelector('.summary-card:nth-child(3) .fs-4');
+    const transactionTotalElement = document.getElementById('transaction-total');
+    
+    // Update the transaction total badge
+    if (transactionTotalElement) {
+        // Format with the appropriate color
+        transactionTotalElement.className = totalBalance >= 0 ? 'badge bg-success rounded-pill fw-semibold' : 'badge bg-danger rounded-pill fw-semibold';
         transactionTotalElement.textContent = `₱${formattedBalance}`;
         
         // Add animation for changes
@@ -644,6 +706,26 @@ function updateTransactionSummary(data) {
             transactionTotalElement.classList.remove('balance-updated');
         }, 1000);
     }
+    
+    // Update the summary card net balance
+    if (netBalanceElement) {
+        // Format with the appropriate color
+        netBalanceElement.className = totalBalance >= 0 ? 'mb-0 fw-bold fs-4 text-success' : 'mb-0 fw-bold fs-4 text-danger';
+        netBalanceElement.textContent = `₱${formattedBalance}`;
+        
+        // Add animation for changes
+        netBalanceElement.classList.add('balance-updated');
+        setTimeout(() => {
+            netBalanceElement.classList.remove('balance-updated');
+        }, 1000);
+    }
+    
+    // Store the calculated values in case they're needed elsewhere
+    window.transactionState.calculatedTotals = {
+        income: totalIncome,
+        expenses: totalExpenses,
+        balance: totalBalance
+    };
     
     // Update batch actions visibility based on checked items
     updateBatchActionVisibility();
