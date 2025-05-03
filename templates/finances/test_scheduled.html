@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Test Scheduled Transactions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Scheduled Transaction Test Results</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Original Scheduled Transaction</h5>
+        </div>
+        <div class="card-body">
+            {% if scheduled %}
+                <dl class="row">
+                    <dt class="col-sm-3">Name</dt>
+                    <dd class="col-sm-9">{{ scheduled.name }}</dd>
+                    
+                    <dt class="col-sm-3">Amount</dt>
+                    <dd class="col-sm-9">${{ scheduled.amount }}</dd>
+                    
+                    <dt class="col-sm-3">Type</dt>
+                    <dd class="col-sm-9">{{ scheduled.transaction_type }}</dd>
+                    
+                    <dt class="col-sm-3">Scheduled Date</dt>
+                    <dd class="col-sm-9">{{ scheduled.date_scheduled }}</dd>
+                    
+                    <dt class="col-sm-3">Repeat Type</dt>
+                    <dd class="col-sm-9">{{ scheduled.repeat_type }}</dd>
+                    
+                    <dt class="col-sm-3">Repeats</dt>
+                    <dd class="col-sm-9">{{ scheduled.repeats }}</dd>
+                    
+                    <dt class="col-sm-3">Status</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge {% if scheduled.status == 'completed' %}bg-success{% elif scheduled.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
+                            {{ scheduled.status }}
+                        </span>
+                    </dd>
+                </dl>
+            {% else %}
+                <p class="text-muted">No scheduled transaction found.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Created Transaction</h5>
+        </div>
+        <div class="card-body">
+            {% if created_transaction %}
+                <dl class="row">
+                    <dt class="col-sm-3">Title</dt>
+                    <dd class="col-sm-9">{{ created_transaction.title }}</dd>
+                    
+                    <dt class="col-sm-3">Amount</dt>
+                    <dd class="col-sm-9">${{ created_transaction.amount }}</dd>
+                    
+                    <dt class="col-sm-3">Date</dt>
+                    <dd class="col-sm-9">{{ created_transaction.date }} {{ created_transaction.time }}</dd>
+                    
+                    <dt class="col-sm-3">Notes</dt>
+                    <dd class="col-sm-9">{{ created_transaction.notes }}</dd>
+                </dl>
+            {% else %}
+                <p class="text-muted">No transaction was created.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Next Occurrence</h5>
+        </div>
+        <div class="card-body">
+            {% if next_occurrence %}
+                <dl class="row">
+                    <dt class="col-sm-3">Name</dt>
+                    <dd class="col-sm-9">{{ next_occurrence.name }}</dd>
+                    
+                    <dt class="col-sm-3">Scheduled Date</dt>
+                    <dd class="col-sm-9">{{ next_occurrence.date_scheduled }}</dd>
+                    
+                    <dt class="col-sm-3">Status</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge {% if next_occurrence.status == 'completed' %}bg-success{% elif next_occurrence.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
+                            {{ next_occurrence.status }}
+                        </span>
+                    </dd>
+                    
+                    <dt class="col-sm-3">Occurrence Number</dt>
+                    <dd class="col-sm-9">{{ next_occurrence.occurrence_number }}</dd>
+                </dl>
+            {% else %}
+                <p class="text-muted">No next occurrence was created.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="{% url 'test_scheduled_transactions' %}" class="btn btn-primary">Run Test Again</a>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %} 

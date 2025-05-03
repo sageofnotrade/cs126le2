@@ -172,7 +172,7 @@ class ScheduledTransaction(models.Model):
 
     def clean(self):
         super().clean()
-        if self.date_scheduled < timezone.now():
+        if self.date_scheduled is not None and self.date_scheduled < timezone.now():
             raise ValidationError("Scheduled date cannot be in the past.")
         
         if self.repeat_type == 'once' and self.repeats != 1:
@@ -314,8 +314,13 @@ class ScheduledTransaction(models.Model):
         return next_transaction
 
     def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+        # If we're only updating the status, skip validation
+        if kwargs.get('update_fields') == ['status']:
+            super().save(*args, **kwargs)
+        else:
+            # For all other saves, run full validation
+            self.full_clean()
+            super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['date_scheduled']

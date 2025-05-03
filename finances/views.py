@@ -10,11 +10,11 @@ from datetime import timedelta, datetime, date
 import calendar
 import csv
 import json
+import logging
 from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory, Debt, ScheduledTransaction, DashboardPreference
 from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, SubCategoryForm, DebtForm, ScheduledTransactionForm
 from django import forms
 from django.contrib.auth.models import User
-import logging
 from django.db import models
 from decimal import Decimal
 import decimal
@@ -113,12 +113,22 @@ def scheduled_transactions(request):
     else:
         last_day = selected_month.replace(month=selected_month.month + 1, day=1) - timedelta(days=1)
     last_day = last_day.replace(hour=23, minute=59, second=59, microsecond=999999)
-    
+
     # Get search query
     search_query = request.GET.get('search', '')
-    
-    # Get only scheduled transactions for the month
+
+    # Get only scheduled transactions for the month (all statuses)
     monthly_transactions = generate_scheduled_transactions(request.user, first_day, last_day)
+    # Sort by date, then by status (scheduled first, then failed, then completed)
+    def status_order(status):
+        if status == 'scheduled':
+            return 0
+        elif status == 'failed':
+            return 1
+        elif status == 'completed':
+            return 2
+        return 3
+    monthly_transactions.sort(key=lambda t: (t['date'], status_order(t['status'])))
     
     # Apply search filter if provided
     if search_query:
@@ -133,10 +143,12 @@ def scheduled_transactions(request):
     expected_expense = Decimal('0')
     
     for transaction in monthly_transactions:
+        if transaction['status'] == 'failed':
+            continue  # Skip failed entries in summary
         if transaction['type'] == 'income':
-            expected_income += transaction['amount']
+            expected_income += Decimal(str(transaction['amount']))
         else:
-            expected_expense += transaction['amount']
+            expected_expense += Decimal(str(transaction['amount']))
     
     # Calculate net sum
     net_sum = expected_income - expected_expense
@@ -144,7 +156,7 @@ def scheduled_transactions(request):
     # Get categories and accounts for the modal form
     categories = Category.objects.filter(user=request.user)
     accounts = Account.objects.filter(user=request.user)
-    
+
     context = {
         'selected_month': selected_month,
         'search_query': search_query,
@@ -166,8 +178,19 @@ def create_scheduled_transaction(request):
             scheduled_transaction = form.save(commit=False)
             scheduled_transaction.user = request.user
             scheduled_transaction.is_recurring = scheduled_transaction.repeats == 0
-            scheduled_transaction.save()
-            
+            try:
+                scheduled_transaction.save()
+            except Exception as e:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'errors': {'__all__': [str(e)]}
+                    }, status=400)
+                messages.error(request, f'Error saving scheduled transaction: {e}')
+                return render(request, 'finances/scheduled_transaction_form.html', {
+                    'form': form,
+                    'title': 'Create Scheduled Transaction'
+                })
             # Check if it's an AJAX request
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
@@ -175,7 +198,6 @@ def create_scheduled_transaction(request):
                     'message': 'Scheduled transaction created successfully.',
                     'id': scheduled_transaction.id
                 })
-            
             messages.success(request, 'Scheduled transaction created successfully.')
             return redirect('scheduled_transactions')
         else:
@@ -184,11 +206,13 @@ def create_scheduled_transaction(request):
                 errors = {}
                 for field, error_list in form.errors.items():
                     errors[field] = [str(error) for error in error_list]
+                # Also include non-field errors
+                if form.non_field_errors():
+                    errors['__all__'] = [str(e) for e in form.non_field_errors()]
                 return JsonResponse({
                     'success': False,
                     'errors': errors
-                })
-            
+                }, status=400)
             return render(request, 'finances/scheduled_transaction_form.html', {
                 'form': form,
                 'title': 'Create Scheduled Transaction'
@@ -204,10 +228,10 @@ def create_scheduled_transaction(request):
             })
         
         form = ScheduledTransactionForm(user=request.user)
-        return render(request, 'finances/scheduled_transaction_form.html', {
-            'form': form,
-            'title': 'Create Scheduled Transaction'
-        })
+    return render(request, 'finances/scheduled_transaction_form.html', {
+        'form': form,
+        'title': 'Create Scheduled Transaction'
+    })
 
 @login_required
 def edit_scheduled_transaction(request, pk):
@@ -231,7 +255,6 @@ def edit_scheduled_transaction(request, pk):
             messages.success(request, 'Scheduled transaction updated successfully!')
             return redirect('scheduled_transactions')
         else:
-            # For AJAX requests, return errors as JSON
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 errors = {}
                 for field, error_list in form.errors.items():
@@ -240,10 +263,8 @@ def edit_scheduled_transaction(request, pk):
                     'success': False,
                     'errors': errors
                 })
-            
             messages.error(request, 'There was an error with your input.')
     else:
-        # For AJAX requests asking for the edit form
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': True,
@@ -259,13 +280,10 @@ def edit_scheduled_transaction(request, pk):
                 'subcategory': scheduled_transaction.subcategory_id if hasattr(scheduled_transaction, 'subcategory') and scheduled_transaction.subcategory else None,
                 'account': scheduled_transaction.account_id if scheduled_transaction.account else None
             })
-        
         form = ScheduledTransactionForm(instance=scheduled_transaction, user=request.user)
-
     return render(request, 'finances/scheduled_transaction_form.html', {
         'form': form,
-        'title': 'Edit Scheduled Transaction',
-        'scheduled_transaction': scheduled_transaction
+        'title': 'Edit Scheduled Transaction'
     })
 
 @login_required
@@ -556,13 +574,129 @@ def delete_account(request, account_id):
     account.delete()
     return redirect('accounts_list')
 
+def process_scheduled_transactions(user):
+    now = timezone.now()
+    
+    due_transactions = ScheduledTransaction.objects.filter(
+        user=user,
+        date_scheduled__lte=now,
+        status='scheduled'
+    )
+    
+    for scheduled in due_transactions:
+        try:
+            # Validate account balance before processing
+            account = scheduled.account
+            amount_decimal = Decimal(str(scheduled.amount))
+            
+            if hasattr(account, 'debitaccount'):
+                debit = account.debitaccount
+                if scheduled.transaction_type == 'expense' and debit.balance - amount_decimal < (debit.maintaining_balance or 0):
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    continue
+            elif hasattr(account, 'creditaccount'):
+                credit = account.creditaccount
+                if scheduled.transaction_type == 'expense' and credit.current_usage + amount_decimal > credit.credit_limit:
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    continue
+            elif hasattr(account, 'wallet'):
+                wallet = account.wallet
+                if scheduled.transaction_type == 'expense' and wallet.balance < amount_decimal:
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    continue
+            
+            # Create the transaction
+            transaction = Transaction.objects.create(
+                user=user,
+                title=scheduled.name,
+                amount=scheduled.amount,
+                date=scheduled.date_scheduled.date(),
+                time=scheduled.date_scheduled.time(),
+                type=scheduled.transaction_type,
+                category=scheduled.category,
+                subcategory=scheduled.subcategory,
+                transaction_account=scheduled.account,
+                notes=f"Scheduled transaction: {scheduled.name} (ID: {scheduled.id})"
+            )
+            
+            # Update account balance/usage
+            if hasattr(account, 'debitaccount'):
+                debit = account.debitaccount
+                if scheduled.transaction_type == 'expense':
+                    debit.balance -= amount_decimal
+                else:  # income
+                    debit.balance += amount_decimal
+                debit.save()
+            elif hasattr(account, 'creditaccount'):
+                credit = account.creditaccount
+                if scheduled.transaction_type == 'expense':
+                    credit.current_usage += amount_decimal
+                else:  # income (rare)
+                    credit.current_usage -= amount_decimal
+                    if credit.current_usage < 0:
+                        credit.current_usage = 0
+                credit.save()
+            elif hasattr(account, 'wallet'):
+                wallet = account.wallet
+                if scheduled.transaction_type == 'expense':
+                    wallet.balance -= amount_decimal
+                else:  # income
+                    wallet.balance += amount_decimal
+                wallet.save()
+            
+            # Update the scheduled transaction status to completed
+            scheduled.status = 'completed'
+            scheduled.save(update_fields=['status'])
+            
+            # If this is a recurring transaction, create the next occurrence
+            if scheduled.repeats != 1:
+                if scheduled.repeats == 0:
+                    next_repeats = 0
+                elif scheduled.repeats > 1:
+                    next_repeats = scheduled.repeats - 1
+                else:
+                    next_repeats = None
+                if next_repeats is not None:
+                    next_date = scheduled.date_scheduled
+                    if scheduled.repeat_type == 'daily':
+                        next_date += timedelta(days=1)
+                    elif scheduled.repeat_type == 'weekly':
+                        next_date += timedelta(weeks=1)
+                    elif scheduled.repeat_type == 'monthly':
+                        if next_date.month == 12:
+                            next_date = next_date.replace(year=next_date.year + 1, month=1)
+                        else:
+                            next_date = next_date.replace(month=next_date.month + 1)
+                    elif scheduled.repeat_type == 'yearly':
+                        next_date = next_date.replace(year=next_date.year + 1)
+                    ScheduledTransaction.objects.create(
+                        user=user,
+                        name=scheduled.name,
+                        category=scheduled.category,
+                        subcategory=scheduled.subcategory,
+                        transaction_type=scheduled.transaction_type,
+                        account=scheduled.account,
+                        amount=scheduled.amount,
+                        date_scheduled=next_date,
+                        repeat_type=scheduled.repeat_type,
+                        repeats=next_repeats,
+                        note=scheduled.note,
+                        status='scheduled'
+                    )
+        except Exception as e:
+            # If transaction creation fails, mark as failed using direct SQL update
+            ScheduledTransaction.objects.filter(id=scheduled.id).update(status='failed')
+            # Log the error
+            logging.error(f"Failed to process scheduled transaction {scheduled.id}: {str(e)}")
+
 @login_required
 def dashboard(request):
-    """Display the dashboard with summary information."""
-    # Get or create dashboard preferences for the user
+    process_scheduled_transactions(request.user)
     dashboard_preference, created = DashboardPreference.objects.get_or_create(user=request.user)
 
-    # Rest of the existing dashboard code...
     current_month = timezone.now().date().replace(day=1)
     prev_month = (current_month - timedelta(days=1)).replace(day=1)
     next_month = (current_month + timedelta(days=32)).replace(day=1)
@@ -1725,17 +1859,17 @@ def transaction_detail_api(request, transaction_id):
             subcategory_name = None
             subcategory_icon = None
         
-        # Format time if available
-        time_str = None
-        if hasattr(transaction, 'time') and transaction.time:
-            time_str = transaction.time.strftime('%H:%M')
-        
+            # Format time if available
+            time_str = None
+            if hasattr(transaction, 'time') and transaction.time:
+                time_str = transaction.time.strftime('%H:%M')
+            
         data = {
             'id': transaction.id,
             'title': transaction.title,
             'amount': float(transaction.amount),
             'date': transaction.date.isoformat(),
-            'time': time_str,
+                'time': time_str,
             'type': transaction.type,
             'category': transaction.category_id if transaction.category else None,
             'subcategory': transaction.subcategory_id if transaction.subcategory else None,
@@ -2390,3 +2524,225 @@ def batch_delete_transactions_api(request):
         return JsonResponse({'error': 'Invalid JSON in request body'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+def create_test_scheduled_transaction(user):
+    """
+    Create a test scheduled transaction for testing purposes.
+    Returns the created transaction.
+    """
+    # Get or create a test category
+    category, _ = Category.objects.get_or_create(
+        user=user,
+        name='Test Category',
+        type='expense',
+        icon='bi-tag-fill',
+        order=0
+    )
+    
+    # Get or create a test account
+    account, _ = DebitAccount.objects.get_or_create(
+        user=user,
+        name='Test Account',
+        balance=Decimal('1000.00'),
+        maintaining_balance=Decimal('10.00')
+    )
+    
+    # Create a scheduled transaction that's due in 1 minutes
+    scheduled = ScheduledTransaction.objects.create(
+        user=user,
+        name='Test Scheduled Transaction',
+        category=category,
+        transaction_type='expense',
+        account=account,
+        amount=Decimal('100.00'),
+        date_scheduled=timezone.now() + timedelta(minutes=1),  # 1 minutes in the future
+        repeat_type='monthly',
+        repeats=3,
+        note='Test transaction',
+        status='scheduled'
+    )
+    
+    return scheduled
+
+@login_required
+def test_scheduled_transactions(request):
+    """
+    Test endpoint to verify scheduled transaction processing.
+    Creates a test transaction and processes it.
+    """
+    # Create a test scheduled transaction
+    scheduled = create_test_scheduled_transaction(request.user)
+    
+    # Check if the scheduled time has passed
+    if timezone.now() >= scheduled.date_scheduled:
+        # Process scheduled transactions
+        process_scheduled_transactions(request.user)
+        
+        # Get the updated scheduled transaction
+        scheduled.refresh_from_db()
+        
+        # Get the created transaction if any
+        created_transaction = Transaction.objects.filter(
+            notes__contains=f"Scheduled transaction: {scheduled.name}"
+        ).first()
+        
+        # Get the next occurrence if any
+        next_occurrence = ScheduledTransaction.objects.filter(
+            parent_transaction=scheduled,
+            status='scheduled'
+        ).first()
+    else:
+        # If scheduled time hasn't passed yet
+        created_transaction = None
+        next_occurrence = None
+        messages.info(request, f"Test transaction is scheduled for {scheduled.date_scheduled}. Please wait until then to process it.")
+    
+    context = {
+        'scheduled': scheduled,
+        'created_transaction': created_transaction,
+        'next_occurrence': next_occurrence,
+    }
+    
+    return render(request, 'finances/test_scheduled.html', context)
+
+@login_required
+def resolve_scheduled_transaction(request, pk):
+    """View to resolve a failed scheduled transaction."""
+    scheduled = get_object_or_404(ScheduledTransaction, pk=pk, user=request.user)
+    
+    if scheduled.status != 'failed':
+        return JsonResponse({
+            'success': False,
+            'error': 'Only failed transactions can be resolved.'
+        })
+    
+    try:
+        # First validate if the transaction can be processed with the current account state
+        account = scheduled.account
+        amount_decimal = Decimal(str(scheduled.amount))
+        
+        # Validate account balance/limits based on account type
+        if hasattr(account, 'debitaccount'):
+            debit = account.debitaccount
+            if scheduled.transaction_type == 'expense':
+                # Check if balance would go below maintaining balance
+                if debit.balance - amount_decimal < (debit.maintaining_balance or 0):
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Insufficient balance in debit account.'
+                    })
+        elif hasattr(account, 'creditaccount'):
+            credit = account.creditaccount
+            if scheduled.transaction_type == 'expense':
+                # Check if credit limit would be exceeded
+                if credit.current_usage + amount_decimal > credit.credit_limit:
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Credit limit would be exceeded.'
+                    })
+        elif hasattr(account, 'wallet'):
+            wallet = account.wallet
+            if scheduled.transaction_type == 'expense' and wallet.balance < amount_decimal:
+                scheduled.status = 'failed'
+                scheduled.save(update_fields=['status'])
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Insufficient balance in wallet.'
+                })
+        
+        # If validation passes, create the transaction
+        transaction = Transaction.objects.create(
+            user=request.user,
+            title=scheduled.name,
+            amount=scheduled.amount,
+            date=scheduled.date_scheduled.date(),
+            time=scheduled.date_scheduled.time(),
+            type=scheduled.transaction_type,
+            category=scheduled.category,
+            subcategory=scheduled.subcategory,
+            transaction_account=scheduled.account,
+            notes=f"Scheduled transaction: {scheduled.name} (ID: {scheduled.id})"
+        )
+        
+        # Update account balance/usage
+        if hasattr(account, 'debitaccount'):
+            debit = account.debitaccount
+            if scheduled.transaction_type == 'expense':
+                debit.balance -= amount_decimal
+            else:  # income
+                debit.balance += amount_decimal
+            debit.save()
+        elif hasattr(account, 'creditaccount'):
+            credit = account.creditaccount
+            if scheduled.transaction_type == 'expense':
+                credit.current_usage += amount_decimal
+            else:  # income (rare)
+                credit.current_usage -= amount_decimal
+                if credit.current_usage < 0:
+                    credit.current_usage = 0
+            credit.save()
+        elif hasattr(account, 'wallet'):
+            wallet = account.wallet
+            if scheduled.transaction_type == 'expense':
+                wallet.balance -= amount_decimal
+            else:  # income
+                wallet.balance += amount_decimal
+            wallet.save()
+        
+        # Update the scheduled transaction status to completed
+        scheduled.status = 'completed'
+        scheduled.save(update_fields=['status'])
+        
+        # If this is a recurring transaction, create the next occurrence
+        if scheduled.repeats != 1:
+            # Only create next if repeats is infinite or > 1
+            if scheduled.repeats == 0:
+                next_repeats = 0
+            elif scheduled.repeats > 1:
+                next_repeats = scheduled.repeats - 1
+            else:
+                next_repeats = None
+            if next_repeats is not None:
+                next_date = scheduled.date_scheduled
+                if scheduled.repeat_type == 'daily':
+                    next_date += timedelta(days=1)
+                elif scheduled.repeat_type == 'weekly':
+                    next_date += timedelta(weeks=1)
+                elif scheduled.repeat_type == 'monthly':
+                    if next_date.month == 12:
+                        next_date = next_date.replace(year=next_date.year + 1, month=1)
+                    else:
+                        next_date = next_date.replace(month=next_date.month + 1)
+                elif scheduled.repeat_type == 'yearly':
+                    next_date = next_date.replace(year=next_date.year + 1)
+                ScheduledTransaction.objects.create(
+                    user=request.user,
+                    name=scheduled.name,
+                    category=scheduled.category,
+                    subcategory=scheduled.subcategory,
+                    transaction_type=scheduled.transaction_type,
+                    account=scheduled.account,
+                    amount=scheduled.amount,
+                    date_scheduled=next_date,
+                    repeat_type=scheduled.repeat_type,
+                    repeats=next_repeats,
+                    note=scheduled.note,
+                    status='scheduled'
+                )
+        return JsonResponse({
+            'success': True,
+            'message': 'Transaction resolved successfully.'
+        })
+        
+    except Exception as e:
+        # If any error occurs, mark the transaction as failed
+        scheduled.status = 'failed'
+        scheduled.save(update_fields=['status'])
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
