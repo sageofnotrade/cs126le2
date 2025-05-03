@@ -7,7 +7,7 @@
     <header class="page-header mb-4 d-flex justify-content-between align-items-center">
         <h1 class="h2">Scheduled Transactions</h1>
         <button id="openCreateScheduledModal" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create Scheduled Transaction
+            <i class="bi bi-plus-circle"></i> Schedule Transaction
         </button>
     </header>
     <!-- Monthly Summary Card -->
@@ -58,7 +58,7 @@
         <div class="col-md-9">
             <div class="card border-0 shadow-sm">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="h5 mb-0">Transactions</h3>
+                    <h3 class="h5 mb-0">Upcoming Transactions</h3>
                 </div>
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
@@ -72,10 +72,17 @@
                                         </span>
                                     </div>
                                     <div>
-                                        <div class="fw-bold">{{ transaction.name }}</div>
+                                        <div class="fw-bold">{{ transaction.title }}</div>
                                         <small class="text-muted">
                                             {{ transaction.date|date:"Y-m-d" }}
-                                            {% if transaction.is_scheduled %}(Scheduled){% endif %}
+                                            {% if transaction.category %}
+                                                • {{ transaction.category }}
+                                            {% endif %}
+                                            {% if transaction.is_scheduled %}
+                                            <span class="badge {% if transaction.status == 'scheduled' %}bg-primary{% elif transaction.status == 'completed' %}bg-success{% elif transaction.status == 'failed' %}bg-danger{% endif %}">
+                                                {{ transaction.status|title }}
+                                            </span>
+                                            {% endif %}
                                         </small>
                                     </div>
                                 </div>
@@ -93,6 +100,9 @@
                                         <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if transaction.status == 'failed' %}
+                                            <li><a class="dropdown-item text-warning resolve-scheduled-transaction" href="#" data-url="{% url 'resolve_scheduled_transaction' transaction.scheduled_id %}">Resolve</a></li>
+                                            {% endif %}
                                             <li><a class="dropdown-item openEditScheduledModal" href="#" data-url="{% url 'edit_scheduled_transaction' transaction.scheduled_id %}">Edit</a></li>
                                             <li><a class="dropdown-item text-danger openDeleteScheduledModal" href="#" data-url="{% url 'delete_scheduled_transaction' transaction.scheduled_id %}">Delete</a></li>
                                         </ul>
@@ -212,7 +222,7 @@
                         
                         <div class="col-md-6">
                             <label for="scheduled-transaction-repeats" class="form-label">Number of Transactions</label>
-                            <input type="number" class="form-control" id="scheduled-transaction-repeats" name="repeats" min="0" value="1" required>
+                            <input type="number" class="form-control" id="scheduled-transaction-repeats" name="repeats" min="1" value="1">
                             <div class="form-text" id="repeats-help">Set to 0 for infinite repeats. One-time transactions are always set to 1.</div>
                             <div class="invalid-feedback">Please enter a valid number (0 or greater).</div>
                         </div>
@@ -270,4 +280,43 @@
 
 {% block extra_js %}
 <script src="{% static 'js/scheduled_transaction.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const repeatTypeField = document.getElementById('scheduled-transaction-repeat-type');
+    const repeatsField = document.getElementById('scheduled-transaction-repeats');
+
+    repeatTypeField.addEventListener('change', function() {
+        if (this.value === 'once') {
+            repeatsField.value = 1;
+            repeatsField.setAttribute('readonly', 'readonly');
+        } else {
+            repeatsField.removeAttribute('readonly');
+            // Reset to default value of 1 if empty or invalid
+            if (!repeatsField.value || parseInt(repeatsField.value) < 1) {
+                repeatsField.value = 1;
+            }
+        }
+    });
+    // On form submit, ensure repeats is enabled and date is in the future
+    const form = document.getElementById('scheduled-transaction-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const dateField = document.getElementById('scheduled-transaction-date');
+            const now = new Date();
+            const selected = new Date(dateField.value);
+            if (selected < now) {
+                // Set to now + 1 minute
+                const newDate = new Date(now.getTime() + 60000);
+                const pad = n => n < 10 ? '0' + n : n;
+                dateField.value = newDate.getFullYear() + '-' +
+                    pad(newDate.getMonth() + 1) + '-' +
+                    pad(newDate.getDate()) + 'T' +
+                    pad(newDate.getHours()) + ':' +
+                    pad(newDate.getMinutes());
+                alert('Scheduled date was in the past. It has been set to the next minute.');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

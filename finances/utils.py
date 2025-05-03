@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from decimal import Decimal
 from .models import ScheduledTransaction, Transaction
+from django.db.models import Q
 
 def generate_scheduled_transactions(user, start_date, end_date):
     """
@@ -16,52 +17,106 @@ def generate_scheduled_transactions(user, start_date, end_date):
     Returns:
         List of dictionaries with transaction details
     """
-    scheduled_transactions = ScheduledTransaction.objects.filter(user=user)
+    scheduled_transactions = ScheduledTransaction.objects.filter(
+        user=user,
+        date_scheduled__lte=end_date
+    ).order_by('date_scheduled')
+
     generated_transactions = []
-
+    
     for scheduled in scheduled_transactions:
-        # Use local variables to avoid mutating the DB
-        current_date = scheduled.date_scheduled
-        if not timezone.is_aware(current_date):
-            current_date = timezone.make_aware(current_date)
-        repeat_type = scheduled.repeat_type
-        repeats = scheduled.repeats
-        is_recurring = scheduled.is_recurring
-        occurrence_number = 1
-        max_occurrences = repeats if repeats > 0 else 100  # Safety cap for infinite repeats
-
-        # Generate occurrences within the date range
-        while current_date <= end_date and occurrence_number <= max_occurrences:
-            if current_date >= start_date:
+        # If status is completed or failed, only show the actual occurrence if in range
+        if scheduled.status in ('completed', 'failed'):
+            if scheduled.date_scheduled >= start_date and scheduled.date_scheduled <= end_date:
                 generated_transactions.append({
-                    'date': current_date,
-                    'name': scheduled.name,
+                    'id': scheduled.id,
+                    'title': scheduled.name,
+                    'amount': float(scheduled.amount),
+                    'date': scheduled.date_scheduled,
                     'type': scheduled.transaction_type,
-                    'amount': scheduled.amount,
+                    'category': scheduled.category.name if scheduled.category else None,
+                    'subcategory': scheduled.subcategory.name if scheduled.subcategory else None,
+                    'account': scheduled.account.name if scheduled.account else None,
+                    'note': scheduled.note,
+                    'status': scheduled.status,
                     'is_scheduled': True,
                     'scheduled_id': scheduled.id,
-                    'category': scheduled.category,
-                    'account': scheduled.account
+                    'repeat_type': scheduled.repeat_type,
+                    'repeats': scheduled.repeats,
+                    'occurrence_number': 1
                 })
-            # Calculate next occurrence
-            if repeat_type == 'once':
+            continue
+
+        # For recurring transactions, count completed/failed child occurrences
+        completed_count = ScheduledTransaction.objects.filter(
+            parent_transaction=scheduled,
+            status__in=['completed', 'failed']
+        ).count()
+        # For one-time transactions, just add them if they're within the date range
+        if scheduled.repeat_type == 'once':
+            if scheduled.date_scheduled >= start_date and scheduled.date_scheduled <= end_date:
+                generated_transactions.append({
+                    'id': scheduled.id,
+                    'title': scheduled.name,
+                    'amount': float(scheduled.amount),
+                    'date': scheduled.date_scheduled,
+                    'type': scheduled.transaction_type,
+                    'category': scheduled.category.name if scheduled.category else None,
+                    'subcategory': scheduled.subcategory.name if scheduled.subcategory else None,
+                    'account': scheduled.account.name if scheduled.account else None,
+                    'note': scheduled.note,
+                    'status': scheduled.status,
+                    'is_scheduled': True,
+                    'scheduled_id': scheduled.id,
+                    'repeat_type': scheduled.repeat_type,
+                    'repeats': scheduled.repeats,
+                    'occurrence_number': 1
+                })
+            continue
+
+        # For recurring transactions, generate up to (repeats - completed_count) occurrences (unless repeats==0)
+        current_date = scheduled.date_scheduled
+        occurrence_count = 0
+        if scheduled.repeats > 0:
+            max_occurrences = scheduled.repeats - completed_count
+            if max_occurrences < 0:
+                max_occurrences = 0
+        else:
+            max_occurrences = 1000  # safety cap for infinite
+        while occurrence_count < max_occurrences:
+            if current_date > end_date:
                 break
-            elif repeat_type == 'daily':
+            if current_date >= start_date and current_date <= end_date:
+                generated_transactions.append({
+                    'id': scheduled.id,
+                    'title': scheduled.name,
+                    'amount': float(scheduled.amount),
+                    'date': current_date,
+                    'type': scheduled.transaction_type,
+                    'category': scheduled.category.name if scheduled.category else None,
+                    'subcategory': scheduled.subcategory.name if scheduled.subcategory else None,
+                    'account': scheduled.account.name if scheduled.account else None,
+                    'note': scheduled.note,
+                    'status': scheduled.status,
+                    'is_scheduled': True,
+                    'scheduled_id': scheduled.id,
+                    'repeat_type': scheduled.repeat_type,
+                    'repeats': scheduled.repeats,
+                    'occurrence_number': completed_count + occurrence_count + 1
+                })
+            occurrence_count += 1
+            # Calculate next occurrence based on repeat type
+            if scheduled.repeat_type == 'daily':
                 current_date += timedelta(days=1)
-            elif repeat_type == 'weekly':
+            elif scheduled.repeat_type == 'weekly':
                 current_date += timedelta(weeks=1)
-            elif repeat_type == 'monthly':
-                year = current_date.year + (current_date.month // 12)
-                month = (current_date.month % 12) + 1
-                day = min(current_date.day, (datetime(year, month % 12 + 1, 1) - timedelta(days=1)).day)
-                current_date = current_date.replace(year=year, month=month, day=day)
-            elif repeat_type == 'yearly':
-                year = current_date.year + 1
-                day = min(current_date.day, (datetime(year, current_date.month % 12 + 1, 1) - timedelta(days=1)).day)
-                current_date = current_date.replace(year=year, day=day)
-            else:
-                break
-            occurrence_number += 1
+            elif scheduled.repeat_type == 'monthly':
+                if current_date.month == 12:
+                    current_date = current_date.replace(year=current_date.year + 1, month=1)
+                else:
+                    current_date = current_date.replace(month=current_date.month + 1)
+            elif scheduled.repeat_type == 'yearly':
+                current_date = current_date.replace(year=current_date.year + 1)
 
     return generated_transactions
 
