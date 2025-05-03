@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Import/Export Data - Budget Tracker{% endblock %}
+
+{% block content %}
+<header class="page-header mb-4">
+    <h1 class="h2">Import/Export Data</h1>
+</header>
+
+<!-- Tab Navigation -->
+<ul class="nav nav-tabs mb-4" id="importExportTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="export-tab" data-bs-toggle="tab" data-bs-target="#export" type="button" role="tab" aria-controls="export" aria-selected="true">
+            <i class="bi bi-download me-2"></i>Export Data
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="import-tab" data-bs-toggle="tab" data-bs-target="#import" type="button" role="tab" aria-controls="import" aria-selected="false">
+            <i class="bi bi-upload me-2"></i>Import Data
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="importExportTabContent">
+    <!-- Export Tab -->
+    <div class="tab-pane fade show active" id="export" role="tabpanel" aria-labelledby="export-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <form method="POST" action="{% url 'import_export_data' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="operation" value="export">
+                    
+                    <div class="mb-3">
+                        <label for="id_format" class="form-label">Format:</label>
+                        {{ export_form.format }}
+                    </div>
+
+                    <div class="mb-3" id="separator-container">
+                        <label for="id_separator" class="form-label">Separator:</label>
+                        {{ export_form.separator }}
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="id_start_date" class="form-label">From:</label>
+                            {{ export_form.start_date }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_end_date" class="form-label">To:</label>
+                            {{ export_form.end_date }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_account" class="form-label">Account:</label>
+                        {{ export_form.account }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Include transactions:</label>
+                        <div class="form-check">
+                            {{ export_form.include_income }}
+                            <label class="form-check-label" for="id_include_income">Income</label>
+                        </div>
+                        <div class="form-check">
+                            {{ export_form.include_expenses }}
+                            <label class="form-check-label" for="id_include_expenses">Expenses</label>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-download me-2"></i>Export Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Tab -->
+    <div class="tab-pane fade" id="import" role="tabpanel" aria-labelledby="import-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle me-2"></i>
+                    You can only import files that were previously exported from this system.
+                    This ensures data consistency and prevents import errors.
+                </div>
+
+                <form method="POST" action="{% url 'import_export_data' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="operation" value="import">
+                    {{ import_form|crispy }}
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-2"></i>Import Data
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Import Guide -->
+                <div class="mt-4">
+                    <h3 class="h5 mb-3">Import Guide</h3>
+                    <p>To import data:</p>
+                    <ol class="mb-3">
+                        <li>First export your data from the Export tab</li>
+                        <li>Make any necessary changes to the exported file</li>
+                        <li>Import the modified file using this form</li>
+                    </ol>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Do not modify the structure of the exported file. The column headers and format must remain the same.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Initialize Bootstrap tabs
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tab initialization
+        var triggerTabList = [].slice.call(document.querySelectorAll('#importExportTabs button'))
+        triggerTabList.forEach(function(triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl)
+            triggerEl.addEventListener('click', function(event) {
+                event.preventDefault()
+                tabTrigger.show()
+            })
+        })
+
+        // Format change handler
+        const formatSelect = document.getElementById('id_format');
+        const separatorContainer = document.getElementById('separator-container');
+
+        function updateSeparatorVisibility() {
+            if (formatSelect.value === 'xlsx') {
+                separatorContainer.style.display = 'none';
+            } else {
+                separatorContainer.style.display = 'block';
+            }
+        }
+
+        // Initial check
+        updateSeparatorVisibility();
+
+        // Add change event listener
+        formatSelect.addEventListener('change', updateSeparatorVisibility);
+    });
+</script>
+{% endblock %}
+{% endblock %} 

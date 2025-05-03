@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: cs126le2-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn budget_tracker.wsgi:application
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: False
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cs126le2-db
+          property: connectionString
+
+databases:
+  - name: cs126le2-db
+    plan: free

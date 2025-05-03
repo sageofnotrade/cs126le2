@@ -739,5 +739,21 @@
      </script>
    {% endif %}
 
+   {% if open_login_modal %}
+     {% if form_errors %}
+       <script>var LOGIN_MODAL_ERRORS = `{{ form_errors|escapejs|safe }}`;</script>
+     {% endif %}
+     <script>
+       document.addEventListener('DOMContentLoaded', function() {
+         openModal();
+         // Find the error div in the login modal and set its content
+         var errorDiv = document.querySelector('#authModal .modal-error');
+         if (typeof LOGIN_MODAL_ERRORS !== 'undefined' && errorDiv) {
+           errorDiv.innerHTML = LOGIN_MODAL_ERRORS;
+         }
+       });
+     </script>
+   {% endif %}
+
    </body>
 </html>

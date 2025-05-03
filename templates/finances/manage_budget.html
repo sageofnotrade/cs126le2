@@ -23,6 +23,7 @@
     .progress {
         background-color: #e9ecef;
         border-radius: 4px;
+        height: 8px;
     }
     .btn-link {
         text-decoration: none;
@@ -347,6 +348,17 @@
         padding-top: 0.5rem;
         margin-top: 0.5rem;
         border-top: 1px solid rgba(0,0,0,0.08);
+    .progress-bar {
+        transition: width 0.3s ease;
+    }
+    .progress-bar.bg-danger {
+        background-color: #dc3545;
+    }
+    .progress-bar.bg-warning {
+        background-color: #ffc107;
+    }
+    .progress-bar.bg-success {
+        background-color: #28a745;
     }
 </style>
 {% endblock %}
@@ -407,10 +419,28 @@
                             {% endif %}
                         </div>
                         <div class="card-body p-3">
+<<<<<<< HEAD
                             <div class="budget-meta">
                                 <div class="d-flex align-items-center justify-content-center mb-1">
                                     <div class="budget-icon me-2">
                                         <i class="bi {{ budget.category.icon }}"></i>
+=======
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="budget-icon me-3">
+<<<<<<< HEAD
+                            <i class="bi {{ budget.subcategory.icon }} fs-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
+=======
+                                    <i class="bi {{ budget.subcategory.icon }}"></i>
+                        </div>
+                        <div>
+                                    <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
+                            <div class="text-muted small">
+                                        {{ budget.start_date|date:"M d" }} - {{ budget.end_date|date:"M d, Y" }}
+>>>>>>> feature/exportimport
                                     </div>
                                     <h3 class="card-title mb-0">{{ budget.category.name }}</h3>
                                 </div>
@@ -445,6 +475,21 @@
                                     </ul>
                                 </div>
                             </div>
+<<<<<<< HEAD
+=======
+                        </div>
+                    </div>
+                    
+                    <div class="progress mb-2">
+                        <div class="progress-bar {% if budget.percentage_used > 100 %}bg-danger{% elif budget.percentage_used > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                             role="progressbar"
+                             style="width: {% if budget.percentage_used > 100 %}100{% else %}{{ budget.percentage_used }}{% endif %}%;"
+                             aria-valuenow="{{ budget.percentage_used }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+>>>>>>> feature/exportimport
                             
                             <div class="progress mb-2">
                                 <div class="progress-bar {% if budget.percentage_used > 80 %}bg-danger{% elif budget.percentage_used > 60 %}bg-warning{% else %}bg-success{% endif %} progress-width-{{ budget.percentage_used }}"
@@ -454,6 +499,7 @@
                                      aria-valuemax="100">
                                 </div>
                             </div>
+<<<<<<< HEAD
                             
                             <div class="budget-amounts">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -461,6 +507,34 @@
                                     <div class="label-text">Budget</div>
                                 </div>
                                 
+=======
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                                <div class="expense-text">₱{{ budget.spent|floatformat:2 }}</div>
+                        <div>₱{{ budget.amount|floatformat:2 }}</div>
+                    </div>
+                    
+<<<<<<< HEAD
+                    <div class="mt-2">
+                        <p class="mb-1">Residual amount: ${{ budget.remaining|floatformat:2 }}</p>
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-sm btn-link me-2" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
+                                    data-id="{{ budget.id }}"
+                                    data-subcategory="{{ budget.subcategory.id }}"
+                                    data-amount="{{ budget.amount }}"
+                                    data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
+                                    data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
+                                    data-duration="{{ budget.duration }}"
+                                    data-account="{{ budget.account.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-link text-danger" data-bs-toggle="modal" data-bs-target="#deleteBudgetModal"
+                                    data-id="{{ budget.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+=======
+                            <div class="mt-3 pt-2 border-top">
+>>>>>>> feature/exportimport
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="expense-text value-text">₱{{ budget.spent|floatformat:2 }}</div>
                                     <div class="value-text">₱{{ budget.amount|floatformat:2 }}</div>
@@ -475,6 +549,7 @@
                                     </span>
                                 </div>
                             </div>
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
                         </div>
                     </div>
                 </div>
@@ -522,6 +597,7 @@
             {% for budget in budgets %}
             {% if budget.duration == '1 month' %}
                 <div class="col">
+<<<<<<< HEAD
                     <div class="card border-0 shadow-sm h-100 budget-card" data-id="{{ budget.id }}" data-category="{{ budget.subcategory.name }}" data-percentage="{{ budget.percentage_used }}" data-amount="{{ budget.amount }}">
                         <div class="card-header bg-transparent border-0 pb-0">
                             {% if budget.account %}
@@ -601,6 +677,69 @@
                             </div>
                         </div>
                     </div>
+=======
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="budget-icon me-3">
+<<<<<<< HEAD
+                            <i class="bi {{ budget.subcategory.icon }} fs-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
+=======
+                                    <i class="bi {{ budget.subcategory.parent_category.icon }} fs-4"></i>
+                        </div>
+                        <div>
+                                    <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
+                            <div class="text-muted small">
+                                {{ budget.start_date|date:"m/d/Y" }} - {{ budget.end_date|date:"m/d/Y" }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress mb-2">
+                        <div class="progress-bar {% if budget.percentage_used > 100 %}bg-danger{% elif budget.percentage_used > 80 %}bg-warning{% else %}bg-success{% endif %}"
+                             role="progressbar"
+                             style="width: {% if budget.percentage_used > 100 %}100{% else %}{{ budget.percentage_used }}{% endif %}%;"
+                             aria-valuenow="{{ budget.percentage_used }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>₱{{ budget.spent|floatformat:2 }}</div>
+                        <div>₱{{ budget.amount|floatformat:2 }}</div>
+                    </div>
+                    
+                    <div class="mt-2">
+                        <p class="mb-1">Residual amount: ₱{{ budget.remaining|floatformat:2 }}</p>
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-sm btn-link me-2" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
+                                    data-id="{{ budget.id }}"
+                                    data-subcategory="{{ budget.subcategory.id }}"
+                                    data-amount="{{ budget.amount }}"
+                                    data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
+                                    data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
+                                    data-duration="{{ budget.duration }}"
+                                    data-account="{{ budget.account.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-link text-danger" data-bs-toggle="modal" data-bs-target="#deleteBudgetModal"
+                                    data-id="{{ budget.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="text-end mt-2">
+                        <small class="text-muted">₱{{ budget.spent|floatformat:2 }} / ₱{{ budget.amount|floatformat:2 }}</small>
+                    </div>
+                </div>
+                    </div>
+>>>>>>> feature/exportimport
                 </div>
                 {% endif %}
                 {% endfor %}
@@ -660,6 +799,10 @@
                                 {% endfor %}
                             </select>
                         </div>
+<<<<<<< HEAD
+                        <div class="d-none">{{ form.subcategory }}</div>
+=======
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
                     </div>
                     
                     <!-- Hidden subcategory field -->
@@ -667,6 +810,7 @@
                     
                     <!-- Other form fields -->
                     {{ form.amount|as_crispy_field }}
+                    {{ form.start_date|as_crispy_field }}
                     {{ form.duration|as_crispy_field }}
                     
                     <button type="submit" class="btn btn-primary w-100">Save Budget</button>
@@ -716,6 +860,10 @@
                                 {% endfor %}
                             </select>
                         </div>
+<<<<<<< HEAD
+                        <div class="d-none">{{ form.subcategory }}</div>
+=======
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
                     </div>
                     
                     <!-- Hidden subcategory field -->
@@ -723,6 +871,7 @@
                     
                     <!-- Other form fields -->
                     {{ form.amount|as_crispy_field }}
+                    {{ form.start_date|as_crispy_field }}
                     {{ form.duration|as_crispy_field }}
                     
                     <button type="submit" class="btn btn-primary w-100">Save Changes</button>

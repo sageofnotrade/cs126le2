@@ -226,37 +226,22 @@ class SubCategoryForm(forms.ModelForm):
 class BudgetForm(forms.ModelForm):
     duration = forms.ChoiceField(choices=[('1 week', '1 Week'), ('1 month', '1 Month')])
     account = forms.ModelChoiceField(queryset=Account.objects.all(), required=True)
-    subcategory = forms.ModelChoiceField(queryset=SubCategory.objects.none(), required=False)
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        initial=timezone.now
+    )
 
     class Meta:
         model = Budget
-        fields = ['subcategory', 'account', 'amount', 'duration']
+        fields = ['subcategory', 'account', 'amount', 'duration', 'start_date']
 
     def __init__(self, *args, user=None, **kwargs):
         super(BudgetForm, self).__init__(*args, **kwargs)
         if user:
-            # Get all categories for the user
-            user_categories = Category.objects.filter(user=user)
-            # Get all subcategories for those categories
-            self.fields['subcategory'].queryset = SubCategory.objects.filter(parent_category__in=user_categories)
+            # Filter subcategories based on the parent category's user
+            self.fields['subcategory'].queryset = SubCategory.objects.filter(parent_category__user=user)
+            # Filter accounts for the current user
             self.fields['account'].queryset = Account.objects.filter(user=user)
-
-    def save(self, commit=True):
-        budget = super().save(commit=False)
-        # Set the category based on the selected subcategory's parent
-        if self.cleaned_data.get('subcategory'):
-            budget.category = self.cleaned_data['subcategory'].parent_category
-        # If no subcategory, get category from the form data
-        elif 'category' in self.data:
-            try:
-                category_id = self.data.get('category')
-                budget.category = Category.objects.get(id=category_id)
-            except (Category.DoesNotExist, ValueError):
-                pass
-        
-        if commit:
-            budget.save()
-        return budget
 
 class DateRangeForm(forms.Form):
     start_date = forms.DateField(
@@ -266,4 +251,83 @@ class DateRangeForm(forms.Form):
     end_date = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'}),
         initial=timezone.now()
-    ) 
+    )
+
+class ExportForm(forms.Form):
+    separator = forms.CharField(
+        max_length=1,
+        initial=';',
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    start_date = forms.DateField(
+        label='From',
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+    end_date = forms.DateField(
+        label='To',
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+    account = forms.ChoiceField(
+        label='Account',
+        choices=[('all', 'All accounts')],
+        initial='all',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    include_income = forms.BooleanField(
+        label='Income',
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    include_expenses = forms.BooleanField(
+        label='Expenses',
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    format = forms.ChoiceField(
+        choices=[
+            ('csv', 'CSV'),
+            ('xlsx', 'Excel')
+        ],
+        initial='csv',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        if user:
+            # Get all accounts for the user
+            from .models import Account
+            account_choices = [('all', 'All accounts')]
+            accounts = Account.objects.filter(user=user)
+            account_choices.extend([(str(acc.id), acc.name) for acc in accounts])
+            self.fields['account'].choices = account_choices
+
+class ImportForm(forms.Form):
+    file = forms.FileField(
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.csv,.xlsx'
+        }),
+        required=True,
+        help_text='Select a file previously exported from this system'
+    )
+    duplicate_handling = forms.ChoiceField(
+        choices=[
+            ('skip', 'Skip duplicates'),
+            ('update', 'Update existing'),
+            ('create_new', 'Create new')
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        initial='skip'
+    )
+
+    def clean_file(self):
+        file = self.cleaned_data['file']
+        ext = file.name.split('.')[-1].lower()
+        if ext not in ['csv', 'xlsx']:
+            raise forms.ValidationError('Only CSV and Excel files exported from this system are supported.')
+        return file 
