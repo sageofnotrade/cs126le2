@@ -740,6 +740,28 @@ body.dark-mode .transaction-category[data-category-type="other"] {
     </div>
 </div>
 
+<!-- Quick Actions -->
+<section class="quick-actions mt-4" aria-labelledby="quick-actions-heading">
+    <div class="card border-0 shadow-sm">
+        <header class="card-header">
+            <h2 class="h5 mb-0" id="quick-actions-heading">Quick Actions</h2>
+        </header>
+        <div class="card-body">
+            <div class="d-grid gap-2">
+                <a href="{% url 'add_transaction' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Add Transaction
+                </a>
+                <a href="{% url 'import_export_data' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-down-up me-2"></i>Import/Export Data
+                </a>
+                <a href="{% url 'manage_budget' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-wallet2 me-2"></i>Manage Budget
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Rest of the dashboard content -->
 {% if budget_warnings %}
 <section class="budget-warnings mt-5" aria-labelledby="warnings-heading">
@@ -894,6 +916,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
+<<<<<<< HEAD
+                    enabled: false
+                }
+            },
+            events: []
+=======
                     enabled: true,
                     callbacks: {
                         label: function(context) {
@@ -903,6 +931,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove']
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
         }
     };
 
@@ -940,7 +969,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 backgroundColor: currentMonthColors,
                 borderColor: currentMonthBorders,
                 borderWidth: 0,
+<<<<<<< HEAD
+                hoverOffset: 0
+=======
                 hoverOffset: noData ? 0 : 4
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
             }]
         },
         options: {
@@ -1060,7 +1093,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 backgroundColor: prevMonthColors,
                 borderColor: prevMonthBorders,
                 borderWidth: 0,
+<<<<<<< HEAD
+                hoverOffset: 0
+=======
                 hoverOffset: prevNoData ? 0 : 4
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
             }]
         },
         options: {
