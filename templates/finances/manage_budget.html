@@ -14,6 +14,11 @@
     }
     .budget-icon {
         min-width: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: #6c757d;
     }
     .progress {
         background-color: #e9ecef;
@@ -26,6 +31,43 @@
     .card {
         border: none;
         border-radius: 8px;
+        transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .empty-state-icon {
+        font-size: 3rem;
+        color: #adb5bd;
+        margin-bottom: 1rem;
+    }
+    .empty-state-text {
+        color: #6c757d;
+        margin-bottom: 1.5rem;
+    }
+    .income-text {
+        color: #28a745;
+    }
+    .expense-text {
+        color: #dc3545;
+    }
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
     }
     .progress-bar {
         transition: width 0.3s ease;
@@ -44,22 +86,98 @@
 
 {% block content %}
 <div class="container">
+    <!-- Section headers with actions -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2 mb-0">Budget Management</h1>
+        <div class="actions">
+            <button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#notificationSettingsModal">
+                <i class="bi bi-bell me-1"></i> Notification Settings
+            </button>
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
+                <i class="bi bi-plus-lg me-1"></i> Add Budget
+            </button>
+        </div>
+    </div>
+
+    <!-- Search bar -->
+    <div class="row mb-4">
+        <div class="col-md-6 col-lg-4 mx-auto">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="budgetSearch" class="form-control" placeholder="Search budgets...">
+            </div>
+        </div>
+    </div>
+
     <!-- Weekly Budgets Section -->
     <section class="weekly-budgets mb-4">
-        <h2 class="h3 mb-3">WEEKLY BUDGETS</h2>
-        <div class="budgets-list">
+        <div class="section-header">
+            <h2 class="h4 mb-0">WEEKLY BUDGETS</h2>
+            <div class="action-buttons">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="weeklyBudgetSortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-sort-down me-1"></i> Sort
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="weeklyBudgetSortDropdown">
+                        <li><a class="dropdown-item" href="#" data-sort="category">By Category</a></li>
+                        <li><a class="dropdown-item" href="#" data-sort="percentage">By Percentage Used</a></li>
+                        <li><a class="dropdown-item" href="#" data-sort="amount">By Amount</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" id="toggleWeeklyBudgets">
+                    <i class="bi bi-chevron-up"></i>
+                </button>
+            </div>
+        </div>
+        <div class="budgets-list" id="weeklyBudgets">
+            {% if has_weekly_budgets %}
+                <div class="row row-cols-1 row-cols-md-2 g-3">
             {% for budget in budgets %}
             {% if budget.duration == '1 week' %}
-            <div class="card shadow-sm mb-3">
-                <div class="card-body">
+                <div class="col">
+                    <div class="card border-0 shadow-sm h-100 budget-card" data-id="{{ budget.id }}" data-category="{{ budget.subcategory.name }}" data-percentage="{{ budget.percentage_used }}" data-amount="{{ budget.amount }}">
+                        <div class="card-body p-3">
                     <div class="d-flex align-items-center mb-3">
                         <div class="budget-icon me-3">
+<<<<<<< HEAD
                             <i class="bi {{ budget.subcategory.icon }} fs-4"></i>
                         </div>
                         <div>
                             <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
+=======
+                                    <i class="bi {{ budget.subcategory.icon }}"></i>
+                        </div>
+                        <div>
+                                    <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
                             <div class="text-muted small">
-                                {{ budget.start_date|date:"m/d/Y" }} - {{ budget.end_date|date:"m/d/Y" }}
+                                        {{ budget.start_date|date:"M d" }} - {{ budget.end_date|date:"M d, Y" }}
+                                    </div>
+                                </div>
+                                <div class="ms-auto">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link text-muted" type="button" id="dropdownMenuButton{{ budget.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ budget.id }}">
+                                            <li>
+                                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
+                                                        data-id="{{ budget.id }}"
+                                                        data-subcategory="{{ budget.subcategory.id }}"
+                                                        data-amount="{{ budget.amount }}"
+                                                        data-start_date="{{ budget.start_date|date:'Y-m-d' }}"
+                                                        data-end_date="{{ budget.end_date|date:'Y-m-d' }}"
+                                                        data-duration="{{ budget.duration }}">
+                                                    <i class="bi bi-pencil me-2"></i> Edit
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteBudgetModal"
+                                                        data-id="{{ budget.id }}">
+                                                    <i class="bi bi-trash me-2"></i> Delete
+                                                </button>
+                                            </li>
+                                        </ul>
                             </div>
                         </div>
                     </div>
@@ -73,12 +191,18 @@
                              aria-valuemax="100">
                         </div>
                     </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="text-muted small">Spent</div>
+                                <div class="text-muted small">Budget</div>
+                            </div>
                     
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>${{ budget.spent|floatformat:2 }}</div>
-                        <div>${{ budget.amount|floatformat:2 }}</div>
+                                <div class="expense-text">₱{{ budget.spent|floatformat:2 }}</div>
+                        <div>₱{{ budget.amount|floatformat:2 }}</div>
                     </div>
                     
+<<<<<<< HEAD
                     <div class="mt-2">
                         <p class="mb-1">Residual amount: ${{ budget.remaining|floatformat:2 }}</p>
                         <div class="d-flex justify-content-end">
@@ -96,33 +220,78 @@
                                     data-id="{{ budget.id }}">
                                 <i class="bi bi-trash"></i>
                             </button>
+=======
+                            <div class="mt-3 pt-2 border-top">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-medium">Remaining</span>
+                                    <span class="fw-bold {% if budget.remaining >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                        ₱{{ budget.remaining|floatformat:2 }}
+                                    </span>
+                                </div>
+                            </div>
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
                         </div>
                     </div>
-                    
-                    <div class="text-end mt-2">
-                        <small class="text-muted">${{ budget.spent|floatformat:2 }} / ${{ budget.amount|floatformat:2 }}</small>
-                    </div>
                 </div>
+                {% endif %}
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state shadow-sm">
+                    <div class="empty-state-icon">
+                        <i class="bi bi-calendar-week"></i>
+                    </div>
+                    <h4>No Weekly Budgets</h4>
+                    <p class="empty-state-text">You haven't set up any weekly budgets yet. Create one to start tracking your spending!</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
+                        <i class="bi bi-plus-lg me-1"></i> Add Weekly Budget
+                    </button>
             </div>
             {% endif %}
-            {% endfor %}
         </div>
     </section>
 
     <!-- Monthly Budgets Section -->
     <section class="monthly-budgets">
-        <h2 class="h3 mb-3">MONTHLY BUDGETS</h2>
-        <div class="budgets-list">
+        <div class="section-header">
+            <h2 class="h4 mb-0">MONTHLY BUDGETS</h2>
+            <div class="action-buttons">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="monthlyBudgetSortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-sort-down me-1"></i> Sort
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="monthlyBudgetSortDropdown">
+                        <li><a class="dropdown-item" href="#" data-sort="category">By Category</a></li>
+                        <li><a class="dropdown-item" href="#" data-sort="percentage">By Percentage Used</a></li>
+                        <li><a class="dropdown-item" href="#" data-sort="amount">By Amount</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" id="toggleMonthlyBudgets">
+                    <i class="bi bi-chevron-up"></i>
+                </button>
+            </div>
+        </div>
+        <div class="budgets-list" id="monthlyBudgets">
+            {% if has_monthly_budgets %}
+                <div class="row row-cols-1 row-cols-md-2 g-3">
             {% for budget in budgets %}
             {% if budget.duration == '1 month' %}
+                <div class="col">
             <div class="card shadow-sm mb-3">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
                         <div class="budget-icon me-3">
+<<<<<<< HEAD
                             <i class="bi {{ budget.subcategory.icon }} fs-4"></i>
                         </div>
                         <div>
                             <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
+=======
+                                    <i class="bi {{ budget.subcategory.parent_category.icon }} fs-4"></i>
+                        </div>
+                        <div>
+                                    <h3 class="h5 mb-0">{{ budget.subcategory.name }}</h3>
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
                             <div class="text-muted small">
                                 {{ budget.start_date|date:"m/d/Y" }} - {{ budget.end_date|date:"m/d/Y" }}
                             </div>
@@ -140,12 +309,12 @@
                     </div>
                     
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>${{ budget.spent|floatformat:2 }}</div>
-                        <div>${{ budget.amount|floatformat:2 }}</div>
+                        <div>₱{{ budget.spent|floatformat:2 }}</div>
+                        <div>₱{{ budget.amount|floatformat:2 }}</div>
                     </div>
                     
                     <div class="mt-2">
-                        <p class="mb-1">Residual amount: ${{ budget.remaining|floatformat:2 }}</p>
+                        <p class="mb-1">Residual amount: ₱{{ budget.remaining|floatformat:2 }}</p>
                         <div class="d-flex justify-content-end">
                             <button class="btn btn-sm btn-link me-2" data-bs-toggle="modal" data-bs-target="#editBudgetModal"
                                     data-id="{{ budget.id }}"
@@ -165,21 +334,28 @@
                     </div>
                     
                     <div class="text-end mt-2">
-                        <small class="text-muted">${{ budget.spent|floatformat:2 }} / ${{ budget.amount|floatformat:2 }}</small>
+                        <small class="text-muted">₱{{ budget.spent|floatformat:2 }} / ₱{{ budget.amount|floatformat:2 }}</small>
                     </div>
                 </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state shadow-sm">
+                    <div class="empty-state-icon">
+                        <i class="bi bi-calendar-month"></i>
+                    </div>
+                    <h4>No Monthly Budgets</h4>
+                    <p class="empty-state-text">You haven't set up any monthly budgets yet. Create one to start tracking your spending!</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
+                        <i class="bi bi-plus-lg me-1"></i> Add Monthly Budget
+                    </button>
             </div>
             {% endif %}
-            {% endfor %}
         </div>
     </section>
-
-    <!-- Add Budget Button -->
-    <div class="position-fixed bottom-0 end-0 p-4">
-        <button class="btn btn-primary rounded-circle shadow" style="width: 56px; height: 56px;" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
-            <i class="bi bi-plus-lg"></i>
-        </button>
-    </div>
 </div>
 
 <!-- Add Budget Modal -->
@@ -194,52 +370,43 @@
                 <form id="addBudgetForm" method="POST">
                     {% csrf_token %}
                     
-                    <!-- Category Selector -->
+                    <!-- Account Selection -->
                     <div class="mb-3">
-                        <label class="form-label">Select Category</label>
-                        <div class="category-selector">
-                            <div class="category-search">
-                                <input type="text" class="form-control" id="category-search" placeholder="Search categories...">
-                            </div>
-                            <ul class="category-list" id="category-list">
-                                {% for category in categories %}
-                                <li class="category-item">
-                                    <div class="d-flex align-items-center">
-                                        <div class="category-icon">
-                                            <i class="bi {{ category.icon }}"></i>
-                                        </div>
-                                        <span class="category-name">
-                                            {{ category.name }}
-                                            {% if category.subcategories.exists %}
-                                            <i class="bi bi-chevron-right ms-2"></i>
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                    {% if category.subcategories.exists %}
-                                    <div class="subcategories-container">
-                                        <ul class="list-unstyled">
-                                            {% for subcategory in category.subcategories.all %}
-                                            <li class="subcategory-item" data-subcategory-id="{{ subcategory.id }}">
-                                                <div class="d-flex align-items-center">
-                                                    <div class="subcategory-icon">
-                                                        <i class="bi {{ subcategory.icon }}"></i>
-                                                    </div>
-                                                    <span>{{ subcategory.name }}</span>
-                                                </div>
-                                            </li>
-                                            {% endfor %}
-                                        </ul>
-                                    </div>
-                                    {% endif %}
-                                </li>
+                        <label for="budget-account" class="form-label">Account</label>
+                        <div class="input-group">
+                            <select class="form-select account-select w-100" id="budget-account" name="account" style="height: 46px;">
+                                <option value="" data-icon="bi-bank">Choose your account</option>
+                                {% for account in form.account.field.queryset %}
+                                <option value="{{ account.id }}" data-account-type="{{ account.get_account_type|default:'debit' }}" 
+                                        data-icon="{% if account.get_account_type == 'credit' %}bi-credit-card{% elif account.get_account_type == 'wallet' %}bi-wallet2{% else %}bi-piggy-bank{% endif %}">
+                                    {{ account.name }}
+                                </option>
                                 {% endfor %}
-                            </ul>
+                            </select>
                         </div>
+                            </div>
+                    
+                    <!-- Category Selection -->
+                    <div class="mb-3">
+                        <label for="budget-category" class="form-label">Category</label>
+                        <div class="input-group">
+                            <select class="form-select category-select w-100" id="budget-category" name="category" style="height: 46px;">
+                                <option value="" data-icon="bi-bookmark">Choose a category</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-is-category="true">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+<<<<<<< HEAD
                         <div class="d-none">{{ form.subcategory }}</div>
+=======
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
                     </div>
                     
+                    <!-- Hidden subcategory field -->
+                    <input type="hidden" id="budget-subcategory" name="subcategory" value="">
+                    
                     <!-- Other form fields -->
-                    {{ form.account|as_crispy_field }}
                     {{ form.amount|as_crispy_field }}
                     {{ form.start_date|as_crispy_field }}
                     {{ form.duration|as_crispy_field }}
@@ -264,52 +431,43 @@
                     {% csrf_token %}
                     <input type="hidden" id="budget_id" name="budget_id">
                     
-                    <!-- Category Selector -->
+                    <!-- Account Selection -->
                     <div class="mb-3">
-                        <label class="form-label">Select Category</label>
-                        <div class="category-selector">
-                            <div class="category-search">
-                                <input type="text" class="form-control" id="edit-category-search" placeholder="Search categories...">
-                            </div>
-                            <ul class="category-list" id="edit-category-list">
-                                {% for category in categories %}
-                                <li class="category-item">
-                                    <div class="d-flex align-items-center">
-                                        <div class="category-icon">
-                                            <i class="bi {{ category.icon }}"></i>
-                                        </div>
-                                        <span class="category-name">
-                                            {{ category.name }}
-                                            {% if category.subcategories.exists %}
-                                            <i class="bi bi-chevron-right ms-2"></i>
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                    {% if category.subcategories.exists %}
-                                    <div class="subcategories-container">
-                                        <ul class="list-unstyled">
-                                            {% for subcategory in category.subcategories.all %}
-                                            <li class="subcategory-item" data-subcategory-id="{{ subcategory.id }}">
-                                                <div class="d-flex align-items-center">
-                                                    <div class="subcategory-icon">
-                                                        <i class="bi {{ subcategory.icon }}"></i>
-                                                    </div>
-                                                    <span>{{ subcategory.name }}</span>
-                                                </div>
-                                            </li>
-                                            {% endfor %}
-                                        </ul>
-                                    </div>
-                                    {% endif %}
-                                </li>
+                        <label for="edit-budget-account" class="form-label">Account</label>
+                        <div class="input-group">
+                            <select class="form-select account-select w-100" id="edit-budget-account" name="account" style="height: 46px;">
+                                <option value="" data-icon="bi-bank">Choose your account</option>
+                                {% for account in form.account.field.queryset %}
+                                <option value="{{ account.id }}" data-account-type="{{ account.get_account_type|default:'debit' }}" 
+                                        data-icon="{% if account.get_account_type == 'credit' %}bi-credit-card{% elif account.get_account_type == 'wallet' %}bi-wallet2{% else %}bi-piggy-bank{% endif %}">
+                                    {{ account.name }}
+                                </option>
                                 {% endfor %}
-                            </ul>
+                            </select>
                         </div>
+                            </div>
+                    
+                    <!-- Category Selection -->
+                    <div class="mb-3">
+                        <label for="edit-budget-category" class="form-label">Category</label>
+                        <div class="input-group">
+                            <select class="form-select category-select w-100" id="edit-budget-category" name="category" style="height: 46px;">
+                                <option value="" data-icon="bi-bookmark">Choose a category</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-is-category="true">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+<<<<<<< HEAD
                         <div class="d-none">{{ form.subcategory }}</div>
+=======
+>>>>>>> 2e5b4391739ebf3847c89bff804f0889b5d99b27
                     </div>
                     
+                    <!-- Hidden subcategory field -->
+                    <input type="hidden" id="edit-budget-subcategory" name="subcategory" value="">
+                    
                     <!-- Other form fields -->
-                    {{ form.account|as_crispy_field }}
                     {{ form.amount|as_crispy_field }}
                     {{ form.start_date|as_crispy_field }}
                     {{ form.duration|as_crispy_field }}
@@ -343,9 +501,469 @@
         </div>
     </div>
 </div>
+
+<!-- Budget Notification Settings Modal -->
+<div class="modal fade" id="notificationSettingsModal" tabindex="-1" aria-labelledby="notificationSettingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notificationSettingsModalLabel">Budget Notification Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="notificationSettingsForm">
+                    <div class="mb-3">
+                        <label class="form-label">Warning Threshold</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="warningThreshold" min="1" max="99" value="80">
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <div class="form-text">You'll be warned when your spending reaches this percentage of your budget.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Critical Threshold</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="criticalThreshold" min="1" max="100" value="100">
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <div class="form-text">You'll receive a critical alert when your spending reaches this percentage.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                            <label class="form-check-label" for="emailNotifications">Email Notifications</label>
+                        </div>
+                        <div class="form-text">Receive email alerts when thresholds are reached.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="dashboardNotifications" checked>
+                            <label class="form-check-label" for="dashboardNotifications">Dashboard Notifications</label>
+                        </div>
+                        <div class="form-text">Show notifications on your dashboard.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveNotificationSettings">Save Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/budget_modal.js' %}"></script>
 <script src="{% static 'js/budget_category_selector.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle sections (collapsible)
+    const toggleWeeklyBtn = document.getElementById('toggleWeeklyBudgets');
+    const toggleMonthlyBtn = document.getElementById('toggleMonthlyBudgets');
+    const weeklyBudgetsSection = document.getElementById('weeklyBudgets');
+    const monthlyBudgetsSection = document.getElementById('monthlyBudgets');
+    
+    // Function to toggle section
+    function toggleSection(button, section) {
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            button.innerHTML = '<i class="bi bi-chevron-up"></i>';
+        } else {
+            section.style.display = 'none';
+            button.innerHTML = '<i class="bi bi-chevron-down"></i>';
+        }
+        
+        // Save preference in localStorage
+        localStorage.setItem(section.id + 'Collapsed', section.style.display === 'none');
+    }
+    
+    // Load saved preferences
+    if (localStorage.getItem('weeklyBudgetsCollapsed') === 'true') {
+        weeklyBudgetsSection.style.display = 'none';
+        toggleWeeklyBtn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+    }
+    
+    if (localStorage.getItem('monthlyBudgetsCollapsed') === 'true') {
+        monthlyBudgetsSection.style.display = 'none';
+        toggleMonthlyBtn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+    }
+    
+    // Add event listeners for toggle buttons
+    toggleWeeklyBtn.addEventListener('click', function() {
+        toggleSection(this, weeklyBudgetsSection);
+    });
+    
+    toggleMonthlyBtn.addEventListener('click', function() {
+        toggleSection(this, monthlyBudgetsSection);
+    });
+    
+    // Sorting functionality
+    function sortCards(container, sortBy) {
+        const cardsContainer = container.querySelector('.row');
+        if (!cardsContainer) return;
+        
+        const cards = Array.from(cardsContainer.querySelectorAll('.budget-card'));
+        
+        cards.sort((a, b) => {
+            let valueA, valueB;
+            
+            if (sortBy === 'category') {
+                valueA = a.dataset.category.toLowerCase();
+                valueB = b.dataset.category.toLowerCase();
+                return valueA.localeCompare(valueB);
+            } else if (sortBy === 'percentage') {
+                valueA = parseFloat(a.dataset.percentage);
+                valueB = parseFloat(b.dataset.percentage);
+                return valueB - valueA; // Descending
+            } else if (sortBy === 'amount') {
+                valueA = parseFloat(a.dataset.amount);
+                valueB = parseFloat(b.dataset.amount);
+                return valueB - valueA; // Descending
+            }
+            
+            return 0;
+        });
+        
+        // Clear container and append sorted cards
+        cards.forEach(card => {
+            cardsContainer.appendChild(card.parentElement);
+        });
+    }
+    
+    // Add event listeners for sort dropdown items
+    document.querySelectorAll('#weeklyBudgetSortDropdown + .dropdown-menu .dropdown-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const sortBy = this.dataset.sort;
+            sortCards(weeklyBudgetsSection, sortBy);
+        });
+    });
+    
+    document.querySelectorAll('#monthlyBudgetSortDropdown + .dropdown-menu .dropdown-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const sortBy = this.dataset.sort;
+            sortCards(monthlyBudgetsSection, sortBy);
+        });
+    });
+    
+    // Make cards draggable using SortableJS
+    const weeklyBudgetsRow = weeklyBudgetsSection.querySelector('.row');
+    if (weeklyBudgetsRow) {
+        new Sortable(weeklyBudgetsRow, {
+            animation: 150,
+            ghostClass: 'bg-light',
+            onEnd: function() {
+                // Save the new order to localStorage
+                const cardIds = Array.from(weeklyBudgetsRow.querySelectorAll('.budget-card')).map(card => card.dataset.id);
+                localStorage.setItem('weeklyBudgetsOrder', JSON.stringify(cardIds));
+            }
+        });
+    }
+    
+    const monthlyBudgetsRow = monthlyBudgetsSection.querySelector('.row');
+    if (monthlyBudgetsRow) {
+        new Sortable(monthlyBudgetsRow, {
+            animation: 150,
+            ghostClass: 'bg-light',
+            onEnd: function() {
+                // Save the new order to localStorage
+                const cardIds = Array.from(monthlyBudgetsRow.querySelectorAll('.budget-card')).map(card => card.dataset.id);
+                localStorage.setItem('monthlyBudgetsOrder', JSON.stringify(cardIds));
+            }
+        });
+    }
+    
+    // Budget warning indicators
+    document.querySelectorAll('.budget-card').forEach(card => {
+        const percentageUsed = parseFloat(card.dataset.percentage);
+        
+        // Add warning badge if over 80%
+        if (percentageUsed >= 80) {
+            const headerDiv = card.querySelector('.card-body > div:first-child');
+            const warningBadge = document.createElement('div');
+            warningBadge.className = 'budget-warning';
+            warningBadge.style.position = 'absolute';
+            warningBadge.style.top = '10px';
+            warningBadge.style.right = '10px';
+            
+            if (percentageUsed >= 100) {
+                warningBadge.innerHTML = '<span class="badge rounded-pill bg-danger" data-bs-toggle="tooltip" title="Budget exceeded"><i class="bi bi-exclamation-triangle-fill"></i></span>';
+            } else {
+                warningBadge.innerHTML = '<span class="badge rounded-pill bg-warning text-dark" data-bs-toggle="tooltip" title="Budget almost reached"><i class="bi bi-exclamation-triangle"></i></span>';
+            }
+            
+            card.style.position = 'relative';
+            card.appendChild(warningBadge);
+            
+            // Initialize tooltips
+            new bootstrap.Tooltip(warningBadge.querySelector('[data-bs-toggle="tooltip"]'));
+        }
+    });
+    
+    // Search functionality
+    const searchInput = document.getElementById('budgetSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            
+            document.querySelectorAll('.budget-card').forEach(card => {
+                const category = card.dataset.category.toLowerCase();
+                
+                if (category.includes(searchTerm)) {
+                    card.closest('.col').style.display = '';
+                } else {
+                    card.closest('.col').style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // Add event listener for saving notification settings
+    document.getElementById('saveNotificationSettings')?.addEventListener('click', function() {
+        const warningThreshold = document.getElementById('warningThreshold').value;
+        const criticalThreshold = document.getElementById('criticalThreshold').value;
+        const emailNotifications = document.getElementById('emailNotifications').checked;
+        const dashboardNotifications = document.getElementById('dashboardNotifications').checked;
+        
+        // Save to localStorage for now (would be saved to server in a full implementation)
+        localStorage.setItem('budgetWarningThreshold', warningThreshold);
+        localStorage.setItem('budgetCriticalThreshold', criticalThreshold);
+        localStorage.setItem('budgetEmailNotifications', emailNotifications);
+        localStorage.setItem('budgetDashboardNotifications', dashboardNotifications);
+        
+        // Close modal and show success message
+        const modal = bootstrap.Modal.getInstance(document.getElementById('notificationSettingsModal'));
+        modal.hide();
+        
+        // Show toast notification
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    Notification settings saved successfully!
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        document.body.appendChild(toastEl);
+        
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+        
+        // Remove toast after it's hidden
+        toastEl.addEventListener('hidden.bs.toast', function() {
+            toastEl.remove();
+        });
+    });
+    
+    // Load saved notification settings
+    const warningThreshold = localStorage.getItem('budgetWarningThreshold') || 80;
+    const criticalThreshold = localStorage.getItem('budgetCriticalThreshold') || 100;
+    const emailNotifications = localStorage.getItem('budgetEmailNotifications') === 'true';
+    const dashboardNotifications = localStorage.getItem('budgetDashboardNotifications') === 'true';
+    
+    if (document.getElementById('warningThreshold')) {
+        document.getElementById('warningThreshold').value = warningThreshold;
+        document.getElementById('criticalThreshold').value = criticalThreshold;
+        document.getElementById('emailNotifications').checked = emailNotifications;
+        document.getElementById('dashboardNotifications').checked = dashboardNotifications;
+    }
+    
+    // Functions to initialize select dropdowns with icons
+    function initializeSelects() {
+        // Initialize account selects
+        initializeAccountSelect('budget-account');
+        initializeAccountSelect('edit-budget-account');
+        
+        // Initialize category selects
+        initializeCategorySelect('budget-category', 'budget-subcategory');
+        initializeCategorySelect('edit-budget-category', 'edit-budget-subcategory');
+    }
+    
+    function initializeAccountSelect(selectId) {
+        const accountSelect = document.getElementById(selectId);
+        if (!accountSelect) return;
+        
+        // Listen for changes to update the icon
+        accountSelect.addEventListener('change', function() {
+            updateSelectIcon(this);
+        });
+        
+        // Initialize with icon
+        setTimeout(() => updateSelectIcon(accountSelect), 0);
+    }
+    
+    function initializeCategorySelect(selectId, subcategoryFieldId) {
+        const categorySelect = document.getElementById(selectId);
+        if (!categorySelect) return;
+        
+        // Listen for changes to update the icon and load subcategories
+        categorySelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const categoryId = this.value;
+            
+            // If it's a main category (not a subcategory option)
+            if (selectedOption && selectedOption.getAttribute('data-is-category') === 'true') {
+                loadSubcategories(categoryId, selectId, subcategoryFieldId);
+            } else if (selectedOption && selectedOption.getAttribute('data-subcategory-id')) {
+                // It's a subcategory option
+                document.getElementById(subcategoryFieldId).value = selectedOption.getAttribute('data-subcategory-id');
+            } else {
+                // Clear subcategory selection
+                document.getElementById(subcategoryFieldId).value = '';
+            }
+            
+            updateSelectIcon(this);
+        });
+        
+        // Initialize with icon
+        setTimeout(() => updateSelectIcon(categorySelect), 0);
+    }
+    
+    function updateSelectIcon(select) {
+        if (!select) return;
+        
+        const selectedOption = select.options[select.selectedIndex];
+        const iconClass = selectedOption ? selectedOption.getAttribute('data-icon') : null;
+        
+        // Get the parent input group
+        const inputGroup = select.closest('.input-group');
+        if (!inputGroup) return;
+        
+        // Clear current icon if exists
+        const existingIcon = inputGroup.querySelector('.position-absolute');
+        if (existingIcon) existingIcon.remove();
+        
+        // Reset select style
+        select.style.paddingLeft = '';
+        
+        if (iconClass) {
+            // Create icon element
+            const iconElement = document.createElement('i');
+            iconElement.className = `bi ${iconClass} position-absolute`;
+            iconElement.style.left = '15px';
+            iconElement.style.top = '50%';
+            iconElement.style.transform = 'translateY(-50%)';
+            iconElement.style.zIndex = '10';
+            iconElement.style.color = '#6c757d';
+            iconElement.style.fontSize = '1.1rem';
+            iconElement.style.width = '20px';
+            iconElement.style.textAlign = 'center';
+            
+            // Add padding to select for icon
+            select.style.paddingLeft = '40px';
+            
+            // Add icon before select
+            inputGroup.style.position = 'relative';
+            inputGroup.insertBefore(iconElement, select);
+        }
+    }
+    
+    function loadSubcategories(categoryId, selectId, subcategoryFieldId) {
+        if (!categoryId) return;
+        
+        const categorySelect = document.getElementById(selectId);
+        const subcategoryField = document.getElementById(subcategoryFieldId);
+        
+        // Clear subcategory selection
+        subcategoryField.value = '';
+        
+        // Get current selection
+        const currentValue = categorySelect.value;
+        
+        // Get all existing subcategory options
+        const existingSubcategories = Array.from(categorySelect.options).filter(opt => 
+            opt.getAttribute('data-parent-category') === categoryId);
+        
+        // Remove any existing subcategory options for this category
+        existingSubcategories.forEach(opt => opt.remove());
+        
+        // Fetch subcategories from API
+        fetch(`/finances/api/categories/${categoryId}/subcategories/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) return;
+                
+                // Find the parent category option
+                const categoryOption = Array.from(categorySelect.options).find(opt => opt.value === categoryId);
+                if (!categoryOption) return;
+                
+                // Get position to insert subcategories
+                const categoryIndex = Array.from(categorySelect.options).indexOf(categoryOption);
+                
+                // Add subcategory options after parent
+                data.forEach((subcategory, index) => {
+                    const option = document.createElement('option');
+                    option.value = `subcat-${subcategory.id}`;
+                    option.setAttribute('data-icon', subcategory.icon || 'bi-tag-fill');
+                    option.setAttribute('data-parent-category', categoryId);
+                    option.setAttribute('data-subcategory-id', subcategory.id);
+                    option.style.paddingLeft = '25px';
+                    option.textContent = `↳ ${subcategory.name}`;
+                    
+                    // Insert after parent category
+                    categorySelect.insertBefore(option, categorySelect.options[categoryIndex + index + 1]);
+                });
+                
+                // Restore selection
+                categorySelect.value = currentValue;
+                
+                // Update icon
+                updateSelectIcon(categorySelect);
+            })
+            .catch(error => console.error('Error loading subcategories:', error));
+    }
+    
+    // Handle Edit Budget Modal additional functionality
+    $('#editBudgetModal').on('show.bs.modal', function(event) {
+        const button = $(event.relatedTarget);
+        const budgetId = button.data('id');
+        const subcategoryId = button.data('subcategory');
+        const accountId = button.data('account');
+        
+        // Set category and subcategory
+        if (subcategoryId) {
+            // Get parent category for this subcategory
+            fetch(`/finances/api/subcategories/${subcategoryId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const categoryId = data.parent_category;
+                    const categorySelect = document.getElementById('edit-budget-category');
+                    categorySelect.value = categoryId;
+                    
+                    // Load subcategories then select the right one
+                    loadSubcategories(categoryId, 'edit-budget-category', 'edit-budget-subcategory');
+                    
+                    setTimeout(() => {
+                        // Find and select the subcategory option
+                        const options = Array.from(categorySelect.options);
+                        const subcatOption = options.find(opt => opt.getAttribute('data-subcategory-id') == subcategoryId);
+                        if (subcatOption) {
+                            categorySelect.value = subcatOption.value;
+                            document.getElementById('edit-budget-subcategory').value = subcategoryId;
+                        }
+                        updateSelectIcon(categorySelect);
+                    }, 300);
+                })
+                .catch(error => console.error('Error getting subcategory details:', error));
+        }
+        
+        // Set account
+        if (accountId) {
+            document.getElementById('edit-budget-account').value = accountId;
+            updateSelectIcon(document.getElementById('edit-budget-account'));
+        }
+    });
+});
+</script>
 {% endblock %}

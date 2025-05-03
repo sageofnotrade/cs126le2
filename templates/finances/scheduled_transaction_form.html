@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>{{ title }}</h2>
+    
+    <form method="post" action="{% if scheduled_transaction %}{% url 'edit_scheduled_transaction' scheduled_transaction.id %}{% else %}{% url 'create_scheduled_transaction' %}{% endif %}" class="mt-4">
+        {% csrf_token %}
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="{{ form.name.id_for_label }}" class="form-label">Name</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.name.errors }}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="col-md-6">
+                <label for="{{ form.transaction_type.id_for_label }}" class="form-label">Transaction Type</label>
+                {{ form.transaction_type }}
+                {% if form.transaction_type.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.transaction_type.errors }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                {{ form.category }}
+                {% if form.category.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.category.errors }}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="col-md-6">
+                <label for="{{ form.account.id_for_label }}" class="form-label">Account</label>
+                {{ form.account }}
+                {% if form.account.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.account.errors }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="{{ form.amount.id_for_label }}" class="form-label">Amount</label>
+                <div class="input-group">
+                    <span class="input-group-text">₱</span>
+                    {{ form.amount }}
+                </div>
+                {% if form.amount.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.amount.errors }}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="col-md-6">
+                <label for="{{ form.date_scheduled.id_for_label }}" class="form-label">Scheduled Date</label>
+                {{ form.date_scheduled }}
+                {% if form.date_scheduled.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.date_scheduled.errors }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="{{ form.repeat_type.id_for_label }}" class="form-label">Repeat Type</label>
+                {{ form.repeat_type }}
+                {% if form.repeat_type.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.repeat_type.errors }}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="col-md-6">
+                <label for="{{ form.repeats.id_for_label }}" class="form-label">Number of Transactions</label>
+                {{ form.repeats }}
+                {% if form.repeats.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.repeats.errors }}
+                    </div>
+                {% endif %}
+                <div class="form-text">Set to 0 for infinite repeats</div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="{{ form.note.id_for_label }}" class="form-label">Note</label>
+            {{ form.note }}
+            {% if form.note.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.note.errors }}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'scheduled_transactions' %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">{% if scheduled_transaction %}Update{% else %}Create{% endif %}</button>
+        </div>
+    </form>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set min date for scheduled date input
+    var dateInput = document.getElementById('id_date_scheduled');
+    if (dateInput) {
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        var minDate = yyyy + '-' + mm + '-' + dd;
+        dateInput.setAttribute('min', minDate);
+    }
+
+    // Repeat type and number of transactions logic
+    var repeatType = document.getElementById('id_repeat_type');
+    var repeats = document.getElementById('id_repeats');
+    var repeatsHelp = document.getElementById('repeats-help');
+
+    function updateRepeatsField() {
+        if (repeatType && repeats) {
+            if (repeatType.value === 'once') {
+                repeats.value = 1;
+                repeats.setAttribute('disabled', 'disabled');
+            } else {
+                repeats.removeAttribute('disabled');
+            }
+        }
+    }
+    if (repeatType && repeats) {
+        repeatType.addEventListener('change', updateRepeatsField);
+        updateRepeatsField();
+    }
+});
+</script>
+{% endblock %}
+{% endblock %} 

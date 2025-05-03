@@ -7,12 +7,13 @@ const CallToAction = () => {
         <h2 className="fade-in">Ready to take control?</h2>
         <p className="lead fade-in">Join thousands of users managing their finances effectively</p>
         <div className="cta-buttons d-flex flex-wrap justify-content-center gap-3">
-          <a
-            href="/signup/"
+          <button
+            type="button"
             className="btn btn-primary btn-lg px-4 me-md-2 animate-up"
+            onClick={() => window.openSignupModal && window.openSignupModal()}
           >
             <i className="bi bi-person-plus me-2"></i>Register Now
-          </a>
+          </button>
           <a
             href="/accounts/login/"
             className="btn btn-outline-light btn-lg px-4 animate-up-delay"

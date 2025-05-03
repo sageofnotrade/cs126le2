@@ -18,6 +18,7 @@ urlpatterns = [
     path('scheduled/create/', views.create_scheduled_transaction, name='create_scheduled_transaction'),
     path('scheduled/edit/<int:pk>/', views.edit_scheduled_transaction, name='edit_scheduled_transaction'),
     path('scheduled/delete/<int:pk>/', views.delete_scheduled_transaction, name='delete_scheduled_transaction'),
+    path('scheduled/resolve/<int:pk>/', views.resolve_scheduled_transaction, name='resolve_scheduled_transaction'),
     path('categories/', views.categories, name='categories'),
     path('api/categories/', views.api_categories, name='api_categories'),
     path('api/categories/add/', views.api_add_category, name='api_add_category'),
@@ -25,14 +26,15 @@ urlpatterns = [
     path('api/categories/<int:category_id>/update/', views.api_update_category, name='api_update_category'),
     path('api/categories/<int:category_id>/subcategories/', views.api_subcategories, name='api_subcategories'),
     path('api/categories/<int:category_id>/subcategories/add/', views.api_add_subcategory, name='api_add_subcategory'),
+    path('api/subcategories/<int:subcategory_id>/', views.api_subcategory_detail, name='api_subcategory_detail'),
     path('api/subcategories/<int:subcategory_id>/delete/', views.api_delete_subcategory, name='api_delete_subcategory'),
     path('api/subcategories/<int:subcategory_id>/update/', views.api_update_subcategory, name='api_update_subcategory'),
     path('api/categories/reorder/', views.api_reorder_categories, name='api_reorder_categories'),
     path('import-export/', views.import_export_data, name='import_export_data'),
     path('budget/', views.manage_budget, name='manage_budget'),
-    path('budget/add/', views.add_budget, name='add_budget'),
-    path('budget/update/', views.update_budget, name='update_budget'),
-    path('budget/delete/', views.delete_budget, name='delete_budget'),
+    path('budgets/add/', views.add_budget, name='add_budget'),
+    path('budgets/edit/', views.update_budget, name='update_budget'),
+    path('budgets/delete/', views.delete_budget, name='delete_budget'),
     path('api/get_budgets/', views.get_budgets, name='get_budgets'),
     # Charts URLs
     path('charts/', views.charts_view, name='charts'),
@@ -48,6 +50,14 @@ urlpatterns = [
     path('transactions/api/create/', views.create_transaction_api, name='create_transaction_api'),
     path('transactions/api/<int:transaction_id>/update/', views.update_transaction_api, name='update_transaction_api'),
     path('transactions/api/<int:transaction_id>/delete/', views.delete_transaction_api, name='delete_transaction_api'),
+    path('transactions/api/batch-delete/', views.batch_delete_transactions_api, name='batch_delete_transactions_api'),
     path('api/accounts/', views.api_accounts, name='api_accounts'),
     path('api/accounts/<int:account_id>/balance/', views.api_account_balance, name='api_account_balance'),
+    # Dashboard
+    path('', views.dashboard, name='dashboard'),
+    path('save-dashboard-preferences/', views.save_dashboard_preferences, name='save_dashboard_preferences'),
+    
+    # Authentication
+    path('signup/', views.signup, name='signup'),
+    path('test-scheduled/', views.test_scheduled_transactions, name='test_scheduled_transactions'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) 

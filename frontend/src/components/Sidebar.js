@@ -23,7 +23,7 @@ const Sidebar = () => {
           <li>
             <a href="/dashboard/" className="nav-item active">
               <i className="bi bi-speedometer2" aria-hidden="true"></i>
-              <span className="text">Overview</span>
+              <span className="text">Dashboard</span>
             </a>
           </li>
           <li>

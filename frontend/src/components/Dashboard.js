@@ -91,7 +91,7 @@ const Dashboard = () => {
         </section>
         
         <section className="budget-section" aria-labelledby="budget-overview-heading">
-          <h2 id="budget-overview-heading" className="section-title">Budget Overview</h2>
+          <h2 id="budget-overview-heading" className="section-title">Budget Dashboard</h2>
           <div className="budget-chart">
             <div className="chart-placeholder">
               <div className="pie-chart" aria-hidden="true"></div>

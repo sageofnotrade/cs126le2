@@ -47,7 +47,7 @@ class DebtAdmin(admin.ModelAdmin):
     search_fields = ('person', 'notes')
 
 class ScheduledTransactionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'amount', 'account', 'date_scheduled', 'repeat_type', 'repeats', 'note', 'transaction_type', 'user')
+    list_display = ('name', 'category', 'amount', 'account', 'date_scheduled', 'repeat_type', 'repeats', 'note', 'transaction_type', 'status', 'user')
     list_filter = ('category', 'user', 'transaction_type', 'repeat_type')
     search_fields = ('name', 'note')
 

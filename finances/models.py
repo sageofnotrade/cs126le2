@@ -1,9 +1,14 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
+from django.conf import settings
+from django.urls import reverse
+import uuid
+from decimal import Decimal
+import json
 
 class Debt(models.Model):
     DEBT_TYPES = (
@@ -132,69 +137,193 @@ class ScheduledTransaction(models.Model):
 
     REPEAT_TYPES = (
         ('once', 'One-time'),
-        ('daily', 'Repeats Daily'),
-        ('weekly', 'Repeats Weekly'),
-        ('monthly', 'Repeats Monthly'),
-        ('yearly', 'Repeats Yearly'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('yearly', 'Yearly'),
+    )
+
+    STATUS_CHOICES = (
+        ('scheduled', 'Scheduled'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True)
-    date_scheduled = models.DateField(default=timezone.now)
-    repeat_type = models.CharField(max_length=7, choices=REPEAT_TYPES, default='once')
-    repeats = models.PositiveIntegerField(default=0)
-    note = models.TextField(blank=True, null=True)
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, null=True, blank=True)
     transaction_type = models.CharField(max_length=7, choices=TRANSACTION_TYPES)
-    last_occurrence = models.DateField(null=True, blank=True)  # Track the last occurrence
-    occurrences_remaining = models.PositiveIntegerField(null=True, blank=True)  # Track remaining occurrences
+    account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    date_scheduled = models.DateTimeField()
+    repeat_type = models.CharField(max_length=7, choices=REPEAT_TYPES)
+    repeats = models.PositiveIntegerField(default=1)
+    note = models.CharField(max_length=20, blank=True, null=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='scheduled')
+    last_occurrence = models.DateTimeField(null=True, blank=True)
+    next_occurrence = models.DateTimeField(null=True, blank=True)
+    is_recurring = models.BooleanField(default=False)
+    parent_transaction = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='child_transactions')
+    occurrence_number = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return f"{self.name} - {self.amount} ({self.transaction_type})"
 
-    def save(self, *args, **kwargs):
-        if not self.pk:  # New instance
-            if self.repeat_type == 'once':
-                self.occurrences_remaining = 1
-            else:
-                self.occurrences_remaining = self.repeats if self.repeats > 0 else None
-        super().save(*args, **kwargs)
-
-    def get_next_occurrence(self):
-        """Calculate the next occurrence date based on repeat_type"""
-        if self.repeat_type == 'once':
-            return self.date_scheduled
-        elif self.repeat_type == 'daily':
-            return self.date_scheduled + timezone.timedelta(days=1)
-        elif self.repeat_type == 'weekly':
-            return self.date_scheduled + timezone.timedelta(weeks=1)
-        elif self.repeat_type == 'monthly':
-            return self.date_scheduled + timezone.timedelta(days=30)  # Approximate
-        elif self.repeat_type == 'yearly':
-            return self.date_scheduled + timezone.timedelta(days=365)  # Approximate
-        return None
-
-    def get_occurrences_for_month(self, year, month):
-        """Get all occurrences of this transaction for a specific month"""
-        occurrences = []
-        current_date = self.date_scheduled
-        remaining = self.occurrences_remaining if self.occurrences_remaining is not None else float('inf')
+    def clean(self):
+        super().clean()
+        if self.date_scheduled is not None and self.date_scheduled < timezone.now():
+            raise ValidationError("Scheduled date cannot be in the past.")
         
-        while (current_date.year < year or 
-               (current_date.year == year and current_date.month <= month)) and remaining > 0:
-            if current_date.year == year and current_date.month == month:
-                occurrences.append(current_date)
-            current_date = self.get_next_occurrence()
-            remaining -= 1
-            
-        return occurrences
+        if self.repeat_type == 'once' and self.repeats != 1:
+            raise ValidationError("One-time transactions must have exactly 1 repeat.")
+        
+        # Calculate next occurrence
+        self.calculate_next_occurrence()
 
-    def get_monthly_amount(self, year, month):
-        """Calculate the total amount for a specific month"""
-        occurrences = self.get_occurrences_for_month(year, month)
-        return self.amount * len(occurrences)
+    def calculate_next_occurrence(self):
+        print(f"\n=== Calculating next occurrence for transaction: {self.name} ===")
+        print(f"Current state - Last occurrence: {self.last_occurrence}, Repeat type: {self.repeat_type}, Repeats: {self.repeats}")
+        
+        if self.status == 'completed':
+            print("Transaction is completed, no next occurrence")
+            self.next_occurrence = None
+            return
+
+        # If no last_occurrence, use date_scheduled as the last occurrence
+        if not self.last_occurrence:
+            print("No last occurrence, using scheduled date as last occurrence")
+            self.last_occurrence = self.date_scheduled
+
+        if self.repeats == 0 or self.is_recurring:  # Infinite repeats
+            print("Infinite repeats or recurring transaction")
+            if self.repeat_type == 'daily':
+                print("Daily repeat - adding 1 day")
+                self.next_occurrence = self.last_occurrence + timedelta(days=1)
+            elif self.repeat_type == 'weekly':
+                print("Weekly repeat - adding 1 week")
+                self.next_occurrence = self.last_occurrence + timedelta(weeks=1)
+            elif self.repeat_type == 'monthly':
+                print("\nMonthly repeat calculation:")
+                print(f"Current date: {self.last_occurrence}")
+                print(f"Current day: {self.last_occurrence.day}")
+                
+                next_month = self.last_occurrence.month + 1
+                next_year = self.last_occurrence.year
+                if next_month > 12:
+                    next_month = 1
+                    next_year += 1
+                print(f"Next month/year: {next_month}/{next_year}")
+                
+                # Get the last day of the next month
+                if next_month == 12:
+                    last_day_next_month = (datetime(next_year + 1, 1, 1) - timedelta(days=1)).day
+                else:
+                    last_day_next_month = (datetime(next_year, next_month + 1, 1) - timedelta(days=1)).day
+                print(f"Last day of next month: {last_day_next_month}")
+                
+                # Use the same day of month, but not exceeding the last day of the next month
+                day = min(self.last_occurrence.day, last_day_next_month)
+                print(f"Selected day: {day}")
+                
+                self.next_occurrence = self.last_occurrence.replace(month=next_month, year=next_year, day=day)
+                print(f"Calculated next occurrence: {self.next_occurrence}")
+            elif self.repeat_type == 'yearly':
+                print("\nYearly repeat calculation:")
+                print(f"Current date: {self.last_occurrence}")
+                print(f"Current day: {self.last_occurrence.day}")
+                
+                next_year = self.last_occurrence.year + 1
+                print(f"Next year: {next_year}")
+                
+                # Get the last day of the month in the next year
+                if self.last_occurrence.month == 12:
+                    last_day_next_month = (datetime(next_year + 1, 1, 1) - timedelta(days=1)).day
+                else:
+                    last_day_next_month = (datetime(next_year, self.last_occurrence.month + 1, 1) - timedelta(days=1)).day
+                print(f"Last day of month in next year: {last_day_next_month}")
+                
+                # Use the same day of month, but not exceeding the last day of the month
+                day = min(self.last_occurrence.day, last_day_next_month)
+                print(f"Selected day: {day}")
+                
+                self.next_occurrence = self.last_occurrence.replace(year=next_year, day=day)
+                print(f"Calculated next occurrence: {self.next_occurrence}")
+        else:
+            print(f"Finite repeats - occurrence number: {self.occurrence_number}, total repeats: {self.repeats}")
+            # For finite repeats, check if we've reached the limit
+            if self.occurrence_number >= self.repeats:
+                print("Reached repeat limit, no next occurrence")
+                self.next_occurrence = None
+            else:
+                print("Still have repeats remaining")
+                # Calculate next occurrence based on repeat type
+                if self.repeat_type == 'daily':
+                    self.next_occurrence = self.last_occurrence + timedelta(days=1)
+                elif self.repeat_type == 'weekly':
+                    self.next_occurrence = self.last_occurrence + timedelta(weeks=1)
+                elif self.repeat_type == 'monthly':
+                    next_month = self.last_occurrence.month + 1
+                    next_year = self.last_occurrence.year
+                    if next_month > 12:
+                        next_month = 1
+                        next_year += 1
+                    last_day_next_month = (datetime(next_year, next_month + 1, 1) - timedelta(days=1)).day
+                    day = min(self.last_occurrence.day, last_day_next_month)
+                    self.next_occurrence = self.last_occurrence.replace(month=next_month, year=next_year, day=day)
+                elif self.repeat_type == 'yearly':
+                    next_year = self.last_occurrence.year + 1
+                    last_day_next_month = (datetime(next_year, self.last_occurrence.month + 1, 1) - timedelta(days=1)).day
+                    day = min(self.last_occurrence.day, last_day_next_month)
+                    self.next_occurrence = self.last_occurrence.replace(year=next_year, day=day)
+        
+        print(f"Final next occurrence: {self.next_occurrence}\n")
+
+    def mark_as_processed(self):
+        """Mark this transaction as processed and update last_occurrence"""
+        if self.next_occurrence:
+            self.last_occurrence = self.next_occurrence
+            self.occurrence_number += 1
+            self.calculate_next_occurrence()
+            self.save()
+
+    def generate_next_occurrence(self):
+        """Generate the next occurrence of this transaction"""
+        if not self.next_occurrence or self.status == 'completed':
+            return None
+
+        next_transaction = ScheduledTransaction(
+            user=self.user,
+            name=self.name,
+            category=self.category,
+            subcategory=self.subcategory,
+            transaction_type=self.transaction_type,
+            account=self.account,
+            amount=self.amount,
+            date_scheduled=self.next_occurrence,
+            repeat_type=self.repeat_type,
+            repeats=self.repeats,
+            note=self.note,
+            status='scheduled',
+            is_recurring=self.repeats == 0,  # True if infinite repeats
+            parent_transaction=self.parent_transaction or self,
+            occurrence_number=self.occurrence_number + 1
+        )
+        
+        next_transaction.save()
+        return next_transaction
+
+    def save(self, *args, **kwargs):
+        # If we're only updating the status, skip validation
+        if kwargs.get('update_fields') == ['status']:
+            super().save(*args, **kwargs)
+        else:
+            # For all other saves, run full validation
+            self.full_clean()
+            super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['date_scheduled']
 
 class Budget(models.Model):
     DURATION_CHOICES = [
@@ -202,7 +331,8 @@ class Budget(models.Model):
         ('1 month', '1 Month')
     ]
 
-    subcategory = models.ForeignKey(SubCategory, on_delete=models.CASCADE, db_index=True)
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.CASCADE, db_index=True, null=True, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, db_index=True, null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
     account = models.ForeignKey(Account, on_delete=models.CASCADE, db_index=True)
@@ -211,7 +341,51 @@ class Budget(models.Model):
     end_date = models.DateField(db_index=True)
 
     def __str__(self):
-        return f"{self.subcategory.name} - {self.amount} ({self.duration})"
+        if self.subcategory:
+            return f"{self.subcategory.name} - {self.amount} ({self.duration})"
+        elif self.category:
+            return f"{self.category.name} - {self.amount} ({self.duration})"
+        return f"Budget - {self.amount} ({self.duration})"
+
+    def get_spent_amount(self):
+        """Calculate the amount spent in this budget's subcategory for the current period"""
+        from django.db.models import Sum
+        
+        # If this budget is for a subcategory
+        if self.subcategory:
+            spent = Transaction.objects.filter(
+                user=self.user,
+                type='expense',
+                subcategory=self.subcategory,
+                date__gte=self.start_date,
+                date__lte=self.end_date,
+                transaction_account=self.account
+            ).aggregate(Sum('amount'))['amount__sum'] or 0
+            return spent
+        
+        # If this budget is for a main category (without subcategory)
+        elif self.category:
+            spent = Transaction.objects.filter(
+                user=self.user,
+                type='expense',
+                category=self.category,
+                date__gte=self.start_date,
+                date__lte=self.end_date,
+                transaction_account=self.account
+            ).aggregate(Sum('amount'))['amount__sum'] or 0
+            return spent
+            
+        return 0
+        
+    def get_remaining_amount(self):
+        """Calculate the remaining budget"""
+        return self.amount - self.get_spent_amount()
+        
+    def get_percentage_spent(self):
+        """Calculate the percentage of budget used"""
+        if self.amount > 0:
+            return round((self.get_spent_amount() / self.amount) * 100)
+        return 0
 
     @classmethod
     def get_default_start_date(cls):
@@ -331,8 +505,37 @@ class Budget(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
-        unique_together = ('subcategory', 'user', 'start_date', 'account')
+        unique_together = ('category', 'subcategory', 'user', 'start_date', 'account')
         indexes = [
             models.Index(fields=['start_date', 'end_date']),
             models.Index(fields=['user', 'subcategory']),
+            models.Index(fields=['user', 'category']),
         ]  
+
+class DashboardPreference(models.Model):
+    """Store user preferences for the customizable dashboard."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dashboard_preference')
+    columns = models.IntegerField(default=2)
+    visible_elements = models.TextField(default='["accounts", "budgets", "chart-balance", "chart-last-7-days"]')
+    hidden_elements = models.TextField(default='["credit-cards", "debts-credits", "transactions", "scheduled-transactions", "balance-currency", "cash-flow"]')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def get_visible_elements(self):
+        """Return the visible elements as a list."""
+        return json.loads(self.visible_elements)
+    
+    def set_visible_elements(self, elements_list):
+        """Set the visible elements from a list."""
+        self.visible_elements = json.dumps(elements_list)
+    
+    def get_hidden_elements(self):
+        """Return the hidden elements as a list."""
+        return json.loads(self.hidden_elements)
+    
+    def set_hidden_elements(self, elements_list):
+        """Set the hidden elements from a list."""
+        self.hidden_elements = json.dumps(elements_list)
+
+    def __str__(self):
+        return f"{self.user.username}'s Dashboard Preferences"  

@@ -6,21 +6,23 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 import calendar
 import csv
 import json
-from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory, Debt, ScheduledTransaction
-from .forms import TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, SubCategoryForm, DebtForm, ScheduledTransactionForm, ExportForm, ImportForm
+import logging
+from .models import Transaction, Category, Budget, Account, DebitAccount, CreditAccount, Wallet, SubCategory, Debt, ScheduledTransaction, DashboardPreference
+from .forms import ExportForm, ImportForm, TransactionForm, CategoryForm, BudgetForm, DateRangeForm, DebitAccountForm, CreditAccountForm, WalletForm, SubCategoryForm, DebtForm, ScheduledTransactionForm
 from django import forms
 from django.contrib.auth.models import User
-import logging
 from django.db import models
 from decimal import Decimal
 import openpyxl
+import decimal
+from .utils import get_transactions_with_scheduled, generate_scheduled_transactions
 
 def home(request):
-    return render(request, 'finances/home.html')
+    return render(request, 'index.html')
 
 def login_view(request):
     if request.method == 'POST':
@@ -93,152 +95,229 @@ def signup(request):
                 )
             
             login(request, user)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             messages.success(request, f'Account created successfully! Welcome to Budget Tracker.')
             return redirect('dashboard')
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errors = form.errors.as_ul()
+                return JsonResponse({'success': False, 'errors': errors})
+            # If not AJAX, render home with modal open and errors
+            return render(request, 'index.html', {'open_signup_modal': True, 'form_errors': form.errors.as_ul(), 'form_type': 'register'})
     else:
         form = CustomUserCreationForm()
-    return render(request, 'registration/signup.html', {'form': form})
+        # If not AJAX, render home with modal open and empty form
+        return render(request, 'index.html', {'open_signup_modal': True, 'form_type': 'register'})
 
 @login_required
 def scheduled_transactions(request):
-    search_query = request.GET.get('search', '')
-    month_str = request.GET.get('month', '')
+    # Get the selected month from the request, default to current month
+    selected_month_str = request.GET.get('month', timezone.now().strftime('%Y-%m'))
+    selected_month = timezone.make_aware(datetime.strptime(selected_month_str, '%Y-%m'))
     
-    # Parse selected month or use current month
-    if month_str:
-        try:
-            selected_month = datetime.strptime(month_str, '%Y-%m')
-        except ValueError:
-            selected_month = timezone.now()
-    else:
-        selected_month = timezone.now()
-    
-    # Get the first and last day of the selected month
-    first_day = selected_month.replace(day=1)
+    # Calculate first and last day of the selected month
+    first_day = selected_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     if selected_month.month == 12:
-        last_day = selected_month.replace(year=selected_month.year + 1, month=1, day=1) - timezone.timedelta(days=1)
+        last_day = selected_month.replace(year=selected_month.year + 1, month=1, day=1) - timedelta(days=1)
     else:
-        last_day = selected_month.replace(month=selected_month.month + 1, day=1) - timezone.timedelta(days=1)
+        last_day = selected_month.replace(month=selected_month.month + 1, day=1) - timedelta(days=1)
+    last_day = last_day.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    # Get search query
+    search_query = request.GET.get('search', '')
+
+    # Get only scheduled transactions for the month (all statuses)
+    monthly_transactions = generate_scheduled_transactions(request.user, first_day, last_day)
+    # Sort by date, then by status (scheduled first, then failed, then completed)
+    def status_order(status):
+        if status == 'scheduled':
+            return 0
+        elif status == 'failed':
+            return 1
+        elif status == 'completed':
+            return 2
+        return 3
+    monthly_transactions.sort(key=lambda t: (t['date'], status_order(t['status'])))
     
-    # Get scheduled transactions
-    scheduled_transactions = ScheduledTransaction.objects.filter(user=request.user)
+    # Apply search filter if provided
     if search_query:
-        scheduled_transactions = scheduled_transactions.filter(
-            Q(name__icontains=search_query) | Q(note__icontains=search_query)
-        )
-
-    # Get actual transactions for the selected month
-    actual_transactions = Transaction.objects.filter(
-        user=request.user,
-        date__range=[first_day, last_day]
-    )
-
-    # Calculate expected amounts for the selected month
-    expected_income = 0
-    expected_expense = 0
-    monthly_transactions = []
-
-    # Add actual transactions
-    for transaction in actual_transactions:
-        if transaction.type == 'income':
-            expected_income += transaction.amount
+        monthly_transactions = [
+            t for t in monthly_transactions 
+            if search_query.lower() in t['name'].lower() or 
+               (t.get('note') and search_query.lower() in t['note'].lower())
+        ]
+    
+    # Calculate totals
+    expected_income = Decimal('0')
+    expected_expense = Decimal('0')
+    
+    for transaction in monthly_transactions:
+        if transaction['status'] == 'failed':
+            continue  # Skip failed entries in summary
+        if transaction['type'] == 'income':
+            expected_income += Decimal(str(transaction['amount']))
         else:
-            expected_expense += transaction.amount
-        
-        monthly_transactions.append({
-            'date': transaction.date,
-            'name': transaction.title,
-            'type': transaction.type,
-            'amount': transaction.amount,
-            'is_scheduled': False
-        })
-
-    # Add scheduled transactions
-    for scheduled in scheduled_transactions:
-        # Get all occurrences for the selected month
-        occurrences = scheduled.get_occurrences_for_month(selected_month.year, selected_month.month)
-        
-        for occurrence_date in occurrences:
-            if scheduled.transaction_type == 'income':
-                expected_income += scheduled.amount
-            else:
-                expected_expense += scheduled.amount
-            
-            monthly_transactions.append({
-                'date': occurrence_date,
-                'name': scheduled.name,
-                'type': scheduled.transaction_type,
-                'amount': scheduled.amount,
-                'is_scheduled': True
-            })
-
-    # Sort transactions by date
-    monthly_transactions.sort(key=lambda x: x['date'])
-
-    # Calculate net
+            expected_expense += Decimal(str(transaction['amount']))
+    
+    # Calculate net sum
     net_sum = expected_income - expected_expense
+    
+    # Get categories and accounts for the modal form
+    categories = Category.objects.filter(user=request.user)
+    accounts = Account.objects.filter(user=request.user)
 
     context = {
-        'scheduled_transactions': scheduled_transactions,
+        'selected_month': selected_month,
+        'search_query': search_query,
         'monthly_transactions': monthly_transactions,
         'income_sum': expected_income,
         'expense_sum': expected_expense,
         'net_sum': net_sum,
-        'search_query': search_query,
-        'selected_month': selected_month,
+        'categories': categories,
+        'accounts': accounts
     }
-
+    
     return render(request, 'finances/scheduled_transactions.html', context)
 
 @login_required
 def create_scheduled_transaction(request):
     if request.method == 'POST':
-        form = ScheduledTransactionForm(request.POST)
-
+        # Check if the request is missing the 'repeats' field but has 'repeat_type'
+        post_data = request.POST.copy()
+        if 'repeat_type' in post_data and post_data.get('repeat_type') == 'once' and 'repeats' not in post_data:
+            post_data['repeats'] = '1'
+            
+        form = ScheduledTransactionForm(post_data, user=request.user)
         if form.is_valid():
-            new_transaction = form.save(commit=False)
-            new_transaction.user = request.user
-            new_transaction.save()
-
-            messages.success(request, 'Scheduled transaction created successfully!')
+            scheduled_transaction = form.save(commit=False)
+            scheduled_transaction.user = request.user
+            scheduled_transaction.is_recurring = scheduled_transaction.repeats == 0
+            try:
+                scheduled_transaction.save()
+            except Exception as e:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'errors': {'__all__': [str(e)]}
+                    }, status=400)
+                messages.error(request, f'Error saving scheduled transaction: {e}')
+                return render(request, 'finances/scheduled_transaction_form.html', {
+                    'form': form,
+                    'title': 'Create Scheduled Transaction'
+                })
+            # Check if it's an AJAX request
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Scheduled transaction created successfully.',
+                    'id': scheduled_transaction.id
+                })
+            messages.success(request, 'Scheduled transaction created successfully.')
             return redirect('scheduled_transactions')
         else:
-            messages.error(request, 'There was an error with your input.')
-
+            # For AJAX requests, return errors as JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = [str(error) for error in error_list]
+                # Also include non-field errors
+                if form.non_field_errors():
+                    errors['__all__'] = [str(e) for e in form.non_field_errors()]
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors
+                }, status=400)
+            return render(request, 'finances/scheduled_transaction_form.html', {
+                'form': form,
+                'title': 'Create Scheduled Transaction'
+            })
     else:
-        form = ScheduledTransactionForm()
-
-    return render(request, 'finances/create_scheduled_transaction.html', {'form': form})
+        # For AJAX requests asking for the form, return needed data
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'categories': [{'id': c.id, 'name': c.name, 'type': c.type} for c in Category.objects.filter(user=request.user)],
+                'accounts': [{'id': a.id, 'name': a.name, 'type': getattr(a, 'get_account_type', lambda: 'unknown')()} 
+                             for a in Account.objects.filter(user=request.user)]
+            })
+        
+        form = ScheduledTransactionForm(user=request.user)
+    return render(request, 'finances/scheduled_transaction_form.html', {
+        'form': form,
+        'title': 'Create Scheduled Transaction'
+    })
 
 @login_required
 def edit_scheduled_transaction(request, pk):
     scheduled_transaction = get_object_or_404(ScheduledTransaction, pk=pk, user=request.user)
 
     if request.method == 'POST':
-        form = ScheduledTransactionForm(request.POST, instance=scheduled_transaction)
-
+        form = ScheduledTransactionForm(request.POST, instance=scheduled_transaction, user=request.user)
         if form.is_valid():
-            form.save()
+            updated_transaction = form.save(commit=False)
+            updated_transaction.is_recurring = updated_transaction.repeats == 0
+            updated_transaction.save()
+            
+            # Check if it's an AJAX request
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Scheduled transaction updated successfully.',
+                    'id': updated_transaction.id
+                })
+            
             messages.success(request, 'Scheduled transaction updated successfully!')
             return redirect('scheduled_transactions')
         else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = [str(error) for error in error_list]
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors
+                })
             messages.error(request, 'There was an error with your input.')
-
     else:
-        form = ScheduledTransactionForm(instance=scheduled_transaction)
-
-    return render(request, 'finances/create_scheduled_transaction.html', {'form': form})
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'id': scheduled_transaction.id,
+                'name': scheduled_transaction.name,
+                'amount': float(scheduled_transaction.amount),
+                'transaction_type': scheduled_transaction.transaction_type,
+                'date_scheduled': scheduled_transaction.date_scheduled.isoformat(),
+                'repeat_type': scheduled_transaction.repeat_type,
+                'repeats': scheduled_transaction.repeats,
+                'note': scheduled_transaction.note or '',
+                'category': scheduled_transaction.category_id if scheduled_transaction.category else None,
+                'subcategory': scheduled_transaction.subcategory_id if hasattr(scheduled_transaction, 'subcategory') and scheduled_transaction.subcategory else None,
+                'account': scheduled_transaction.account_id if scheduled_transaction.account else None
+            })
+        form = ScheduledTransactionForm(instance=scheduled_transaction, user=request.user)
+    return render(request, 'finances/scheduled_transaction_form.html', {
+        'form': form,
+        'title': 'Edit Scheduled Transaction'
+    })
 
 @login_required
 def delete_scheduled_transaction(request, pk):
     scheduled_transaction = get_object_or_404(ScheduledTransaction, pk=pk, user=request.user)
 
+    related_count = ScheduledTransaction.objects.filter(parent_transaction=scheduled_transaction).count()
     if request.method == 'POST':
+        if scheduled_transaction.parent_transaction is None:
+            ScheduledTransaction.objects.filter(parent_transaction=scheduled_transaction).delete()
         scheduled_transaction.delete()
-        messages.success(request, 'Scheduled transaction deleted successfully!')
+        messages.success(request, 'Scheduled transaction deleted successfully.')
         return redirect('scheduled_transactions')
 
-    return render(request, 'finances/confirm_delete_scheduled_transaction.html', {'scheduled_transaction': scheduled_transaction})
+    return render(request, 'finances/confirm_delete_scheduled_modal.html', {
+        'object': scheduled_transaction,
+        'related_count': related_count,
+        'title': 'Delete Scheduled Transaction'
+    })
 
 @login_required
 def debts_list(request):
@@ -510,84 +589,338 @@ def delete_account(request, account_id):
     account.delete()
     return redirect('accounts_list')
 
+def process_scheduled_transactions(user):
+    now = timezone.now()
+    
+    due_transactions = ScheduledTransaction.objects.filter(
+        user=user,
+        date_scheduled__lte=now,
+        status='scheduled'
+    )
+    
+    for scheduled in due_transactions:
+        try:
+            # Validate account balance before processing
+            account = scheduled.account
+            amount_decimal = Decimal(str(scheduled.amount))
+            
+            if hasattr(account, 'debitaccount'):
+                debit = account.debitaccount
+                if scheduled.transaction_type == 'expense' and debit.balance - amount_decimal < (debit.maintaining_balance or 0):
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    continue
+            elif hasattr(account, 'creditaccount'):
+                credit = account.creditaccount
+                if scheduled.transaction_type == 'expense' and credit.current_usage + amount_decimal > credit.credit_limit:
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    continue
+            elif hasattr(account, 'wallet'):
+                wallet = account.wallet
+                if scheduled.transaction_type == 'expense' and wallet.balance < amount_decimal:
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    continue
+            
+            # Create the transaction
+            transaction = Transaction.objects.create(
+                user=user,
+                title=scheduled.name,
+                amount=scheduled.amount,
+                date=scheduled.date_scheduled.date(),
+                time=scheduled.date_scheduled.time(),
+                type=scheduled.transaction_type,
+                category=scheduled.category,
+                subcategory=scheduled.subcategory,
+                transaction_account=scheduled.account,
+                notes=f"Scheduled transaction: {scheduled.name} (ID: {scheduled.id})"
+            )
+            
+            # Update account balance/usage
+            if hasattr(account, 'debitaccount'):
+                debit = account.debitaccount
+                if scheduled.transaction_type == 'expense':
+                    debit.balance -= amount_decimal
+                else:  # income
+                    debit.balance += amount_decimal
+                debit.save()
+            elif hasattr(account, 'creditaccount'):
+                credit = account.creditaccount
+                if scheduled.transaction_type == 'expense':
+                    credit.current_usage += amount_decimal
+                else:  # income (rare)
+                    credit.current_usage -= amount_decimal
+                    if credit.current_usage < 0:
+                        credit.current_usage = 0
+                credit.save()
+            elif hasattr(account, 'wallet'):
+                wallet = account.wallet
+                if scheduled.transaction_type == 'expense':
+                    wallet.balance -= amount_decimal
+                else:  # income
+                    wallet.balance += amount_decimal
+                wallet.save()
+            
+            # Update the scheduled transaction status to completed
+            scheduled.status = 'completed'
+            scheduled.save(update_fields=['status'])
+            
+            # If this is a recurring transaction, create the next occurrence
+            if scheduled.repeats != 1:
+                if scheduled.repeats == 0:
+                    next_repeats = 0
+                elif scheduled.repeats > 1:
+                    next_repeats = scheduled.repeats - 1
+                else:
+                    next_repeats = None
+                if next_repeats is not None:
+                    next_date = scheduled.date_scheduled
+                    if scheduled.repeat_type == 'daily':
+                        next_date += timedelta(days=1)
+                    elif scheduled.repeat_type == 'weekly':
+                        next_date += timedelta(weeks=1)
+                    elif scheduled.repeat_type == 'monthly':
+                        if next_date.month == 12:
+                            next_date = next_date.replace(year=next_date.year + 1, month=1)
+                        else:
+                            next_date = next_date.replace(month=next_date.month + 1)
+                    elif scheduled.repeat_type == 'yearly':
+                        next_date = next_date.replace(year=next_date.year + 1)
+                    ScheduledTransaction.objects.create(
+                        user=user,
+                        name=scheduled.name,
+                        category=scheduled.category,
+                        subcategory=scheduled.subcategory,
+                        transaction_type=scheduled.transaction_type,
+                        account=scheduled.account,
+                        amount=scheduled.amount,
+                        date_scheduled=next_date,
+                        repeat_type=scheduled.repeat_type,
+                        repeats=next_repeats,
+                        note=scheduled.note,
+                        status='scheduled'
+                    )
+        except Exception as e:
+            # If transaction creation fails, mark as failed using direct SQL update
+            ScheduledTransaction.objects.filter(id=scheduled.id).update(status='failed')
+            # Log the error
+            logging.error(f"Failed to process scheduled transaction {scheduled.id}: {str(e)}")
+
 @login_required
 def dashboard(request):
-    today = timezone.now().date()
-    first_day = today.replace(day=1)
-    last_day = today.replace(day=calendar.monthrange(today.year, today.month)[1])
-    
-    income = Transaction.objects.filter(
+    # Get user's active budgets
+    budgets = Budget.objects.filter(
         user=request.user,
-        type='income',
-        date__gte=first_day,
-        date__lte=last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
+        end_date__gte=timezone.now().date()
+    ).select_related('category', 'subcategory').order_by('end_date')
+
+    # Separate weekly and monthly budgets
+    weekly_budgets = []
+    monthly_budgets = []
+    for budget in budgets:
+        budget.spent = budget.get_spent_amount()
+        budget.percentage_used = (budget.spent / budget.amount * 100) if budget.amount > 0 else 0
+        if budget.duration == '1 week':
+            weekly_budgets.append(budget)
+        elif budget.duration == '1 month':
+            monthly_budgets.append(budget)
+
+    process_scheduled_transactions(request.user)
+    dashboard_preference, created = DashboardPreference.objects.get_or_create(user=request.user)
+
+    current_month = timezone.now().date().replace(day=1)
+    prev_month = (current_month - timedelta(days=1)).replace(day=1)
+    next_month = (current_month + timedelta(days=32)).replace(day=1)
+
+    # Account summaries
+    accounts_summary = calculate_account_summaries(request.user)
+    total_balance = Decimal('0.00')
+    for account_type in accounts_summary.values():
+        total_balance += account_type['balance']
+
+    # Month summaries
+    current_month_income, current_month_expenses = get_month_summary(request.user, current_month)
+    current_month_balance = current_month_income - current_month_expenses
+
+    prev_month_income, prev_month_expenses = get_month_summary(request.user, prev_month)
+    prev_month_balance = prev_month_income - prev_month_expenses
+
+    # Budget warnings
+    budget_warnings = get_budget_warnings(request.user, current_month, current_month.replace(day=1, month=current_month.month+1) - timedelta(days=1))
+
+    # Recent transactions
+    recent_transactions = Transaction.objects.filter(user=request.user).order_by('-date', '-time')[:5]
+
+    # Get upcoming scheduled transactions for the user
+    upcoming_scheduled_transactions = ScheduledTransaction.objects.filter(
+        user=request.user,
+        status='scheduled',
+        date_scheduled__gte=timezone.now()
+    ).order_by('date_scheduled')[:5]  # Limit to 5 upcoming transactions
     
-    expenses = Transaction.objects.filter(
+    # Get user's debts
+    debts = Debt.objects.filter(
+        user=request.user,
+        paid=False
+    ).order_by('date_payback')[:5]  # Limit to 5 unpaid debts
+    
+    # Get last 7 days data for balance chart
+    today = timezone.now().date()
+    week_ago = today - timezone.timedelta(days=7)
+    
+    last_7_days_data = {
+        'labels': [],
+        'income': [],
+        'expenses': []
+    }
+    
+    # Generate data for each day
+    for i in range(7):
+        current_date = week_ago + timezone.timedelta(days=i+1)
+        last_7_days_data['labels'].append(current_date.strftime('%a'))
+        
+        # Get transactions for this day
+        day_transactions = Transaction.objects.filter(user=request.user, date=current_date)
+        
+        # Calculate income and expenses for this day
+        day_income = sum(t.amount for t in day_transactions if t.type == 'income')
+        day_expenses = sum(t.amount for t in day_transactions if t.type == 'expense')
+        
+        last_7_days_data['income'].append(float(day_income))
+        last_7_days_data['expenses'].append(float(day_expenses))
+    
+    # Get future projection data (next 30 days)
+    future_balance_data = {
+        'labels': [],
+        'values': []
+    }
+    
+    # Calculate starting balance
+    current_balance = Decimal('0')
+    for account in Account.objects.filter(user=request.user):
+        if hasattr(account, 'debitaccount'):
+            current_balance += account.debitaccount.balance
+        elif hasattr(account, 'wallet'):
+            current_balance += account.wallet.balance
+        elif hasattr(account, 'creditaccount'):
+            current_balance -= account.creditaccount.current_usage
+    
+    # Get scheduled transactions for next 30 days
+    end_date = today + timezone.timedelta(days=30)
+    scheduled_txns = ScheduledTransaction.objects.filter(
+        user=request.user,
+        status='scheduled',
+        date_scheduled__gte=today,
+        date_scheduled__lte=end_date
+    ).order_by('date_scheduled')
+    
+    # Prepare projection
+    projection_days = 30
+    daily_amounts = [0] * projection_days
+    
+    # Add scheduled transactions to daily amounts
+    for txn in scheduled_txns:
+        day_index = (txn.date_scheduled.date() - today).days
+        if 0 <= day_index < projection_days:
+            if txn.transaction_type == 'income':
+                daily_amounts[day_index] += float(txn.amount)
+            else:
+                daily_amounts[day_index] -= float(txn.amount)
+    
+    # Generate labels and calculate running balance
+    balance = float(current_balance)
+    for i in range(projection_days):
+        future_date = today + timezone.timedelta(days=i)
+        future_balance_data['labels'].append(future_date.strftime('%d %b'))
+        
+        balance += daily_amounts[i]
+        future_balance_data['values'].append(balance)
+    
+    # Get category data for pie chart (last 30 days)
+    month_ago = today - timezone.timedelta(days=30)
+    categories_data = []
+    
+    # Get expense transactions for the last 30 days
+    expense_transactions = Transaction.objects.filter(
         user=request.user,
         type='expense',
-        date__gte=first_day,
-        date__lte=last_day
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
+        date__gte=month_ago
+    ).select_related('category')
     
-    balance = income - expenses
+    # Group transactions by category
+    category_totals = {}
+    for transaction in expense_transactions:
+        category_name = transaction.category.name if transaction.category else 'Uncategorized'
+        if category_name in category_totals:
+            category_totals[category_name] += float(transaction.amount)
+        else:
+            category_totals[category_name] = float(transaction.amount)
     
-    recent_transactions = Transaction.objects.filter(
-        user=request.user
-    ).order_by('-date')[:5]
+    # Convert to list format for the chart
+    for category, amount in category_totals.items():
+        categories_data.append({
+            'category': category,
+            'amount': amount
+        })
     
-    # Get expenses by category for pie chart
-    categories = Category.objects.filter(user=request.user)
-    expenses_by_category = []
+    # Sort by amount (descending)
+    categories_data.sort(key=lambda x: x['amount'], reverse=True)
     
-    for category in categories:
-        amount = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            category=category,
-            date__gte=first_day,
-            date__lte=last_day
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        if amount > 0:
-            expenses_by_category.append({
-                'category': category.name,
-                'amount': float(amount)
-            })
-    
-    # Budget warnings
-    budgets = Budget.objects.filter(user=request.user, start_date__year=today.year, end_date__month=today.month)
-    budget_warnings = []
-    
-    for budget in budgets:
-        spent = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            subcategory=budget.subcategory,
-            date__gte=first_day,
-            date__lte=last_day,
-            transaction_account=budget.account
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        if spent > budget.amount:
-            budget_warnings.append({
-                'category': budget.subcategory.name,
-                'budget': float(budget.amount),
-                'spent': float(spent),
-                'percentage': round((spent / budget.amount) * 100)
-            })
-    
+    # Limit to top 5 categories
+    categories_data = categories_data[:5]
+
     context = {
-        'income': income,
-        'expenses': expenses,
-        'balance': balance,
-        'recent_transactions': recent_transactions,
-        'expenses_by_category': json.dumps(expenses_by_category),
+        'accounts_summary': accounts_summary,
+        'total_balance': total_balance,
+        'current_month': current_month,
+        'current_month_income': current_month_income,
+        'current_month_expenses': current_month_expenses,
+        'current_month_balance': current_month_balance,
+        'prev_month': prev_month,
+        'prev_month_income': prev_month_income,
+        'prev_month_expenses': prev_month_expenses,
+        'prev_month_balance': prev_month_balance,
         'budget_warnings': budget_warnings,
-        'import_export_url': 'import-export'  # Add this line to provide the correct URL
+        'recent_transactions': recent_transactions,
+        'dashboard_preference': dashboard_preference,
+        'budgets': budgets,
+        'weekly_budgets': weekly_budgets,
+        'monthly_budgets': monthly_budgets,
+        'upcoming_scheduled_transactions': upcoming_scheduled_transactions,
+        'debts': debts,
+        'last_7_days_data': json.dumps(last_7_days_data),
+        'future_balance_data': json.dumps(future_balance_data),
+        'categories_data': json.dumps(categories_data),
     }
     
     return render(request, 'finances/dashboard.html', context)
+
+@login_required
+def save_dashboard_preferences(request):
+    """Save dashboard preferences to the database."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            dashboard_preference, created = DashboardPreference.objects.get_or_create(user=request.user)
+            
+            # Update dashboard preference
+            if 'columns' in data:
+                dashboard_preference.columns = data['columns']
+            
+            if 'visibleElements' in data:
+                dashboard_preference.set_visible_elements(data['visibleElements'])
+            
+            if 'hiddenElements' in data:
+                dashboard_preference.set_hidden_elements(data['hiddenElements'])
+            
+            dashboard_preference.save()
+            
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+    return JsonResponse({'status': 'error', 'message': 'Only POST method is allowed'}, status=405)
 
 @login_required
 def add_transaction(request):
@@ -816,53 +1149,59 @@ def manage_budget(request):
     form = BudgetForm(user=request.user)
     
     today = timezone.now().date()
-    
-    # Renew expired budgets
-    Budget.renew_expired_budgets()
-    
-    # Get budgets that include today's date
-    budgets = Budget.objects.select_related('subcategory', 'account').filter(
+    # Get all active budgets (those that include today's date)
+    budgets = Budget.objects.select_related('subcategory', 'category').filter(
         user=request.user,
         start_date__lte=today,
         end_date__gte=today
     )
     
     budget_data = []
+    has_weekly_budgets = False
+    has_monthly_budgets = False
+    
     for budget in budgets:
-        # Calculate the amount spent in this category for the current period
-        spent = Transaction.objects.filter(
-            user=request.user,
-            type='expense',
-            subcategory=budget.subcategory,
-            date__gte=budget.start_date,
-            date__lte=budget.end_date,
-            transaction_account=budget.account
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        # Calculate the remaining budget and the percentage used
-        remaining = budget.amount - spent
-        percentage = round((spent / budget.amount) * 100) if budget.amount > 0 else 0
-        
-        # Prepare the budget data to display
-        budget_data.append({
+        # Check if we have any weekly or monthly budgets
+        if budget.duration == '1 week':
+            has_weekly_budgets = True
+        elif budget.duration == '1 month':
+            has_monthly_budgets = True
+            
+        # Calculate budget usage and add to data list
+        budget_item = {
             'id': budget.id,
-            'subcategory': budget.subcategory,  # Pass the entire subcategory object
-            'budget': budget.amount,
-            'spent': spent,
-            'remaining': remaining,
-            'percentage_used': percentage,
+            'account': budget.account,
+            'amount': budget.amount,
+            'spent': budget.get_spent_amount(),
+            'remaining': budget.get_remaining_amount(),
+            'percentage_used': budget.get_percentage_spent(),
+            'duration': budget.duration,
             'start_date': budget.start_date,
             'end_date': budget.end_date,
-            'duration': budget.duration,
-            'amount': budget.amount,
-            'account': budget.account  # Include the account object
-        })
+        }
+        
+        # Handle subcategory or category data
+        if budget.subcategory:
+            budget_item['subcategory'] = budget.subcategory
+            budget_item['category'] = budget.subcategory.parent_category
+        else:
+            budget_item['subcategory'] = None
+            budget_item['category'] = budget.category
+            
+        budget_data.append(budget_item)
     
-    return render(request, 'finances/manage_budget.html', {
+    # Get all categories for the category selector - fix the filter to only get user's categories
+    categories = Category.objects.filter(user=request.user)
+    
+    context = {
         'form': form,
         'budgets': budget_data,
-        'categories': Category.objects.filter(user=request.user)
-    })
+        'categories': categories,
+        'has_weekly_budgets': has_weekly_budgets,
+        'has_monthly_budgets': has_monthly_budgets,
+    }
+    
+    return render(request, 'finances/manage_budget.html', context)
 
 @login_required
 def update_budget(request):
@@ -936,25 +1275,46 @@ def add_budget(request):
             budget = form.save(commit=False)
             budget.user = request.user
             
-            # Check for existing budget in the same period
-            existing_budget = Budget.objects.filter(
-                user=request.user,
-                subcategory=budget.subcategory,
-                start_date__year=budget.start_date.year,
-                start_date__month=budget.start_date.month,
-                account=budget.account
-            ).first()
+            # When no subcategory is provided, use the category directly
+            if not budget.category and 'category' in request.POST:
+                try:
+                    category_id = request.POST.get('category')
+                    budget.category = Category.objects.get(id=category_id, user=request.user)
+                except (Category.DoesNotExist, ValueError):
+                    return JsonResponse({
+                        'success': False, 
+                        'errors': {
+                            'category': ['Please select a valid category.']
+                        }
+                    })
             
-            if existing_budget:
+            # Check for existing budget in the same period
+            if budget.category:
+                existing_budget = Budget.objects.filter(
+                    user=request.user,
+                    category=budget.category,
+                    start_date__year=budget.start_date.year,
+                    start_date__month=budget.start_date.month,
+                    account=budget.account
+                ).first()
+                
+                if existing_budget:
+                    return JsonResponse({
+                        'success': False, 
+                        'errors': {
+                            'category': ['A budget for this category already exists in the selected period.']
+                        }
+                    })
+                
+                budget.save()
+                return JsonResponse({'success': True})
+            else:
                 return JsonResponse({
                     'success': False, 
                     'errors': {
                         'subcategory': ['A budget for this subcategory already exists in the selected period.']
                     }
                 })
-            
-            budget.save()
-            return JsonResponse({'success': True})
         else:
             return JsonResponse({'success': False, 'errors': form.errors})
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
@@ -1149,6 +1509,26 @@ def api_subcategories(request, category_id):
     except Category.DoesNotExist:
         print(f"Category with ID {category_id} not found for user {request.user.username}")
         return JsonResponse({'error': 'Category not found'}, status=404)
+    
+# API endpoint to get a single subcategory details
+def api_subcategory_detail(request, subcategory_id):
+    """API endpoint to get details of a specific subcategory"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
+    try:
+        subcategory = SubCategory.objects.get(id=subcategory_id, parent_category__user=request.user)
+        
+        subcategory_data = {
+            'id': subcategory.id,
+            'name': subcategory.name,
+            'icon': subcategory.icon,
+            'parent_category': subcategory.parent_category.id
+        }
+        
+        return JsonResponse(subcategory_data)
+    except SubCategory.DoesNotExist:
+        return JsonResponse({'error': 'Subcategory not found'}, status=404)
 
 # API endpoint for adding a subcategory
 def api_add_subcategory(request, category_id):
@@ -1169,6 +1549,20 @@ def api_add_subcategory(request, category_id):
         subcategory = form.save(commit=False)
         subcategory.parent_category = category
         subcategory.save()
+
+        # Check if the category already has itself as a subcategory
+        category_as_subcategory = SubCategory.objects.filter(
+            parent_category=category,
+            name=category.name,
+        ).first()
+        
+        # If the category doesn't have itself as a subcategory, create it
+        if not category_as_subcategory:
+            category_as_subcategory = SubCategory.objects.create(
+                name=category.name,
+                parent_category=category,
+                icon=category.icon
+            )
         
         return JsonResponse({
             'success': True,
@@ -1401,12 +1795,38 @@ def transactions(request):
     else:
         end_date = timezone.datetime(current_year, current_month + 1, 1).date() - timedelta(days=1)
     
-    # Get all transactions for the month
-    transactions = Transaction.objects.filter(
+    # Get filter parameters
+    category_id = request.GET.get('category', '')
+    subcategory_id = request.GET.get('subcategory', '')
+    search_term = request.GET.get('search', '')
+    types_param = request.GET.get('types', 'expense,income')
+    types = types_param.split(',') if types_param else ['expense', 'income']
+    
+    # Start with base query for the current month
+    transactions_query = Transaction.objects.filter(
         user=request.user,
         date__gte=start_date,
         date__lte=end_date
-    ).order_by('-date')
+    )
+    
+    # Apply filters if present
+    if category_id:
+        transactions_query = transactions_query.filter(category_id=category_id)
+        
+        if subcategory_id:
+            transactions_query = transactions_query.filter(subcategory_id=subcategory_id)
+    
+    if types and 'all' not in types:
+        transactions_query = transactions_query.filter(type__in=types)
+    
+    if search_term:
+        transactions_query = transactions_query.filter(
+            models.Q(title__icontains=search_term) | 
+            models.Q(notes__icontains=search_term)
+        )
+    
+    # Get all transactions for the month with filters applied
+    transactions = transactions_query.order_by('-date')
     
     # Calculate total
     income = Transaction.objects.filter(
@@ -1444,6 +1864,10 @@ def transactions(request):
         'current_year': current_year,
         'current_month_name': current_month_name,
         'total_balance': total_balance,
+        'total_income': income,
+        'total_expenses': expenses,
+        'selected_category': category_id,
+        'selected_subcategory': subcategory_id,
     }
     
     return render(request, 'finances/transactions.html', context)
@@ -1453,9 +1877,21 @@ def transactions_api(request):
     """API endpoint for fetching transactions with filters"""
     
     # Get parameters from request
-    current_month = int(request.GET.get('month', timezone.now().date().month))
-    current_year = int(request.GET.get('year', timezone.now().date().year))
+    month_param = request.GET.get('month')
+    if month_param and '-' in month_param:
+        try:
+            year, month = map(int, month_param.split('-'))
+            current_month = month
+            current_year = year
+        except (ValueError, IndexError):
+            current_month = timezone.now().date().month
+            current_year = timezone.now().date().year
+    else:
+        current_month = int(request.GET.get('month', timezone.now().date().month))
+        current_year = int(request.GET.get('year', timezone.now().date().year))
+    
     category_id = request.GET.get('category', '')
+    subcategory_id = request.GET.get('subcategory', '')
     search_term = request.GET.get('search', '')
     types_param = request.GET.get('types', 'expense,income')
     types = types_param.split(',') if types_param else ['expense', 'income']
@@ -1471,13 +1907,20 @@ def transactions_api(request):
     transactions = Transaction.objects.filter(
         user=request.user,
         date__gte=start_date,
-        date__lte=end_date,
-        type__in=types
+        date__lte=end_date
     ).select_related('category', 'subcategory', 'transaction_account')
+    
+    # Apply type filter if specified
+    if types and 'all' not in types:
+        transactions = transactions.filter(type__in=types)
     
     # Additional filters
     if category_id:
         transactions = transactions.filter(category_id=category_id)
+        
+        # If subcategory is specified, filter by it as well
+        if subcategory_id:
+            transactions = transactions.filter(subcategory_id=subcategory_id)
     
     if search_term:
         transactions = transactions.filter(
@@ -1489,9 +1932,24 @@ def transactions_api(request):
     transactions = transactions.order_by('-date')
     
     # Calculate totals
-    income = sum(t.amount for t in transactions if t.type == 'income')
-    expenses = sum(t.amount for t in transactions if t.type == 'expense')
+    income = 0
+    expenses = 0
+    for t in transactions:
+        try:
+            if t.type == 'income':
+                income += float(t.amount)
+            elif t.type == 'expense':
+                expenses += float(t.amount)
+        except (ValueError, decimal.InvalidOperation):
+            # Skip transactions with invalid amount values
+            continue
+    
     total = income - expenses
+    
+    # Format month name for response
+    month_names = ['January', 'February', 'March', 'April', 'May', 'June', 
+                  'July', 'August', 'September', 'October', 'November', 'December']
+    current_month_name = month_names[current_month - 1]
     
     # Prepare data for JSON response
     transactions_data = []
@@ -1507,72 +1965,107 @@ def transactions_api(request):
             subcategory_name = transaction.subcategory.name
             subcategory_icon = transaction.subcategory.icon or category_icon
         
+        # Get account information
+        account_name = transaction.transaction_account.name if transaction.transaction_account else None
+        
         # Use subcategory info if it exists, otherwise use category info
         display_name = subcategory_name or category_name or 'Uncategorized'
         display_icon = subcategory_icon or category_icon or 'bi bi-tag'
+        
+        # Format time if available
+        time_str = None
+        if hasattr(transaction, 'time') and transaction.time:
+            time_str = transaction.time.strftime('%H:%M')
         
         transactions_data.append({
             'id': transaction.id,
             'title': transaction.title,
             'amount': float(transaction.amount),
             'date': transaction.date.isoformat(),
+            'time': time_str,
             'type': transaction.type,
             'category': transaction.category_id if transaction.category else None,
             'subcategory': transaction.subcategory_id if transaction.subcategory else None,
+            'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
             'category_name': category_name,
             'category_icon': category_icon,
             'subcategory_name': subcategory_name,
             'subcategory_icon': subcategory_icon,
+            'account_name': account_name,
             'display_name': display_name,
             'display_icon': display_icon,
             'notes': transaction.notes or '',
         })
     
+    # Return complete data
     return JsonResponse({
         'transactions': transactions_data,
-        'count': len(transactions_data),
-        'total': float(total),
+        'total': total,
+        'income': income,
+        'expenses': expenses,
+        'current_month': current_month,
+        'current_year': current_year,
+        'current_month_name': current_month_name,
+        'filters': {
+            'category': category_id,
+            'subcategory': subcategory_id,
+            'search': search_term,
+            'types': types
+        }
     })
 
 @login_required
 def transaction_detail_api(request, transaction_id):
     """API endpoint for getting a single transaction's details"""
-    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+    print(f"Fetching details for transaction ID: {transaction_id}")
     
-    # Load the related objects to ensure they're available
-    if transaction.category:
-        category_name = transaction.category.name
-        category_icon = transaction.category.icon
-    else:
-        category_name = None
-        category_icon = 'bi bi-tag'
+    try:
+        transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+        print(f"Transaction found: {transaction}")
         
-    # Load subcategory info if available
-    if transaction.subcategory:
-        subcategory_name = transaction.subcategory.name
-        subcategory_icon = transaction.subcategory.icon or category_icon
-    else:
-        subcategory_name = None
-        subcategory_icon = None
-    
-    data = {
-        'id': transaction.id,
-        'title': transaction.title,
-        'amount': float(transaction.amount),
-        'date': transaction.date.isoformat(),
-        'time': transaction.time.strftime('%H:%M') if transaction.time else None,
-        'type': transaction.type,
-        'category': transaction.category_id if transaction.category else None,
-        'subcategory': transaction.subcategory_id if transaction.subcategory else None,
-        'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
-        'category_name': category_name,
-        'category_icon': category_icon,
-        'subcategory_name': subcategory_name,
-        'subcategory_icon': subcategory_icon,
-        'notes': transaction.notes or '',
-    }
-    
-    return JsonResponse(data)
+        # Load the related objects to ensure they're available
+        if transaction.category:
+            category_name = transaction.category.name
+            category_icon = transaction.category.icon
+        else:
+            category_name = None
+            category_icon = 'bi bi-tag'
+            
+        # Load subcategory info if available
+        if transaction.subcategory:
+            subcategory_name = transaction.subcategory.name
+            subcategory_icon = transaction.subcategory.icon or category_icon
+        else:
+            subcategory_name = None
+            subcategory_icon = None
+        
+            # Format time if available
+            time_str = None
+            if hasattr(transaction, 'time') and transaction.time:
+                time_str = transaction.time.strftime('%H:%M')
+            
+        data = {
+            'id': transaction.id,
+            'title': transaction.title,
+            'amount': float(transaction.amount),
+            'date': transaction.date.isoformat(),
+                'time': time_str,
+            'type': transaction.type,
+            'category': transaction.category_id if transaction.category else None,
+            'subcategory': transaction.subcategory_id if transaction.subcategory else None,
+            'transaction_account': transaction.transaction_account_id if transaction.transaction_account else None,
+            'category_name': category_name,
+            'category_icon': category_icon,
+            'subcategory_name': subcategory_name,
+            'subcategory_icon': subcategory_icon,
+            'notes': transaction.notes or '',
+        }
+        
+        print(f"Returning transaction data: {data}")
+        return JsonResponse(data)
+    except Exception as e:
+        print(f"Error fetching transaction details: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
 def create_transaction_api(request):
@@ -1601,8 +2094,8 @@ def create_transaction_api(request):
             
             # Convert amount to float
             try:
-                amount = float(amount)
-            except ValueError:
+                amount = float(amount.replace(',', '.').strip())
+            except (ValueError, AttributeError, decimal.InvalidOperation):
                 return JsonResponse({'success': False, 'error': 'Invalid amount format'})
             
             # Create the transaction
@@ -1638,7 +2131,39 @@ def create_transaction_api(request):
             
             transaction.save()
             print(f"Transaction created successfully with ID: {transaction.id}")
-            
+
+            # --- Update account balance/usage if transaction_account is set ---
+            if transaction.transaction_account:
+                account = transaction.transaction_account
+                amount_decimal = Decimal(str(transaction.amount))
+                # Debit Account
+                if hasattr(account, 'debitaccount'):
+                    debit = account.debitaccount
+                    if transaction.type == 'expense':
+                        debit.balance -= amount_decimal
+                    else:  # income
+                        debit.balance += amount_decimal
+                    debit.save()
+                # Credit Account
+                elif hasattr(account, 'creditaccount'):
+                    credit = account.creditaccount
+                    if transaction.type == 'expense':
+                        credit.current_usage += amount_decimal
+                    else:  # income (rare)
+                        credit.current_usage -= amount_decimal
+                        if credit.current_usage < 0:
+                            credit.current_usage = 0
+                    credit.save()
+                # Wallet
+                elif hasattr(account, 'wallet'):
+                    wallet = account.wallet
+                    if transaction.type == 'expense':
+                        wallet.balance -= amount_decimal
+                    else:  # income
+                        wallet.balance += amount_decimal
+                    wallet.save()
+            # --- End account update logic ---
+
             return JsonResponse({'success': True, 'transaction_id': transaction.id})
         except Exception as e:
             print(f"Error creating transaction: {e}")
@@ -1676,8 +2201,8 @@ def update_transaction_api(request, transaction_id):
             
             # Convert amount to float
             try:
-                amount = float(amount)
-            except ValueError:
+                amount = float(amount.replace(',', '.').strip())
+            except (ValueError, AttributeError, decimal.InvalidOperation):
                 return JsonResponse({'success': False, 'error': 'Invalid amount format'})
             
             # Update the transaction
@@ -1757,25 +2282,37 @@ def api_accounts(request):
             if hasattr(account, 'debitaccount'):
                 account_instance = account.debitaccount
                 balance = account_instance.balance
-                account_type = 'debit'
+                account_data.append({
+                    'id': account.id,
+                    'name': account.name,
+                    'type': 'debit',
+                    'balance': float(balance),
+                    'maintaining_balance': float(account_instance.maintaining_balance) if account_instance.maintaining_balance is not None else 0
+                })
             elif hasattr(account, 'creditaccount'):
                 account_instance = account.creditaccount
-                balance = account_instance.credit_limit - account_instance.current_usage
-                account_type = 'credit'
+                available_balance = account_instance.credit_limit - account_instance.current_usage
+                account_data.append({
+                    'id': account.id,
+                    'name': account.name,
+                    'type': 'credit',
+                    'balance': float(available_balance),
+                    'credit_limit': float(account_instance.credit_limit),
+                    'current_usage': float(account_instance.current_usage)
+                })
             elif hasattr(account, 'wallet'):
                 account_instance = account.wallet
                 balance = account_instance.balance
-                account_type = 'wallet'
+                account_data.append({
+                    'id': account.id,
+                    'name': account.name,
+                    'type': 'wallet',
+                    'balance': float(balance)
+                })
             else:
                 continue  # Skip if not a valid account type
-                
-            account_data.append({
-                'id': account.id,
-                'name': account.name,
-                'type': account_type,
-                'balance': float(balance)
-            })
         except Exception as e:
+            print(f"Error processing account {account.id}: {e}")
             continue  # Skip if there's any error getting the account details
     
     return JsonResponse(account_data, safe=False)
@@ -1995,108 +2532,396 @@ def charts_data_time(request):
 
 @login_required
 def charts_data_future(request):
-    """API endpoint for future projections chart data"""
+    # Get the current date and calculate date ranges
+    today = timezone.now()
+    start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # Calculate end date (6 months from now)
+    if start_date.month + 6 > 12:
+        end_date = start_date.replace(year=start_date.year + 1, month=start_date.month + 6 - 12)
+    else:
+        end_date = start_date.replace(month=start_date.month + 6)
+    end_date = end_date.replace(day=1) - timedelta(days=1)
+    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    # Get all transactions (actual and scheduled) for the period
+    transactions = get_transactions_with_scheduled(request.user, start_date, end_date)
+    # Sort transactions by date
+    transactions.sort(key=lambda t: t['date'])
+
+    # Prepare labels (dates as strings)
+    dates = [start_date.strftime('%Y-%m-%d')]
+    for t in transactions:
+        dates.append(t['date'].strftime('%Y-%m-%d'))
+
+    # Calculate projected balance trend
+    balances = []
+    current_balance = Decimal('0')
+    for account in Account.objects.filter(user=request.user):
+        if hasattr(account, 'debitaccount'):
+            current_balance += account.debitaccount.balance
+        elif hasattr(account, 'wallet'):
+            current_balance += account.wallet.balance
+        elif hasattr(account, 'creditaccount'):
+            current_balance -= account.creditaccount.current_usage
+    balances.append(float(current_balance))
+    for t in transactions:
+        if t['type'] == 'income':
+            current_balance += Decimal(str(t['amount']))
+        else:
+            current_balance -= Decimal(str(t['amount']))
+        balances.append(float(current_balance))
+
+    # For now, fill other arrays with zeros (same length as labels)
+    n = len(dates)
+    zeros = [0] * n
+    data = {
+        'labels': dates,
+        'future_transactions': zeros,
+        'scheduled_transactions': zeros,
+        'debts_credits': zeros,
+        'credit_card_payments': zeros,
+        'projected': balances,
+    }
+    return JsonResponse(data)
+
+def calculate_account_summaries(user):
+    """Calculate account summaries for a user."""
+    debit_accounts = DebitAccount.objects.filter(user=user)
+    credit_accounts = CreditAccount.objects.filter(user=user)
+    wallet_accounts = Wallet.objects.filter(user=user)
+    
+    debit_balance = Decimal('0.00')
+    for account in debit_accounts:
+        debit_balance += account.balance - account.maintaining_balance
+    
+    credit_balance = Decimal('0.00')
+    for account in credit_accounts:
+        credit_balance += account.credit_limit - account.current_usage
+    
+    wallet_balance = Decimal('0.00')
+    for account in wallet_accounts:
+        wallet_balance += account.balance
+    
+    return {
+        'debit': {
+            'accounts': list(debit_accounts),
+            'balance': debit_balance
+        },
+        'credit': {
+            'accounts': list(credit_accounts),
+            'balance': credit_balance
+        },
+        'wallet': {
+            'accounts': list(wallet_accounts),
+            'balance': wallet_balance
+        },
+    }
+
+def get_month_summary(user, month_date):
+    """Get the income and expenses summary for a given month."""
+    # Calculate the first and last day of the month
+    first_day = month_date
+    last_day = (month_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    
+    # Get month's transactions
+    month_income = Transaction.objects.filter(
+        user=user,
+        type='income',
+        date__gte=first_day,
+        date__lte=last_day
+    ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+    
+    month_expenses = Transaction.objects.filter(
+        user=user,
+        type='expense',
+        date__gte=first_day,
+        date__lte=last_day
+    ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+    
+    return month_income, month_expenses
+
+def get_budget_warnings(user, start_date, end_date):
+    """Get budget warnings for a given date range."""
+    budgets = Budget.objects.filter(user=user, start_date__lte=end_date, end_date__gte=start_date)
+    budget_warnings = []
+    
+    for budget in budgets:
+        spent = Transaction.objects.filter(
+            user=user,
+            type='expense',
+            category=budget.category,
+            date__gte=start_date,
+            date__lte=end_date
+        ).aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+        
+        if spent > float(budget.amount) * 0.8:  # Warning at 80% of budget
+            budget_warnings.append({
+                'category': budget.category.name,
+                'budget': budget.amount,
+                'spent': spent,
+                'percentage': round((spent / budget.amount) * 100)
+            })
+    
+    return budget_warnings
+
+@login_required
+def batch_delete_transactions_api(request):
+    """API endpoint for batch deleting multiple transactions"""
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
     try:
-        # Get query parameters
-        period = request.GET.get('period', 'month')
+        # Parse the request body
+        data = json.loads(request.body)
+        transaction_ids = data.get('transaction_ids', [])
         
-        today = timezone.now().date()
-        data = {
-            'labels': [],
-            'projected': [],
-            'future_transactions': [],
-            'scheduled_transactions': [],
-            'debts_credits': [],
-            'credit_card_payments': []
-        }
+        if not transaction_ids:
+            return JsonResponse({'error': 'No transaction IDs provided'}, status=400)
         
-        # Determine the end date and date points based on period
-        if period == 'month':
-            end_date = today + timedelta(days=30)
-            date_points = [(today + timedelta(days=x)) for x in range(31)]
-            date_format = '%d %b'
-        elif period == 'quarter':
-            end_date = today + timedelta(days=90)
-            current_month = today.replace(day=1)
-            date_points = []
-            for i in range(3):
-                date_points.append(current_month + timedelta(days=32*i))
-            date_format = '%b %Y'
-        else:  # year
-            end_date = today + timedelta(days=365)
-            current_month = today.replace(day=1)
-            date_points = []
-            for i in range(12):
-                date_points.append(current_month + timedelta(days=32*i))
-            date_format = '%b %Y'
+        # Get transactions that belong to this user
+        transactions = Transaction.objects.filter(
+            user=request.user,
+            id__in=transaction_ids
+        )
+        
+        if not transactions:
+            return JsonResponse({'error': 'No valid transactions found to delete'}, status=404)
+        
+        # Count how many were found
+        found_count = transactions.count()
+        
+        # Delete the transactions
+        transactions.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully deleted {found_count} transaction(s)',
+            'deleted_count': found_count
+        })
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON in request body'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
-        # Process each date point
-        for current_date in date_points:
-            # Ensure we're always using the 1st of the month for quarter and year periods
-            if period in ['quarter', 'year']:
-                current_date = current_date.replace(day=1)
-            
-            data['labels'].append(current_date.strftime(date_format))
-            
-            # Initialize amounts for this date
-            future_amount = 0
-            scheduled_amount = 0
-            debts_credits_amount = 0
-            credit_card_amount = 0
+def create_test_scheduled_transaction(user):
+    """
+    Create a test scheduled transaction for testing purposes.
+    Returns the created transaction.
+    """
+    # Get or create a test category
+    category, _ = Category.objects.get_or_create(
+        user=user,
+        name='Test Category',
+        type='expense',
+        icon='bi-tag-fill',
+        order=0
+    )
+    
+    # Get or create a test account
+    account, _ = DebitAccount.objects.get_or_create(
+        user=user,
+        name='Test Account',
+        balance=Decimal('1000.00'),
+        maintaining_balance=Decimal('10.00')
+    )
+    
+    # Create a scheduled transaction that's due in 1 minutes
+    scheduled = ScheduledTransaction.objects.create(
+        user=user,
+        name='Test Scheduled Transaction',
+        category=category,
+        transaction_type='expense',
+        account=account,
+        amount=Decimal('100.00'),
+        date_scheduled=timezone.now() + timedelta(minutes=1),  # 1 minutes in the future
+        repeat_type='monthly',
+        repeats=3,
+        note='Test transaction',
+        status='scheduled'
+    )
+    
+    return scheduled
 
-            # For quarter and year, get all transactions for the whole month
-            if period in ['quarter', 'year']:
-                month_end = (current_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-                date_range = [current_date, month_end]
+@login_required
+def test_scheduled_transactions(request):
+    """
+    Test endpoint to verify scheduled transaction processing.
+    Creates a test transaction and processes it.
+    """
+    # Create a test scheduled transaction
+    scheduled = create_test_scheduled_transaction(request.user)
+    
+    # Check if the scheduled time has passed
+    if timezone.now() >= scheduled.date_scheduled:
+        # Process scheduled transactions
+        process_scheduled_transactions(request.user)
+        
+        # Get the updated scheduled transaction
+        scheduled.refresh_from_db()
+        
+        # Get the created transaction if any
+        created_transaction = Transaction.objects.filter(
+            notes__contains=f"Scheduled transaction: {scheduled.name}"
+        ).first()
+        
+        # Get the next occurrence if any
+        next_occurrence = ScheduledTransaction.objects.filter(
+            parent_transaction=scheduled,
+            status='scheduled'
+        ).first()
+    else:
+        # If scheduled time hasn't passed yet
+        created_transaction = None
+        next_occurrence = None
+        messages.info(request, f"Test transaction is scheduled for {scheduled.date_scheduled}. Please wait until then to process it.")
+    
+    context = {
+        'scheduled': scheduled,
+        'created_transaction': created_transaction,
+        'next_occurrence': next_occurrence,
+    }
+    
+    return render(request, 'finances/test_scheduled.html', context)
+
+@login_required
+def resolve_scheduled_transaction(request, pk):
+    """View to resolve a failed scheduled transaction."""
+    scheduled = get_object_or_404(ScheduledTransaction, pk=pk, user=request.user)
+    
+    if scheduled.status != 'failed':
+        return JsonResponse({
+            'success': False,
+            'error': 'Only failed transactions can be resolved.'
+        })
+    
+    try:
+        # First validate if the transaction can be processed with the current account state
+        account = scheduled.account
+        amount_decimal = Decimal(str(scheduled.amount))
+        
+        # Validate account balance/limits based on account type
+        if hasattr(account, 'debitaccount'):
+            debit = account.debitaccount
+            if scheduled.transaction_type == 'expense':
+                # Check if balance would go below maintaining balance
+                if debit.balance - amount_decimal < (debit.maintaining_balance or 0):
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Insufficient balance in debit account.'
+                    })
+        elif hasattr(account, 'creditaccount'):
+            credit = account.creditaccount
+            if scheduled.transaction_type == 'expense':
+                # Check if credit limit would be exceeded
+                if credit.current_usage + amount_decimal > credit.credit_limit:
+                    scheduled.status = 'failed'
+                    scheduled.save(update_fields=['status'])
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Credit limit would be exceeded.'
+                    })
+        elif hasattr(account, 'wallet'):
+            wallet = account.wallet
+            if scheduled.transaction_type == 'expense' and wallet.balance < amount_decimal:
+                scheduled.status = 'failed'
+                scheduled.save(update_fields=['status'])
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Insufficient balance in wallet.'
+                })
+        
+        # If validation passes, create the transaction
+        transaction = Transaction.objects.create(
+            user=request.user,
+            title=scheduled.name,
+            amount=scheduled.amount,
+            date=scheduled.date_scheduled.date(),
+            time=scheduled.date_scheduled.time(),
+            type=scheduled.transaction_type,
+            category=scheduled.category,
+            subcategory=scheduled.subcategory,
+            transaction_account=scheduled.account,
+            notes=f"Scheduled transaction: {scheduled.name} (ID: {scheduled.id})"
+        )
+        
+        # Update account balance/usage
+        if hasattr(account, 'debitaccount'):
+            debit = account.debitaccount
+            if scheduled.transaction_type == 'expense':
+                debit.balance -= amount_decimal
+            else:  # income
+                debit.balance += amount_decimal
+            debit.save()
+        elif hasattr(account, 'creditaccount'):
+            credit = account.creditaccount
+            if scheduled.transaction_type == 'expense':
+                credit.current_usage += amount_decimal
+            else:  # income (rare)
+                credit.current_usage -= amount_decimal
+                if credit.current_usage < 0:
+                    credit.current_usage = 0
+            credit.save()
+        elif hasattr(account, 'wallet'):
+            wallet = account.wallet
+            if scheduled.transaction_type == 'expense':
+                wallet.balance -= amount_decimal
+            else:  # income
+                wallet.balance += amount_decimal
+            wallet.save()
+        
+        # Update the scheduled transaction status to completed
+        scheduled.status = 'completed'
+        scheduled.save(update_fields=['status'])
+        
+        # If this is a recurring transaction, create the next occurrence
+        if scheduled.repeats != 1:
+            # Only create next if repeats is infinite or > 1
+            if scheduled.repeats == 0:
+                next_repeats = 0
+            elif scheduled.repeats > 1:
+                next_repeats = scheduled.repeats - 1
             else:
-                date_range = [current_date, current_date]
-
-            # Get scheduled transactions for this period
-            scheduled_transactions = ScheduledTransaction.objects.filter(
-                user=request.user,
-                date_scheduled__range=date_range
-            )
-            for transaction in scheduled_transactions:
-                amount = float(transaction.amount)
-                if transaction.transaction_type == 'expense':
-                    amount = -amount
-                scheduled_amount += amount
-
-            # Get debt payments due in this period
-            debts = Debt.objects.filter(
-                user=request.user,
-                date_payback__range=date_range
-            )
-            for debt in debts:
-                if debt.debt_type == 'debt':
-                    debts_credits_amount -= float(debt.residual_amount)
-                else:  # credit
-                    debts_credits_amount += float(debt.residual_amount)
-
-            # Get credit card payments due in this period
-            credit_accounts = CreditAccount.objects.filter(
-                user=request.user
-            )
-            for account in credit_accounts:
-                if account.payment_due_date:
-                    payment_date = account.payment_due_date
-                    if date_range[0] <= payment_date <= date_range[1]:
-                        credit_card_amount -= float(account.minimum_payment)
-
-            # Add the amounts to their respective arrays
-            data['future_transactions'].append(float(future_amount))
-            data['scheduled_transactions'].append(float(scheduled_amount))
-            data['debts_credits'].append(float(debts_credits_amount))
-            data['credit_card_payments'].append(float(credit_card_amount))
-            
-            # Calculate total projected amount for this date
-            total_projected = future_amount + scheduled_amount + debts_credits_amount + credit_card_amount
-            data['projected'].append(float(total_projected))
-        
-        return JsonResponse(data)
+                next_repeats = None
+            if next_repeats is not None:
+                next_date = scheduled.date_scheduled
+                if scheduled.repeat_type == 'daily':
+                    next_date += timedelta(days=1)
+                elif scheduled.repeat_type == 'weekly':
+                    next_date += timedelta(weeks=1)
+                elif scheduled.repeat_type == 'monthly':
+                    if next_date.month == 12:
+                        next_date = next_date.replace(year=next_date.year + 1, month=1)
+                    else:
+                        next_date = next_date.replace(month=next_date.month + 1)
+                elif scheduled.repeat_type == 'yearly':
+                    next_date = next_date.replace(year=next_date.year + 1)
+                ScheduledTransaction.objects.create(
+                    user=request.user,
+                    name=scheduled.name,
+                    category=scheduled.category,
+                    subcategory=scheduled.subcategory,
+                    transaction_type=scheduled.transaction_type,
+                    account=scheduled.account,
+                    amount=scheduled.amount,
+                    date_scheduled=next_date,
+                    repeat_type=scheduled.repeat_type,
+                    repeats=next_repeats,
+                    note=scheduled.note,
+                    status='scheduled'
+                )
+        return JsonResponse({
+            'success': True,
+            'message': 'Transaction resolved successfully.'
+        })
         
     except Exception as e:
-        print(f"Error in charts_data_future: {str(e)}")
+        # If any error occurs, mark the transaction as failed
+        scheduled.status = 'failed'
+        scheduled.save(update_fields=['status'])
         return JsonResponse({
             'error': str(e),
             'labels': [],
