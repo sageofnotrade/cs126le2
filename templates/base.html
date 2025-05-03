@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Budget Tracker{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="icon" href="{% static 'img/logofinal.png' %}" type="image/png">
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Google Fonts -->
@@ -54,9 +56,9 @@
         }
 
         :root {
-            --primary-color: #4361ee;
-            --primary-light: #4895ef;
-            --primary-dark: #3f37c9;
+            --primary-color: #470005;
+            --primary-light: #7d000a;
+            --primary-dark: #2d0003;
             --secondary-color: #4caf50;
             --secondary-light: #80e27e;
             --secondary-dark: #087f23;
@@ -109,7 +111,7 @@
             display: flex;
             align-items: center;
             padding: 20px 25px;
-            color: var(--primary-color);
+            color: #470005;
             font-weight: 700;
             border-bottom: 1px solid rgba(0,0,0,0.05);
             height: 70px;
@@ -146,14 +148,14 @@
         }
 
         .sidebar-item:hover {
-            background-color: rgba(63, 81, 181, 0.05);
-            color: var(--primary-color);
+            background-color: rgba(71, 0, 5, 0.05);
+            color: #470005;
         }
 
         .sidebar-item.active {
-            background-color: rgba(63, 81, 181, 0.1);
-            color: var(--primary-color);
-            border-left-color: var(--primary-color);
+            background-color: rgba(71, 0, 5, 0.1);
+            color: #470005;
+            border-left-color: #470005;
         }
 
         .sidebar-icon {
@@ -194,7 +196,7 @@
         }
         
         .main-navbar {
-            background-color: var(--primary-color);
+            background-color: #470005;
             box-shadow: 0 2px 4px rgba(0,0,0,.2);
             height: var(--header-height);
             z-index: 1030;
@@ -291,7 +293,7 @@
         }
         
         .dropdown-item:hover {
-            background-color: rgba(63, 81, 181, 0.1);
+            background-color: rgba(71, 0, 5, 0.1);
         }
         
         .btn {
@@ -304,13 +306,13 @@
         }
         
         .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+            background-color: #470005;
+            border-color: #470005;
         }
         
         .btn-primary:hover {
-            background-color: var(--primary-dark);
-            border-color: var(--primary-dark);
+            background-color: #2d0003;
+            border-color: #2d0003;
         }
         
         .btn-success {
@@ -337,8 +339,8 @@
         }
         
         .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+            border-color: #470005;
+            box-shadow: 0 0 0 0.2rem rgba(71, 0, 5, 0.25);
         }
         
         .material-icons {
@@ -374,9 +376,9 @@
         
         /* Dark mode styles */
         body.dark-mode {
-            --primary-color: #6366f1;
-            --primary-light: #818cf8;
-            --primary-dark: #4f46e5;
+            --primary-color: #470005;
+            --primary-light: #7d000a;
+            --primary-dark: #2d0003;
             --secondary-color: #10b981;
             --secondary-light: #34d399;
             --secondary-dark: #059669;
@@ -423,14 +425,15 @@
             color: var(--text-primary);
         }
         
-        body.dark-mode .sidebar-item:hover,
-        body.dark-mode .mode-toggle:hover {
-            background-color: rgba(99, 102, 241, 0.1);
+        body.dark-mode .sidebar-item:hover {
+            background-color: #293548;
+            color: #470005;
         }
         
         body.dark-mode .sidebar-item.active {
-            background-color: rgba(99, 102, 241, 0.15);
-            border-left-color: var(--primary-color);
+            background-color: #293548;
+            color: #470005;
+            border-left-color: #470005;
         }
         
         body.dark-mode .card-header {
@@ -443,7 +446,7 @@
         }
         
         body.dark-mode .dropdown-item:hover {
-            background-color: rgba(99, 102, 241, 0.1);
+            background-color: rgba(71, 0, 5, 0.1);
         }
         
         body.dark-mode .table {
@@ -469,8 +472,8 @@
         }
         
         body.dark-mode .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.15);
+            border-color: #470005;
+            box-shadow: 0 0 0 0.2rem rgba(71, 0, 5, 0.15);
         }
         
         body.dark-mode .sidebar-divider {
@@ -504,13 +507,13 @@
         
         body.dark-mode .sidebar-item:hover {
             background-color: #293548;
-            color: #818cf8;
+            color: #470005;
         }
         
         body.dark-mode .sidebar-item.active {
             background-color: #293548;
-            color: #818cf8;
-            border-left-color: #6366f1;
+            color: #470005;
+            border-left-color: #470005;
         }
         
         /* Dark mode card enhancements */
@@ -532,8 +535,7 @@
     <div class="sidebar" id="sidebar">
         <!-- Sidebar brand -->
         <div class="sidebar-brand">
-            <i class="bi bi-wallet2 sidebar-brand-icon"></i>
-            <span class="sidebar-brand-text">Budget Tracker</span>
+            <img src="{% static 'img/logofinal.png' %}" alt="Budget Tracker Logo" class="img-fluid" style="max-height: 40px;">
         </div>
         
         <a href="{% url 'dashboard' %}" class="sidebar-item {% if request.path == '/dashboard/' %}active{% endif %}">
@@ -589,9 +591,12 @@
                 {% endif %}
                 
                 <!-- Page Title - Show dynamically based on current page -->
-                <span class="navbar-text text-white ms-3 fw-bold">
-                    {% block navbar_title %}Dashboard{% endblock %}
-                </span>
+                <div class="d-flex align-items-center">
+                    <img src="{% static 'img/logofinal.png' %}" alt="Budget Tracker Logo" class="img-fluid me-2" style="max-height: 32px;">
+                    <span class="navbar-text text-white fw-bold">
+                        {% block navbar_title %}Dashboard{% endblock %}
+                    </span>
+                </div>
                 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>

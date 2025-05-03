@@ -29,8 +29,8 @@ body.dark-mode .date-text {
 
 .dashboard-grid .card-header {
     cursor: grab;
-    background: linear-gradient(to right, rgba(67, 97, 238, 0.05), rgba(67, 97, 238, 0.1));
-    border-bottom: 1px solid rgba(67, 97, 238, 0.1);
+    background: linear-gradient(to right, rgba(71, 0, 5, 0.05), rgba(71, 0, 5, 0.1));
+    border-bottom: 1px solid rgba(71, 0, 5, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -40,12 +40,12 @@ body.dark-mode .date-text {
 .dashboard-grid .card-header .fs-6 {
     margin: 0;
     font-weight: 600;
-    color: var(--primary-color);
+    color: #470005;
 }
 
 .dashboard-grid .card-header:active {
     cursor: grabbing;
-    background-color: rgba(67, 97, 238, 0.15);
+    background-color: rgba(71, 0, 5, 0.15);
 }
 
 /* Improved text readability styles */
@@ -144,13 +144,13 @@ body.dark-mode .date-text {
     justify-content: center;
     width: 40px;
     height: 40px;
-    background-color: rgba(67, 97, 238, 0.1);
+    background-color: rgba(71, 0, 5, 0.1);
     border-radius: 50%;
     margin-right: 1rem;
 }
 
 .summary-icon i {
-    color: var(--primary-color);
+    color: #470005;
     font-size: 1.2rem;
 }
 
@@ -184,7 +184,7 @@ body.dark-mode .date-text {
 }
 
 .dashboard-grid .progress-bar {
-    background: linear-gradient(to right, var(--primary-color), var(--primary-light));
+    background: linear-gradient(to right, #470005, #7d000a);
     border-radius: 4px;
 }
 
@@ -579,10 +579,10 @@ body.dark-mode .transaction-category[data-category-type="other"] {
 <header class="d-flex justify-content-between align-items-center mb-4">
     <div class="welcome-container d-flex align-items-center">
         <div class="welcome-icon me-3">
-            <i class="bi bi-calendar-check text-primary" style="font-size: 1.75rem;"></i>
+            <i class="bi bi-calendar-check" style="font-size: 1.75rem; color: #470005;"></i>
         </div>
     <div>
-            <p class="h5 mb-1 welcome-text">Welcome back, {{ user.username }}!</p>
+            <p class="h5 mb-1 welcome-text" style="color: #470005;">Welcome back, {{ user.username }}!</p>
             <p class="text-muted small mb-0 date-text">Today is {% now "l, F j, Y" %}</p>
         </div>
     </div>
@@ -791,7 +791,7 @@ body.dark-mode .transaction-category[data-category-type="other"] {
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="dashboardPreferencesModalLabel">WIDGET PREFERENCES</h5>
+                <h5 class="modal-title" id="dashboardPreferencesModalLabel" style="color: #470005;">WIDGET PREFERENCES</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1800,7 +1800,7 @@ function initDashboard() {
                 widgetElement.innerHTML = `
                     <div class="card border-0 shadow-sm dashboard-card h-100">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fs-6">${widget.title}</h5>
+                            <h5 class="mb-0 fs-6" style="color: #470005;">${widget.title}</h5>
                             <i class="bi bi-grip-horizontal"></i>
                         </div>
                         ${widget.content}
