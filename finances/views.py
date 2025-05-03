@@ -18,7 +18,7 @@ import logging
 from django.db import models
 from decimal import Decimal
 import decimal
-from .utils import get_transactions_with_scheduled
+from .utils import get_transactions_with_scheduled, generate_scheduled_transactions
 
 def home(request):
     return render(request, 'finances/home.html')
@@ -117,8 +117,8 @@ def scheduled_transactions(request):
     # Get search query
     search_query = request.GET.get('search', '')
     
-    # Get all transactions for the month
-    monthly_transactions = get_transactions_with_scheduled(request.user, first_day, last_day)
+    # Get only scheduled transactions for the month
+    monthly_transactions = generate_scheduled_transactions(request.user, first_day, last_day)
     
     # Apply search filter if provided
     if search_query:
