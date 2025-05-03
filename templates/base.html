@@ -538,7 +538,7 @@
         
         <a href="{% url 'dashboard' %}" class="sidebar-item {% if request.path == '/dashboard/' %}active{% endif %}">
             <i class="bi bi-speedometer2 sidebar-icon"></i>
-            <span class="sidebar-text">Overview</span>
+            <span class="sidebar-text">Dashboard</span>
         </a>
         <a href="{% url 'transactions' %}" class="sidebar-item {% if '/transactions/' in request.path %}active{% endif %}">
             <i class="bi bi-list-check sidebar-icon"></i>
@@ -606,7 +606,7 @@
                 
                 <!-- Page Title - Show dynamically based on current page -->
                 <span class="navbar-text text-white ms-3 fw-bold">
-                    {% block navbar_title %}Overview{% endblock %}
+                    {% block navbar_title %}Dashboard{% endblock %}
                 </span>
                 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -646,10 +646,12 @@
         <div class="container-fluid py-4" style="padding-left: 5rem; padding-right: 5rem;">
         {% if messages %}
             {% for message in messages %}
+                {% if message.tags != 'success' or 'welcome' not in message|lower %}
                 <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
+                {% endif %}
             {% endfor %}
         {% endif %}
         

@@ -142,7 +142,7 @@
                 fetch(`/finances/api/accounts/${accountId}/balance/`)
                     .then(response => response.json())
                     .then(data => {
-                        accountBalanceDiv.textContent = `Available Balance: ${data.balance} USD`;
+                        accountBalanceDiv.textContent = `Available Balance: ${data.balance} PHP`;
                     });
             } else {
                 accountBalanceDiv.textContent = '';

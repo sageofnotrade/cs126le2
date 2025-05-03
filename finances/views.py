@@ -1552,6 +1552,8 @@ def transactions(request):
         'current_year': current_year,
         'current_month_name': current_month_name,
         'total_balance': total_balance,
+        'total_income': income,
+        'total_expenses': expenses,
         'selected_category': category_id,
         'selected_subcategory': subcategory_id,
     }

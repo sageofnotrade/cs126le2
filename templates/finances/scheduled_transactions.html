@@ -19,15 +19,15 @@
             <div class="row text-center">
                 <div class="col-4">
                     <h6 class="mb-1">Expected Income</h6>
-                    <p class="text-success fw-bold mb-0">${{ income_sum|floatformat:2 }}</p>
+                    <p class="text-success fw-bold mb-0">₱{{ income_sum|floatformat:2 }}</p>
                 </div>
                 <div class="col-4">
                     <h6 class="mb-1">Expected Expenses</h6>
-                    <p class="text-danger fw-bold mb-0">${{ expense_sum|floatformat:2 }}</p>
+                    <p class="text-danger fw-bold mb-0">₱{{ expense_sum|floatformat:2 }}</p>
                 </div>
                 <div class="col-4">
                     <h6 class="mb-1">Net</h6>
-                    <p class="fw-bold mb-0 {% if net_sum >= 0 %}text-success{% else %}text-danger{% endif %}">${{ net_sum|floatformat:2 }}</p>
+                    <p class="fw-bold mb-0 {% if net_sum >= 0 %}text-success{% else %}text-danger{% endif %}">₱{{ net_sum|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
@@ -82,7 +82,7 @@
                                 <div class="d-flex align-items-center">
                                     <div class="text-end me-3">
                                         <div class="fw-bold {% if transaction.type == 'income' %}text-success{% else %}text-danger{% endif %}">
-                                            {% if transaction.type == 'income' %}+{% else %}-{% endif %}${{ transaction.amount|floatformat:2 }}
+                                            {% if transaction.type == 'income' %}+{% else %}-{% endif %}₱{{ transaction.amount|floatformat:2 }}
                                         </div>
                                         <span class="badge {% if transaction.type == 'income' %}bg-success{% else %}bg-danger{% endif %}">
                                             {{ transaction.type|title }}
@@ -150,7 +150,7 @@
                         <div class="col-md-6">
                             <label for="scheduled-transaction-amount" class="form-label">Amount</label>
                             <div class="input-group">
-                                <span class="input-group-text">$</span>
+                                <span class="input-group-text">₱</span>
                                 <input type="number" class="form-control" id="scheduled-transaction-amount" name="amount" step="0.01" min="0.01" required placeholder="0.00">
                                 <div class="invalid-feedback">Please enter a valid amount greater than 0.</div>
                             </div>

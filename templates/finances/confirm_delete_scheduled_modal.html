@@ -5,7 +5,7 @@
             <dt class="col-5">Name:</dt>
             <dd class="col-7">{{ object.name }}</dd>
             <dt class="col-5">Amount:</dt>
-            <dd class="col-7">${{ object.amount|floatformat:2 }}</dd>
+            <dd class="col-7">₱{{ object.amount|floatformat:2 }}</dd>
             <dt class="col-5">Type:</dt>
             <dd class="col-7">{{ object.get_transaction_type_display }}</dd>
             <dt class="col-5">Category:</dt>

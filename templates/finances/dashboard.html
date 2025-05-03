@@ -7,12 +7,195 @@
 
 {% block extra_css %}
 <style>
+/* Dark mode styles for welcome text */
+body.dark-mode .welcome-text {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .date-text {
+    color: #a0aec0 !important;
+}
+
+.dashboard-grid .card {
+    transition: all 0.25s ease-in-out;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.dashboard-grid .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
 .dashboard-grid .card-header {
     cursor: grab;
+    background: linear-gradient(to right, rgba(67, 97, 238, 0.05), rgba(67, 97, 238, 0.1));
+    border-bottom: 1px solid rgba(67, 97, 238, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1.25rem;
 }
+
+.dashboard-grid .card-header .fs-6 {
+    margin: 0;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
 .dashboard-grid .card-header:active {
     cursor: grabbing;
+    background-color: rgba(67, 97, 238, 0.15);
 }
+
+/* Improved text readability styles */
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.account-type-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+}
+
+.value-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.amount-value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.total-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    padding: 0.25rem 0.4rem;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.income-text {
+    color: var(--positive-color);
+}
+
+.expense-text {
+    color: #d9534f;
+}
+
+.card-section {
+    margin-bottom: 1.2rem;
+}
+
+.card-footer-section {
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    margin-top: auto;
+}
+
+/* Enhanced visual cues and color contrast */
+.amount-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.income-badge {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: var(--positive-color);
+}
+
+.expense-badge {
+    background-color: rgba(220, 53, 69, 0.12);
+    color: #d9534f;
+}
+
+.indicator-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.indicator-dot.positive {
+    background-color: var(--positive-color);
+}
+
+.indicator-dot.negative {
+    background-color: #d9534f;
+}
+
+.indicator-dot.warning {
+    background-color: var(--warning-color);
+}
+
+.summary-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(67, 97, 238, 0.1);
+    border-radius: 50%;
+    margin-right: 1rem;
+}
+
+.summary-icon i {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+/* Card body enhancements */
+.dashboard-card-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    height: 100%;
+}
+
+.dashboard-card-link .card-body {
+    height: 100%;
+    padding: 1.25rem;
+    border-radius: 0 0 12px 12px;
+    transition: all 0.3s ease;
+}
+
+.dashboard-card-link:hover .card-body {
+    background-color: rgba(248, 249, 250, 0.7);
+    cursor: pointer;
+}
+
+/* Enhanced widget content styling */
+.dashboard-grid .progress {
+    height: 8px;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    background-color: rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.dashboard-grid .progress-bar {
+    background: linear-gradient(to right, var(--primary-color), var(--primary-light));
+    border-radius: 4px;
+}
+
+.dashboard-grid .chart-container {
+    margin: 0.5rem 0;
+}
+
+.dashboard-grid .card-body {
+    padding: 1.25rem;
+}
+
 .dashboard-elements-container {
     border: 1px solid #dee2e6;
     border-radius: 0.25rem;
@@ -20,6 +203,7 @@
     min-height: 50px;
     margin-bottom: 0.5rem;
 }
+
 .dashboard-element {
     padding: 0.75rem 1rem;
     background-color: #f8f9fa;
@@ -33,14 +217,17 @@
     user-select: none;
     position: relative;
 }
+
 .dashboard-element:last-child {
     margin-bottom: 0;
 }
+
 .dashboard-element:hover {
     background-color: #e9ecef;
     transform: translateY(-2px);
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
+
 .dashboard-element:active {
     cursor: grabbing;
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -48,19 +235,23 @@
     background-color: #e2e6ea;
     z-index: 10;
 }
+
 .dashboard-element.sortable-ghost {
     opacity: 0.4;
     background-color: #c8e6c9;
 }
+
 .dashboard-element.sortable-chosen {
     background-color: #e3f2fd;
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     z-index: 10;
 }
+
 .dashboard-element.sortable-drag {
     opacity: 0.8;
     transform: rotate(1deg);
 }
+
 .dashboard-element-icon {
     color: #6c757d;
     font-size: 1.1rem;
@@ -73,24 +264,294 @@
     background-color: #f1f8fe;
     border-radius: 50%;
 }
-.dashboard-card-link {
-    display: block;
-    color: inherit;
-    text-decoration: none;
-    height: 100%;
-}
-.dashboard-card-link .card-body {
-    height: 100%;
-}
-.dashboard-card-link:hover .card-body {
-    background: #f8f9fa;
-    cursor: pointer;
-    transition: background 0.2s;
-}
+
 .section-title {
     font-size: 0.9rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
+}
+
+/* Improved total balance styling */
+.total-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    padding: 0.25rem 0.4rem;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* Enhanced transaction list styling */
+.transaction-item {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Fixed height for recent transactions card */
+[data-element-id="recent-transactions"] .card-body {
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+}
+
+.transaction-item:last-child {
+    border-bottom: none;
+}
+
+.transaction-date {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+}
+
+/* Transaction category styling */
+.transaction-category {
+    display: inline-flex;
+    align-items: center;
+    background: linear-gradient(to right, rgba(67, 97, 238, 0.1), rgba(67, 97, 238, 0.05));
+    border-radius: 12px;
+    padding: 0.2rem 0.6rem;
+    margin-left: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Color-coded category badges based on type */
+.transaction-category[data-category-type="food"] {
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+    color: #047857;
+}
+
+.transaction-category[data-category-type="bills"] {
+    background: linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05));
+    color: #1e40af;
+}
+
+.transaction-category[data-category-type="transport"] {
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+    color: #92400e;
+}
+
+.transaction-category[data-category-type="entertainment"] {
+    background: linear-gradient(to right, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05));
+    color: #6d28d9;
+}
+
+.transaction-category[data-category-type="health"] {
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+    color: #b91c1c;
+}
+
+.transaction-category[data-category-type="shopping"] {
+    background: linear-gradient(to right, rgba(236, 72, 153, 0.15), rgba(236, 72, 153, 0.05));
+    color: #be185d;
+}
+
+.transaction-category[data-category-type="income"] {
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+    color: #047857;
+}
+
+.transaction-category[data-category-type="other"] {
+    background: linear-gradient(to right, rgba(107, 114, 128, 0.15), rgba(107, 114, 128, 0.05));
+    color: #4b5563;
+}
+
+/* Special handling for expense and income types */
+.transaction-category[data-category-type="expense"] {
+    background: linear-gradient(to right, rgba(220, 53, 69, 0.15), rgba(220, 53, 69, 0.05));
+    color: #b91c1c;
+}
+
+.transaction-category[data-category-type="expense"]::before {
+    content: "\\F295"; /* bi-bag-dash */
+}
+
+/* Small category icons */
+.transaction-category::before {
+    content: "\\F29F"; /* Default icon: bi-bookmark */
+    font-family: "bootstrap-icons";
+    margin-right: 0.35rem;
+    font-size: 0.75rem;
+    display: inline-block;
+}
+
+.transaction-category[data-category-type="food"]::before {
+    content: "\\F29B"; /* bi-basket */
+}
+
+.transaction-category[data-category-type="bills"]::before {
+    content: "\\F491"; /* bi-receipt */
+}
+
+.transaction-category[data-category-type="transport"]::before {
+    content: "\\F6BC"; /* bi-car-front */
+}
+
+.transaction-category[data-category-type="entertainment"]::before {
+    content: "\\F587"; /* bi-tv */
+}
+
+.transaction-category[data-category-type="health"]::before {
+    content: "\\F48A"; /* bi-heart-pulse */
+}
+
+.transaction-category[data-category-type="shopping"]::before {
+    content: "\\F23F"; /* bi-bag */
+}
+
+.transaction-category[data-category-type="income"]::before {
+    content: "\\F555"; /* bi-piggy-bank */
+}
+
+.transaction-category[data-category-type="other"]::before {
+    content: "\\F533"; /* bi-three-dots */
+}
+
+/* Dark mode adjustments for category badges */
+body.dark-mode .transaction-category {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+body.dark-mode .transaction-category[data-category-type="food"] {
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+    color: #34d399;
+}
+
+body.dark-mode .transaction-category[data-category-type="bills"] {
+    background: linear-gradient(to right, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+    color: #60a5fa;
+}
+
+body.dark-mode .transaction-category[data-category-type="transport"] {
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1));
+    color: #fbbf24;
+}
+
+body.dark-mode .transaction-category[data-category-type="entertainment"] {
+    background: linear-gradient(to right, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
+    color: #a78bfa;
+}
+
+body.dark-mode .transaction-category[data-category-type="health"] {
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+    color: #f87171;
+}
+
+body.dark-mode .transaction-category[data-category-type="shopping"] {
+    background: linear-gradient(to right, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.1));
+    color: #ec4899;
+}
+
+body.dark-mode .transaction-category[data-category-type="income"] {
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+    color: #34d399;
+}
+
+body.dark-mode .transaction-category[data-category-type="other"] {
+    background: linear-gradient(to right, rgba(107, 114, 128, 0.2), rgba(107, 114, 128, 0.1));
+    color: #9ca3af;
+}
+
+/* Chart enhancements */
+.chart-label {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.chart-container {
+    position: relative;
+}
+
+.chart-value-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.chart-value-display .value {
+    font-size: 1rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.chart-value-display .label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+/* Custom chart tooltip styling */
+.custom-chart-tooltip {
+    position: absolute;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 1000;
+    font-size: 0.85rem;
+    max-width: 200px;
+    white-space: nowrap;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: opacity 0.15s ease;
+    opacity: 0;
+}
+
+.custom-chart-tooltip.visible {
+    opacity: 1;
+}
+
+.custom-chart-tooltip-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.custom-chart-tooltip-item:last-child {
+    margin-bottom: 0;
+}
+
+.custom-chart-tooltip-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.custom-chart-tooltip-label {
+    margin-right: 8px;
+    font-weight: 600;
+}
+
+.custom-chart-tooltip-value {
+    font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+    .dashboard-grid .card:hover {
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+    
+    .dashboard-card-link:hover .card-body {
+        background-color: rgba(255, 255, 255, 0.02) !important;
+    }
+
+    .custom-chart-tooltip {
+        background: rgba(30, 30, 30, 0.95);
+        color: rgba(255, 255, 255, 0.95);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
 }
 </style>
 {% endblock %}
@@ -101,9 +562,14 @@
 
 {% block content %}
 <header class="d-flex justify-content-between align-items-center mb-4">
+    <div class="welcome-container d-flex align-items-center">
+        <div class="welcome-icon me-3">
+            <i class="bi bi-calendar-check text-primary" style="font-size: 1.75rem;"></i>
+        </div>
     <div>
-        <h1 class="h2 mb-1">Dashboard</h1>
-        <p class="text-muted mb-0">Welcome back, {{ user.username }}!</p>
+            <p class="h5 mb-1 welcome-text">Welcome back, {{ user.username }}!</p>
+            <p class="text-muted small mb-0 date-text">Today is {% now "l, F j, Y" %}</p>
+        </div>
     </div>
 </header>
 
@@ -113,38 +579,43 @@
         <a href="{% url 'accounts_list' %}" class="text-decoration-none flex-fill">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3 d-flex flex-column">
-                    <h6 class="text-muted mb-2">Summary</h6>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="summary-icon">
+                            <i class="bi bi-bank"></i>
+                        </div>
+                        <h6 class="card-title mb-0">Summary</h6>
+                    </div>
                     <div class="flex-grow-1 d-flex flex-column">
                         {% if accounts_summary.debit.accounts|length == 0 and accounts_summary.credit.accounts|length == 0 and accounts_summary.wallet.accounts|length == 0 %}
                             <div class="text-center text-muted py-4">
                                 No existing accounts yet.
                             </div>
                         {% else %}
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="text-secondary small">Debit Balance ({{ accounts_summary.debit.accounts|length }} account/s)</span>
-                                    <span class="fw-medium ms-2 {% if accounts_summary.debit.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                        ${{ accounts_summary.debit.balance|floatformat:2 }}
+                            <div class="card-section">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="account-type-label">
+                                        <span class="indicator-dot {% if accounts_summary.debit.balance >= 0 %}positive{% else %}negative{% endif %}"></span>
+                                        Debit Balance ({{ accounts_summary.debit.accounts|length }} account/s)
                                     </span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="text-secondary small">Credit ({{ accounts_summary.credit.accounts|length }} account/s)</span>
-                                    <span class="fw-medium ms-2 {% if accounts_summary.credit.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                        ${{ accounts_summary.credit.balance|floatformat:2 }}
+                                    <span class="amount-badge ms-2 {% if accounts_summary.debit.balance >= 0 %}income-badge{% else %}expense-badge{% endif %}">
+                                        ₱{{ accounts_summary.debit.balance|floatformat:2 }}
                                     </span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-secondary small">Wallet Balance ({{ accounts_summary.wallet.accounts|length }} account/s)</span>
-                                    <span class="fw-medium ms-2 {% if accounts_summary.wallet.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                        ${{ accounts_summary.wallet.balance|floatformat:2 }}
+                                    <span class="account-type-label">
+                                        <span class="indicator-dot {% if accounts_summary.wallet.balance >= 0 %}positive{% else %}negative{% endif %}"></span>
+                                        Wallet Balance ({{ accounts_summary.wallet.accounts|length }} account/s)
+                                    </span>
+                                    <span class="amount-badge ms-2 {% if accounts_summary.wallet.balance >= 0 %}income-badge{% else %}expense-badge{% endif %}">
+                                        ₱{{ accounts_summary.wallet.balance|floatformat:2 }}
                                     </span>
                                 </div>
                             </div>
-                            <div class="mt-auto pt-2 border-top">
+                            <div class="card-footer-section">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fw-medium">Total Balance</span>
-                                    <span class="h5 mb-0 ms-2 {% if total_balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                        ${{ total_balance|floatformat:2 }}
+                                    <span class="fw-medium">Available Balance</span>
+                                    <span class="total-amount ms-2 {% if accounts_summary.debit.balance|add:accounts_summary.wallet.balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                        ₱{{ accounts_summary.debit.balance|add:accounts_summary.wallet.balance|floatformat:2 }}
                                     </span>
                                 </div>
                             </div>
@@ -160,32 +631,41 @@
         <a href="{% url 'transactions' %}?month={{ current_month|date:'Y-m' }}" class="text-decoration-none flex-fill">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3 d-flex flex-column">
-                    <h6 class="text-muted mb-2">This Month</h6>
-                    <div class="flex-grow-1 d-flex flex-column">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="chart-container me-3" style="width: 80px; height: 80px; position: relative;">
+                        <div class="summary-icon">
+                            <i class="bi bi-calendar-month"></i>
+                        </div>
+                        <h6 class="card-title mb-0">This Month</h6>
+                    </div>
+                    <div class="flex-grow-1 d-flex flex-column">
+                        <div class="d-flex align-items-center card-section">
+                            <div class="chart-container me-3" style="width: 110px; height: 110px; position: relative;">
                                 <canvas id="currentMonthChart"></canvas>
                             </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="text-secondary small">Income</span>
-                                    <span class="fw-medium ms-2 income-text">
-                                        ${{ current_month_income|floatformat:2 }}
+                            <div class="flex-grow-1 py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="value-label">
+                                        <span class="indicator-dot positive"></span>Income
+                                    </span>
+                                    <span class="amount-badge income-badge">
+                                        ₱{{ current_month_income|floatformat:2 }}
                                     </span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-secondary small">Expenses</span>
-                                    <span class="fw-medium ms-2 expense-text">
-                                        ${{ current_month_expenses|floatformat:2 }}
+                                    <span class="value-label">
+                                        <span class="indicator-dot negative"></span>Expenses
+                                    </span>
+                                    <span class="amount-badge expense-badge">
+                                        ₱{{ current_month_expenses|floatformat:2 }}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-auto pt-2 border-top">
+                        <div class="card-footer-section">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="fw-medium">Net</span>
-                                <span class="h5 mb-0 ms-2 {% if current_month_balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                    ${{ current_month_balance|floatformat:2 }}
+                                <span class="total-amount ms-2 {% if current_month_balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    ₱{{ current_month_balance|floatformat:2 }}
                                 </span>
                             </div>
                         </div>
@@ -200,32 +680,41 @@
         <a href="{% url 'transactions' %}?month={{ prev_month|date:'Y-m' }}" class="text-decoration-none flex-fill">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3 d-flex flex-column">
-                    <h6 class="text-muted mb-2">Last Month</h6>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="summary-icon">
+                            <i class="bi bi-calendar-range"></i>
+                        </div>
+                        <h6 class="card-title mb-0">Last Month</h6>
+                    </div>
                     <div class="flex-grow-1 d-flex flex-column">
-                        <div class="d-flex justify-items-center align-items-center mb-3">
-                            <div class="chart-container me-3" style="width: 80px; height: 80px; position: relative;">
+                        <div class="d-flex justify-items-center align-items-center card-section">
+                            <div class="chart-container me-3" style="width: 110px; height: 110px; position: relative;">
                                 <canvas id="prevMonthChart"></canvas>
                             </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="text-secondary small">Income</span>
-                                    <span class="fw-medium ms-2 income-text">
-                                        ${{ prev_month_income|floatformat:2 }}
+                            <div class="flex-grow-1 py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="value-label">
+                                        <span class="indicator-dot positive"></span>Income
+                                    </span>
+                                    <span class="amount-badge income-badge">
+                                        ₱{{ prev_month_income|floatformat:2 }}
                                     </span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-secondary small">Expenses</span>
-                                    <span class="fw-medium ms-2 expense-text">
-                                        ${{ prev_month_expenses|floatformat:2 }}
+                                    <span class="value-label">
+                                        <span class="indicator-dot negative"></span>Expenses
+                                    </span>
+                                    <span class="amount-badge expense-badge">
+                                        ₱{{ prev_month_expenses|floatformat:2 }}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-auto pt-2 border-top">
-                            <div class="d-flex justify-content-between align-items-end">
+                        <div class="card-footer-section">
+                            <div class="d-flex justify-content-between align-items-center">
                                 <span class="fw-medium">Net</span>
-                                <span class="h5 mb-0 ms-2 {% if prev_month_balance >= 0 %}income-text{% else %}expense-text{% endif %}">
-                                    ${{ prev_month_balance|floatformat:2 }}
+                                <span class="total-amount ms-2 {% if prev_month_balance >= 0 %}income-text{% else %}expense-text{% endif %}">
+                                    ₱{{ prev_month_balance|floatformat:2 }}
                                 </span>
                             </div>
                         </div>
@@ -238,23 +727,23 @@
 
 <!-- Rest of the dashboard content -->
 {% if budget_warnings %}
-<section class="budget-warnings mt-4" aria-labelledby="warnings-heading">
+<section class="budget-warnings mt-5" aria-labelledby="warnings-heading">
     <div class="card border-0 shadow-sm">
         <header class="card-header bg-warning text-dark d-flex align-items-center">
             <i class="bi bi-exclamation-triangle me-2"></i>
             <h2 class="h6 mb-0" id="warnings-heading">Budget Warnings</h2>
         </header>
-        <div class="card-body">
+        <div class="card-body p-3">
             {% for warning in budget_warnings %}
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex justify-content-between align-items-center {% if not forloop.last %}mb-3{% endif %}">
                 <div>
-                    <strong>{{ warning.category }}</strong>
-                    <div class="text-muted small">
-                        Spent ${{ warning.spent|floatformat:2 }} of ${{ warning.budget|floatformat:2 }}
+                    <div class="fw-bold mb-1">{{ warning.category }}</div>
+                    <div class="value-label">
+                        Spent ₱{{ warning.spent|floatformat:2 }} of ₱{{ warning.budget|floatformat:2 }}
                     </div>
                 </div>
-                <div class="text-end">
-                    <div class="h5 mb-0 {% if warning.percentage >= 100 %}text-danger{% else %}text-warning{% endif %}">
+                <div class="text-end ms-3">
+                    <div class="total-amount {% if warning.percentage >= 100 %}text-danger{% else %}text-warning{% endif %}">
                         {{ warning.percentage }}%
                     </div>
                 </div>
@@ -266,15 +755,18 @@
 {% endif %}
 
 <!-- Customizable Dashboard -->
-<section class="customizable-dashboard mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h5 mb-0">Overview</h2>
-        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#dashboardPreferencesModal">
-            <i class="bi bi-gear"></i> Configure
+<section class="customizable-dashboard mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h5 mb-0 d-flex align-items-center">
+            <i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i>
+            Widgets
+        </h2>
+        <button type="button" class="btn btn-sm btn-outline-primary px-3 py-2" data-bs-toggle="modal" data-bs-target="#dashboardPreferencesModal">
+            <i class="bi bi-grid"></i> Customize Widgets
         </button>
     </div>
     
-    <div id="dashboard-grid" class="dashboard-grid row g-3">
+    <div id="dashboard-grid" class="dashboard-grid row g-4">
         <!-- Dashboard widgets will be loaded here via JavaScript -->
     </div>
 </section>
@@ -284,16 +776,16 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="dashboardPreferencesModalLabel">OVERVIEW - PREFERENCES</h5>
+                <h5 class="modal-title" id="dashboardPreferencesModalLabel">WIDGET PREFERENCES</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label for="columns-select" class="form-label">Columns number in the "Overview" page:</label>
+                    <label for="columns-select" class="form-label">Number of widget columns to display:</label>
                     <select id="columns-select" class="form-select">
-                        <option value="1">1</option>
-                        <option value="2" selected>2</option>
-                        <option value="3">3</option>
+                        <option value="1">1 (Full width)</option>
+                        <option value="2" selected>2 (Medium width)</option>
+                        <option value="3">3 (Small width)</option>
                     </select>
                 </div>
 
@@ -363,6 +855,18 @@
 
 {% block extra_js %}
 <script>
+// Pass Django template variables to JavaScript cleanly
+const dashboardData = {
+    currentMonth: {
+        income: {% if current_month_income %}{{ current_month_income }}{% else %}0{% endif %},
+        expenses: {% if current_month_expenses %}{{ current_month_expenses }}{% else %}0{% endif %}
+    },
+    prevMonth: {
+        income: {% if prev_month_income %}{{ prev_month_income }}{% else %}0{% endif %},
+        expenses: {% if prev_month_expenses %}{{ prev_month_expenses }}{% else %}0{% endif %}
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     const chartConfig = {
         type: 'doughnut',
@@ -375,66 +879,282 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
-                    enabled: false
+                    enabled: true,
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ₱' + context.raw.toFixed(2);
+                        }
+                    }
                 }
             },
-            events: []
+            events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove']
         }
     };
 
+    // Create custom tooltip container
+    const tooltipContainer = document.createElement('div');
+    tooltipContainer.className = 'custom-chart-tooltip';
+    document.body.appendChild(tooltipContainer);
+
     // Current Month Chart
     const currentMonthCtx = document.getElementById('currentMonthChart').getContext('2d');
-    const currentMonthIncome = {{ current_month_income }};
-    const currentMonthExpenses = {{ current_month_expenses }};
-    let currentMonthData, currentMonthColors, currentMonthBorders;
-    if (currentMonthIncome == 0 && currentMonthExpenses == 0) {
+    const currentMonthIncome = dashboardData.currentMonth.income;
+    const currentMonthExpenses = dashboardData.currentMonth.expenses;
+    let currentMonthData, currentMonthColors, currentMonthBorders, currentMonthLabels;
+
+    const noData = currentMonthIncome == 0 && currentMonthExpenses == 0;
+    
+    if (noData) {
         currentMonthData = [1, 0];
         currentMonthColors = ['rgba(108, 117, 125, 0.8)', 'rgba(108, 117, 125, 0.8)'];
         currentMonthBorders = ['rgb(108, 117, 125)', 'rgb(108, 117, 125)'];
+        currentMonthLabels = ['No Data', ''];
     } else {
         currentMonthData = [currentMonthIncome, currentMonthExpenses];
         currentMonthColors = ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'];
         currentMonthBorders = ['rgb(40, 167, 69)', 'rgb(220, 53, 69)'];
+        currentMonthLabels = ['Income', 'Expenses'];
     }
-    new Chart(currentMonthCtx, {
-        ...chartConfig,
+
+    let currentMonthChart = new Chart(currentMonthCtx, {
+        type: 'doughnut',
         data: {
-            labels: ['Income', 'Expenses'],
+            labels: currentMonthLabels,
             datasets: [{
                 data: currentMonthData,
                 backgroundColor: currentMonthColors,
                 borderColor: currentMonthBorders,
                 borderWidth: 0,
-                hoverOffset: 0
+                hoverOffset: noData ? 0 : 4
             }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            layout: {
+                padding: {
+                    top: 20,
+                    bottom: 20,
+                    left: 20,
+                    right: 20
+                }
+            },
+            events: noData ? [] : ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false,
+                    external: function(context) {
+                        // Skip tooltip for no data
+                        if (noData) {
+                            return;
+                        }
+                        
+                        // Tooltip Element
+                        const {chart, tooltip} = context;
+                        
+                        // Hide if no tooltip
+                        if (tooltip.opacity === 0) {
+                            tooltipContainer.classList.remove('visible');
+                            return;
+                        }
+                        
+                        // Set Text
+                        if (tooltip.body) {
+                            const titleLines = tooltip.title || [];
+                            const bodyLines = tooltip.body.map(b => b.lines);
+                            
+                            // Calculate positioning
+                            const {offsetLeft: positionX, offsetTop: positionY} = chart.canvas;
+                            
+                            // Display, position, and set styles for font
+                            tooltipContainer.classList.add('visible');
+                            
+                            let innerHtml = '';
+                            
+                            // Get the correct data index from the tooltip
+                            const dataIndex = tooltip.dataPoints[0].dataIndex;
+                            const colors = tooltip.labelColors[0];
+                            const colorStyle = `background-color: ${colors.backgroundColor}`;
+                            
+                            innerHtml += `<div class="custom-chart-tooltip-item">
+                                <span class="custom-chart-tooltip-color" style="${colorStyle}"></span>
+                                <span class="custom-chart-tooltip-label">${titleLines[0] || ''}</span>
+                                <span class="custom-chart-tooltip-value">₱${parseFloat(currentMonthData[dataIndex]).toFixed(2)}</span>
+                            </div>`;
+                            
+                            tooltipContainer.innerHTML = innerHtml;
+                            
+                            // Position tooltip correctly
+                            const canvasRect = chart.canvas.getBoundingClientRect();
+                            const tooltipRect = tooltipContainer.getBoundingClientRect();
+                            let left = canvasRect.left + window.scrollX + tooltip.caretX - (tooltipRect.width / 2);
+                            let top = canvasRect.top + window.scrollY + tooltip.caretY - tooltipRect.height - 10;
+                            
+                            // Ensure tooltip doesn't go offscreen
+                            const windowWidth = window.innerWidth;
+                            if (left + tooltipRect.width > windowWidth) {
+                                left = windowWidth - tooltipRect.width - 10;
+                            }
+                            if (left < 0) {
+                                left = 10;
+                            }
+                            
+                            if (top < window.scrollY) {
+                                top = canvasRect.top + window.scrollY + tooltip.caretY + 10;
+                            }
+                            
+                            tooltipContainer.style.left = left + 'px';
+                            tooltipContainer.style.top = top + 'px';
+                        }
+                    }
+                }
+            }
         }
     });
 
     // Previous Month Chart
     const prevMonthCtx = document.getElementById('prevMonthChart').getContext('2d');
-    const prevMonthIncome = {{ prev_month_income }};
-    const prevMonthExpenses = {{ prev_month_expenses }};
-    let prevMonthData, prevMonthColors, prevMonthBorders;
-    if (prevMonthIncome == 0 && prevMonthExpenses == 0) {
+    const prevMonthIncome = dashboardData.prevMonth.income;
+    const prevMonthExpenses = dashboardData.prevMonth.expenses;
+    let prevMonthData, prevMonthColors, prevMonthBorders, prevMonthLabels;
+
+    const prevNoData = prevMonthIncome == 0 && prevMonthExpenses == 0;
+    
+    if (prevNoData) {
         prevMonthData = [1, 0];
         prevMonthColors = ['rgba(108, 117, 125, 0.8)', 'rgba(108, 117, 125, 0.8)'];
         prevMonthBorders = ['rgb(108, 117, 125)', 'rgb(108, 117, 125)'];
+        prevMonthLabels = ['No Data', ''];
     } else {
         prevMonthData = [prevMonthIncome, prevMonthExpenses];
         prevMonthColors = ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'];
         prevMonthBorders = ['rgb(40, 167, 69)', 'rgb(220, 53, 69)'];
+        prevMonthLabels = ['Income', 'Expenses'];
     }
-    new Chart(prevMonthCtx, {
-        ...chartConfig,
+
+    let prevMonthChart = new Chart(prevMonthCtx, {
+        type: 'doughnut',
         data: {
-            labels: ['Income', 'Expenses'],
+            labels: prevMonthLabels,
             datasets: [{
                 data: prevMonthData,
                 backgroundColor: prevMonthColors,
                 borderColor: prevMonthBorders,
                 borderWidth: 0,
-                hoverOffset: 0
+                hoverOffset: prevNoData ? 0 : 4
             }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            layout: {
+                padding: {
+                    top: 20,
+                    bottom: 20,
+                    left: 20,
+                    right: 20
+                }
+            },
+            events: prevNoData ? [] : ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false,
+                    external: function(context) {
+                        // Skip tooltip for no data
+                        if (prevNoData) {
+                            return;
+                        }
+                        
+                        // Tooltip Element
+                        const {chart, tooltip} = context;
+                        
+                        // Hide if no tooltip
+                        if (tooltip.opacity === 0) {
+                            tooltipContainer.classList.remove('visible');
+                            return;
+                        }
+                        
+                        // Set Text
+                        if (tooltip.body) {
+                            const titleLines = tooltip.title || [];
+                            const bodyLines = tooltip.body.map(b => b.lines);
+                            
+                            // Calculate positioning
+                            const {offsetLeft: positionX, offsetTop: positionY} = chart.canvas;
+                            
+                            // Display, position, and set styles for font
+                            tooltipContainer.classList.add('visible');
+                            
+                            let innerHtml = '';
+                            
+                            // Get the correct data index from the tooltip
+                            const dataIndex = tooltip.dataPoints[0].dataIndex;
+                            const colors = tooltip.labelColors[0];
+                            const colorStyle = `background-color: ${colors.backgroundColor}`;
+                            
+                            innerHtml += `<div class="custom-chart-tooltip-item">
+                                <span class="custom-chart-tooltip-color" style="${colorStyle}"></span>
+                                <span class="custom-chart-tooltip-label">${titleLines[0] || ''}</span>
+                                <span class="custom-chart-tooltip-value">₱${parseFloat(prevMonthData[dataIndex]).toFixed(2)}</span>
+                            </div>`;
+                            
+                            tooltipContainer.innerHTML = innerHtml;
+                            
+                            // Position tooltip correctly
+                            const canvasRect = chart.canvas.getBoundingClientRect();
+                            const tooltipRect = tooltipContainer.getBoundingClientRect();
+                            let left = canvasRect.left + window.scrollX + tooltip.caretX - (tooltipRect.width / 2);
+                            let top = canvasRect.top + window.scrollY + tooltip.caretY - tooltipRect.height - 10;
+                            
+                            // Ensure tooltip doesn't go offscreen
+                            const windowWidth = window.innerWidth;
+                            if (left + tooltipRect.width > windowWidth) {
+                                left = windowWidth - tooltipRect.width - 10;
+                            }
+                            if (left < 0) {
+                                left = 10;
+                            }
+                            
+                            if (top < window.scrollY) {
+                                top = canvasRect.top + window.scrollY + tooltip.caretY + 10;
+                            }
+                            
+                            tooltipContainer.style.left = left + 'px';
+                            tooltipContainer.style.top = top + 'px';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Hide tooltip when moving away from charts
+    document.addEventListener('mousemove', function(e) {
+        const chartElements = document.querySelectorAll('canvas');
+        let isOverChart = false;
+        
+        chartElements.forEach(chart => {
+            const rect = chart.getBoundingClientRect();
+            if (
+                e.clientX >= rect.left &&
+                e.clientX <= rect.right &&
+                e.clientY >= rect.top &&
+                e.clientY <= rect.bottom
+            ) {
+                isOverChart = true;
+            }
+        });
+        
+        if (!isOverChart) {
+            tooltipContainer.classList.remove('visible');
         }
     });
 
@@ -548,11 +1268,11 @@ function initDashboard() {
                     <div class="mb-2">
                         <div class="d-flex justify-content-between mb-1">
                             <span>Student Loan</span>
-                            <span class="fw-bold expense-text">$12,500.00</span>
+                            <span class="fw-bold expense-text">₱12,500.00</span>
                         </div>
                         <div class="d-flex justify-content-between">
                             <span>Car Loan</span>
-                            <span class="fw-bold expense-text">$8,750.00</span>
+                            <span class="fw-bold expense-text">₱8,750.00</span>
                         </div>
                     </div>
                     <a href="#" class="btn btn-sm btn-outline-primary mt-2">View All</a>
@@ -570,14 +1290,14 @@ function initDashboard() {
                                     <span>Rent</span>
                                     <div class="small text-muted">May 1, 2023</div>
                                 </div>
-                                <span class="fw-bold expense-text">$1,200.00</span>
+                                <span class="fw-bold expense-text">₱1,200.00</span>
                             </div>
                             <div class="d-flex justify-content-between">
                                 <div>
                                     <span>Internet Bill</span>
                                     <div class="small text-muted">May 5, 2023</div>
                                 </div>
-                                <span class="fw-bold expense-text">$65.00</span>
+                                <span class="fw-bold expense-text">₱65.00</span>
                             </div>
                         </div>
                     </div>
@@ -630,22 +1350,33 @@ function initDashboard() {
                 <a href="{% url 'transactions' %}" class="dashboard-card-link">
                     <div class="card-body p-3">
                         {% if recent_transactions %}
-                            {% for transaction in recent_transactions %}
-                            <div class="d-flex justify-content-between align-items-center mb-3">
+                            {% for transaction in recent_transactions|slice:":3" %}
+                            <div class="transaction-item d-flex justify-content-between align-items-start">
                                 <div>
                                     <strong>{{ transaction.title }}</strong>
-                                    <div class="text-muted small">
+                                    <div class="transaction-date">
                                         {{ transaction.date|date:"M d, Y" }}
                                         {% if transaction.category %}
-                                        • {{ transaction.category.name }}
+                                        <span class="transaction-category" data-category-type="{{ transaction.category.type|default:transaction.type|default:'other' }}">
+                                            {{ transaction.category.name }}
+                                        </span>
+                                        {% elif transaction.type %}
+                                        <span class="transaction-category" data-category-type="{{ transaction.type }}">
+                                            {{ transaction.type|title }}
+                                        </span>
                                         {% endif %}
                                     </div>
                                 </div>
-                                <span class="{% if transaction.type == 'income' %}income-text{% else %}expense-text{% endif %}">
-                                    {% if transaction.type == 'expense' %}-{% endif %}${{ transaction.amount|floatformat:2 }}
+                                <span class="amount-badge ms-2 {% if transaction.type == 'income' %}income-badge{% else %}expense-badge{% endif %}">
+                                    {% if transaction.type == 'expense' %}-{% endif %}₱{{ transaction.amount|floatformat:2 }}
                                 </span>
                             </div>
                             {% endfor %}
+                            {% if recent_transactions|length > 3 %}
+                            <div class="text-center mt-2">
+                                <small class="text-muted">View all {{ recent_transactions|length }} transactions</small>
+                            </div>
+                            {% endif %}
                         {% else %}
                             <div class="text-muted">No recent transactions.</div>
                         {% endif %}
@@ -655,12 +1386,14 @@ function initDashboard() {
         }
     };
 
-    // Initialize dashboard preferences
-    let dashboardPreferences = {
-        columns: {{ dashboard_preferences.columns|default:2 }},
-        visibleElements: {{ dashboard_preferences.visible_elements|safe|default:'["budgets", "chart-balance", "chart-last-7-days", "recent-transactions"]' }},
-        hiddenElements: {{ dashboard_preferences.hidden_elements|safe|default:'["debts-credits", "scheduled-transactions", "cash-flow"]' }}
+    // Initialize dashboard preferences from Django template variables
+    const prefsData = {
+        columns: {% if dashboard_preferences.columns %}{{ dashboard_preferences.columns }}{% else %}2{% endif %},
+        visibleElements: {% if dashboard_preferences.visible_elements %}{{ dashboard_preferences.visible_elements|safe }}{% else %}["budgets", "chart-balance", "chart-last-7-days", "recent-transactions"]{% endif %},
+        hiddenElements: {% if dashboard_preferences.hidden_elements %}{{ dashboard_preferences.hidden_elements|safe }}{% else %}["debts-credits", "scheduled-transactions", "cash-flow"]{% endif %}
     };
+    
+    let dashboardPreferences = prefsData;
 
     // Initialize dashboard
     renderDashboard();
