@@ -34,6 +34,17 @@
       <link rel="stylesheet" href="{% static 'css/nice-select.css' %}">
       <link rel="stylesheet" href="{% static 'css/animate.min.css' %}">
          
+      <style>
+         /* Add smooth scrolling to the page */
+         html {
+            scroll-behavior: smooth;
+         }
+         
+         /* Offset for fixed header to ensure sections start at the right place */
+         #advisor_section, #about_section, #portfolio_section, #client_section, #Contact_section {
+            scroll-margin-top: 20px;
+         }
+      </style>
    </head>
    <body>
       <!--header section start -->
@@ -50,11 +61,11 @@
                            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
                            <div class="overlay-content">
                               <a href="{% url 'home' %}">Home</a>
-                              <a href="/finances/blog/">Blog</a>
-                              <a href="/finances/about/">About</a>
-                              <a href="/finances/services/">Services</a>
-                              <a href="/finances/client/">Client</a>
-                              <a href="/finances/contact/">Contact Us</a>
+                              <a href="#advisor_section">Budget Tips</a>
+                              <a href="#about_section">About</a>
+                              <a href="#portfolio_section">Services</a>
+                              <a href="#client_section">Client</a>
+                              <a href="#Contact_section">Contact Us</a>
                            </div>
                         </div>
                         <span class="navbar-toggler-icon"></span>
@@ -152,7 +163,7 @@
             </div>
          </div>
       </div>
-      <div class="advisor_section">
+      <div class="advisor_section" id="advisor_section">
          <div class="container">
             <h1 class="what_text">Budget Tips and Financial Insights</h1>
          </div>
@@ -187,7 +198,7 @@
          </div>
       </div>
       <!-- about section start -->
-      <div class="about_section layout_padding">
+      <div class="about_section layout_padding" id="about_section">
          <div class="container">
             <div class="row">
                <div class="col-sm-6">
@@ -203,7 +214,7 @@
       </div>
       <!-- about section end -->
       <!-- portfolio section start -->
-      <div class="portfolio_section layout_padding">
+      <div class="portfolio_section layout_padding" id="portfolio_section">
          <div class="container">
             <h1 class="what_text">Behind the Build</h1>
          </div>
@@ -295,7 +306,7 @@
       </div>
       <!-- consulting section end -->
   <!-- client section start -->
-  <div class="client_section layout_padding">
+  <div class="client_section layout_padding" id="client_section">
    <div class="container">
        <h1 class="what_text">What Our Users Say About Our Budget App</h1>
        <div id="carouselExampleIndicators" class="carousel slide" data-ride="carousel">
@@ -374,7 +385,7 @@
 </div>
 <!-- client section end -->
       <!-- contact section start -->
-      <div class="Contact_section layout_padding">
+      <div class="Contact_section layout_padding" id="Contact_section">
          <div class="container">
             <h1 class="categories_text">We'd Love to Hear From You</h1>
             <p class="dummy_text">Got feedback or need help using the Budget App? Fill out the form below and we'll get back to you shortly.</p>
@@ -486,6 +497,19 @@
          function closeNav() {
          document.getElementById("myNav").style.width = "0%";
          }
+
+         // Close overlay when navigation link is clicked
+         document.addEventListener('DOMContentLoaded', function() {
+            const overlayLinks = document.querySelectorAll('.overlay-content a');
+            overlayLinks.forEach(link => {
+               link.addEventListener('click', function() {
+                  // If it's an anchor link on the same page
+                  if (this.getAttribute('href').startsWith('#')) {
+                     closeNav();
+                  }
+               });
+            });
+         });
       </script>
 
 <!-- Login/Signup Modal -->
