@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block title %}Scheduled Transactions{% endblock %}
 {% block content %}
 <div class="container-fluid">
@@ -88,8 +90,7 @@
                                     </div>
                                     {% if transaction.is_scheduled %}
                                     <div class="dropdown ms-3">
-                                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="bi bi-three-dots-vertical"></i>
+                                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li><a class="dropdown-item openEditScheduledModal" href="#" data-url="{% url 'edit_scheduled_transaction' transaction.scheduled_id %}">Edit</a></li>
@@ -122,13 +123,110 @@
                 <h5 class="modal-title" id="scheduledTransactionModalLabel">Scheduled Transaction</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="scheduledTransactionModalBody">
-                <!-- The form will be loaded here via AJAX -->
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+            <div class="modal-body">
+                <form id="scheduled-transaction-form" method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" id="scheduled-transaction-id" name="id" value="">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="scheduled-transaction-name" class="form-label">Transaction Name</label>
+                            <input type="text" class="form-control" id="scheduled-transaction-name" name="name" required placeholder="Enter transaction name">
+                            <div class="invalid-feedback">Please provide a name for this transaction.</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="scheduled-transaction-type" class="form-label">Transaction Type</label>
+                            <select class="form-select" id="scheduled-transaction-type" name="transaction_type" required>
+                                <option value="" selected disabled>Select type</option>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a transaction type.</div>
+                        </div>
                     </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="scheduled-transaction-amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="scheduled-transaction-amount" name="amount" step="0.01" min="0.01" required placeholder="0.00">
+                                <div class="invalid-feedback">Please enter a valid amount greater than 0.</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="scheduled-transaction-date" class="form-label">Date Scheduled</label>
+                            <input type="datetime-local" class="form-control" id="scheduled-transaction-date" name="date_scheduled" required>
+                            <div class="invalid-feedback">Please select a valid date and time.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="scheduled-transaction-account" class="form-label">Account</label>
+                            <div class="input-group">
+                                <select class="form-select account-select w-100" id="scheduled-transaction-account" name="account" style="height: 46px;" required>
+                                    <option value="" data-icon="bi-bank">Choose your account</option>
+                                    {% for account in accounts %}
+                                    <option value="{{ account.id }}" data-account-type="{{ account.get_account_type }}" 
+                                            data-icon="{% if account.get_account_type == 'credit' %}bi-credit-card{% elif account.get_account_type == 'wallet' %}bi-wallet2{% else %}bi-piggy-bank{% endif %}">
+                                        {{ account.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="invalid-feedback">Please select an account.</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="scheduled-transaction-category" class="form-label">Category</label>
+                            <select class="form-select category-select w-100" id="scheduled-transaction-category" name="category" style="height: 46px;" required>
+                                <option value="" data-icon="bi-bookmark">Choose a category</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-type="{{ category.type }}" data-is-category="true">{{ category.name }}</option>
+                                    {% for subcategory in category.subcategories.all %}
+                                    <option value="{{ subcategory.id }}" data-icon="{{ subcategory.icon|default:category.icon }}" data-type="{{ category.type }}" data-parent-category="{{ category.id }}" data-subcategory-id="{{ subcategory.id }}">{{ subcategory.name }}</option>
+                                    {% endfor %}
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Please select a category.</div>
+                            <input type="hidden" id="scheduled-transaction-subcategory" name="subcategory" value="">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="scheduled-transaction-repeat-type" class="form-label">Repeat Type</label>
+                            <select class="form-select" id="scheduled-transaction-repeat-type" name="repeat_type" required>
+                                <option value="" selected disabled>Select how this transaction repeats</option>
+                                <option value="once">One-time</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                            <div class="invalid-feedback">Please select how this transaction repeats.</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="scheduled-transaction-repeats" class="form-label">Number of Transactions</label>
+                            <input type="number" class="form-control" id="scheduled-transaction-repeats" name="repeats" min="0" value="1" required>
+                            <div class="form-text" id="repeats-help">Set to 0 for infinite repeats. One-time transactions are always set to 1.</div>
+                            <div class="invalid-feedback">Please enter a valid number (0 or greater).</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="scheduled-transaction-note" class="form-label">Note (Optional)</label>
+                        <textarea class="form-control" id="scheduled-transaction-note" name="note" rows="2" placeholder="Add notes about this scheduled transaction"></textarea>
+                    </div>
+                </form>
                 </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-scheduled-transaction-btn">Save</button>
             </div>
         </div>
     </div>
@@ -171,104 +269,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function setupScheduledTransactionForm() {
-    // Set min date for scheduled date input
-    var dateInput = document.getElementById('id_date_scheduled');
-    if (dateInput) {
-        var today = new Date();
-        var yyyy = today.getFullYear();
-        var mm = String(today.getMonth() + 1).padStart(2, '0');
-        var dd = String(today.getDate()).padStart(2, '0');
-        var minDate = yyyy + '-' + mm + '-' + dd;
-        dateInput.setAttribute('min', minDate);
-    }
-
-    // Repeat type and number of transactions logic
-    var repeatType = document.getElementById('id_repeat_type');
-    var repeats = document.getElementById('id_repeats');
-    var repeatsHelp = document.getElementById('repeats-help');
-
-    function updateRepeatsField() {
-        if (repeatType && repeats) {
-            if (repeatType.value === 'once') {
-                repeats.value = 1;
-                repeats.setAttribute('disabled', 'disabled');
-            } else {
-                repeats.removeAttribute('disabled');
-            }
-        }
-    }
-    if (repeatType && repeats) {
-        repeatType.addEventListener('change', updateRepeatsField);
-        updateRepeatsField();
-    }
-    // Add helper text for infinite repeats
-    if (repeats && !document.getElementById('repeats-help')) {
-        var help = document.createElement('div');
-        help.className = 'form-text';
-        help.id = 'repeats-help';
-        help.innerText = 'Set to 0 for infinite repeats';
-        repeats.parentNode.appendChild(help);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Open Create Modal
-    document.getElementById('openCreateScheduledModal').addEventListener('click', function(e) {
-        e.preventDefault();
-        openScheduledTransactionModal('{% url 'create_scheduled_transaction' %}');
-    });
-
-    // Open Edit Modal
-    document.querySelectorAll('.openEditScheduledModal').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            openScheduledTransactionModal(this.getAttribute('data-url'));
-        });
-    });
-
-    // Open Delete Modal
-    document.querySelectorAll('.openDeleteScheduledModal').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            openDeleteScheduledModal(this.getAttribute('data-url'));
-        });
-    });
-
-    function openScheduledTransactionModal(url) {
-        var modal = new bootstrap.Modal(document.getElementById('scheduledTransactionModal'));
-        var modalBody = document.getElementById('scheduledTransactionModalBody');
-        modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        modal.show();
-        fetch(url)
-            .then(response => response.text())
-            .then(html => {
-                var parser = new DOMParser();
-                var doc = parser.parseFromString(html, 'text/html');
-                var form = doc.querySelector('form');
-                if (form) {
-                    modalBody.innerHTML = '';
-                    modalBody.appendChild(form);
-                } else {
-                    modalBody.innerHTML = html;
-                }
-                // Setup form logic after form is loaded
-                setupScheduledTransactionForm();
-            });
-    }
-
-    function openDeleteScheduledModal(url) {
-        var modal = new bootstrap.Modal(document.getElementById('deleteScheduledModal'));
-        var modalBody = document.getElementById('deleteScheduledModalBody');
-        modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        modal.show();
-        fetch(url)
-            .then(response => response.text())
-            .then(html => {
-                modalBody.innerHTML = html;
-            });
-    }
-});
-</script>
+<script src="{% static 'js/scheduled_transaction.js' %}"></script>
 {% endblock %}

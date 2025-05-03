@@ -81,9 +81,93 @@ document.addEventListener('DOMContentLoaded', function() {
             if (categoryId) {
                 loadSubcategories(categoryId);
             }
+            validateField(this);
         });
     }
+    
+    // Add validation event listeners to form fields
+    setupFormValidation();
 });
+
+// Set up form validation event listeners
+function setupFormValidation() {
+    // Get form elements
+    const form = document.getElementById('transaction-form');
+    if (!form) return;
+    
+    // Add validation on input for all required fields
+    const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            validateField(this);
+        });
+        
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+    });
+    
+    // Special validation for the amount field
+    const amountField = document.getElementById('transaction-amount');
+    if (amountField) {
+        amountField.addEventListener('input', function() {
+            // Check if amount is a positive number
+            const amount = parseFloat(this.value);
+            if (isNaN(amount) || amount <= 0) {
+                this.setCustomValidity('Amount must be greater than 0');
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+                
+                // Show feedback message
+                const feedback = this.parentNode.querySelector('.invalid-feedback');
+                if (feedback) {
+                    feedback.textContent = 'Please enter a valid amount greater than 0.';
+                    feedback.classList.add('d-block');
+                }
+            } else {
+                this.setCustomValidity('');
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+                
+                // Hide feedback message
+                const feedback = this.parentNode.querySelector('.invalid-feedback');
+                if (feedback) {
+                    feedback.classList.remove('d-block');
+                }
+            }
+        });
+    }
+}
+
+// Validate a single form field
+function validateField(field) {
+    // Skip validation for non-required fields
+    if (!field.hasAttribute('required')) return;
+    
+    // Get the feedback element - it might be in the parent node or parent's parent (for input groups)
+    let feedbackElement = field.parentNode.querySelector('.invalid-feedback');
+    if (!feedbackElement && field.parentNode.parentNode) {
+        feedbackElement = field.parentNode.parentNode.querySelector('.invalid-feedback');
+    }
+    
+    if (field.checkValidity()) {
+        field.classList.remove('is-invalid');
+        field.classList.add('is-valid');
+        
+        // Hide feedback
+        if (feedbackElement) {
+            feedbackElement.classList.remove('d-block');
+        }
+    } else {
+        field.classList.remove('is-valid');
+        field.classList.add('is-invalid');
+        
+        // Show feedback
+        if (feedbackElement) {
+            feedbackElement.classList.add('d-block');
+        }
+    }
+}
 
 function openTransactionModal(type, existingTransaction = null) {
     console.log('openTransactionModal called with type:', type, 'and transaction:', existingTransaction);
@@ -92,7 +176,21 @@ function openTransactionModal(type, existingTransaction = null) {
     const isEdit = existingTransaction && existingTransaction.id;
     
     // Reset form - but be careful with the transaction ID
-    document.getElementById('transaction-form').reset();
+    const form = document.getElementById('transaction-form');
+    form.reset();
+    form.classList.remove('was-validated');
+    
+    // Reset validation states
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        input.classList.remove('is-invalid', 'is-valid');
+        
+        // Reset feedback messages
+        const feedback = input.parentNode.querySelector('.invalid-feedback');
+        if (feedback) {
+            feedback.classList.remove('d-block');
+        }
+    });
     
     // Don't reset the ID field immediately if this is an edit operation
     if (!isEdit) {
@@ -157,6 +255,12 @@ function openTransactionModal(type, existingTransaction = null) {
         
         // Log the state of the form after population
         console.log('Form populated with ID:', document.getElementById('transaction-id').value);
+        
+        // Validate filled fields
+        const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+        inputs.forEach(input => {
+            validateField(input);
+        });
     } else {
         // Update modal title based on transaction type for new transactions
         const modalTitle = type === 'income' ? 'Add Income' : 'Add Expense';
@@ -265,139 +369,167 @@ function hideModalManually(modalElement) {
 }
 
 function saveTransaction() {
-    // Validate form
+    // Get the form
     const form = document.getElementById('transaction-form');
     
-    if (!form.checkValidity()) {
-        form.reportValidity();
+    // Validate all fields
+    const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+    let isValid = true;
+    
+    inputs.forEach(input => {
+        validateField(input);
+        if (!input.checkValidity()) {
+            isValid = false;
+        }
+    });
+    
+    // Check form validity
+    if (!isValid) {
+        // Add the was-validated class to show all validation messages
+        form.classList.add('was-validated');
+        
+        // Show an error toast
+        if (typeof showToast === 'function') {
+            showToast('Validation Error', 'Please fill in all required fields correctly.', 'danger');
+        }
+        
+        // Focus the first invalid field
+        const firstInvalid = form.querySelector('.is-invalid');
+        if (firstInvalid) {
+            firstInvalid.focus();
+        }
+        
         return;
     }
     
-    // Get form data
+    // If we're here, the form is valid
+    
+    // Extract the form values
     const formData = new FormData(form);
-    
-    // Make sure the subcategory value is included
-    const subcategoryValue = document.getElementById('transaction-subcategory').value;
-    if (subcategoryValue) {
-        formData.set('subcategory', subcategoryValue);
-    } else {
-        formData.delete('subcategory');
-    }
-    
-    // Get the transaction ID and determine if this is an edit or new transaction
     const transactionId = document.getElementById('transaction-id').value;
-    const isEdit = transactionId && transactionId.trim() !== '';
     
-    // Debug what's being sent
-    console.log(`Saving transaction (${isEdit ? 'EDIT existing' : 'CREATE new'}) with data:`);
-    for (const [key, value] of formData.entries()) {
-        console.log(`${key}: ${value}`);
-    }
+    // Determine if this is an edit or a new transaction
+    const isEdit = transactionId && transactionId !== '';
     
-    // Handle the AJAX call to save the transaction
-    const url = isEdit 
-        ? `/finances/transactions/api/${transactionId}/update/` 
+    // Disable the save button to prevent multiple submissions
+    const saveButton = document.getElementById('save-transaction-btn');
+    saveButton.disabled = true;
+    saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+    
+    // Determine the endpoint URL
+    const url = isEdit
+        ? `/finances/transactions/api/${transactionId}/update/`
         : '/finances/transactions/api/create/';
     
-    console.log('Sending data to URL:', url);
+    // Get CSRF token 
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     
-    // Show a saving indicator
-    const saveBtn = document.getElementById('save-transaction-btn');
-    const originalText = saveBtn.textContent;
-    saveBtn.textContent = 'Saving...';
-    saveBtn.disabled = true;
+    console.log('Saving transaction - Is Edit:', isEdit, 'ID:', transactionId);
     
+    // Submit the form via AJAX
     fetch(url, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-CSRFToken': csrfToken
         },
         body: formData
     })
     .then(response => {
         if (!response.ok) {
-            console.error('Server responded with status:', response.status);
             throw new Error(`Server error: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
+        // Handle the response from the server
         if (data.success) {
-            // Only now, after successful save, clear the selection
-            clearCategorySelection();
+            console.log('Transaction saved successfully');
             
-            console.log(`Transaction ${isEdit ? 'updated' : 'created'} successfully:`, data);
-            
-            // Ensure all modal elements are properly cleaned up
-            const transactionModal = document.getElementById('transactionModal');
-            
-            // Forcefully clean up all modal-related DOM elements and classes
-            // This is a direct approach to prevent screen blackout
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
-            
-            // Remove all backdrop elements
-            const backdrops = document.querySelectorAll('.modal-backdrop');
-            backdrops.forEach(backdrop => backdrop.remove());
-            
-            // Hide the modal element
-            if (transactionModal) {
-                transactionModal.classList.remove('show');
-                transactionModal.style.display = 'none';
-                transactionModal.setAttribute('aria-hidden', 'true');
-            }
-            
-            // Try Bootstrap hide method as a fallback
+            // Hide the modal
             try {
+                const transactionModal = document.getElementById('transactionModal');
                 const bsModal = bootstrap.Modal.getInstance(transactionModal);
                 if (bsModal) {
                     bsModal.hide();
+                } else {
+                    hideModalManually(transactionModal);
                 }
             } catch (error) {
-                console.warn('Error using Bootstrap to hide modal:', error);
+                console.error('Error hiding modal:', error);
             }
             
-            // Refresh transactions via AJAX instead of reloading the page
-            if (typeof loadTransactionsForMonth === 'function') {
-                // Use a short delay to ensure the modal is fully closed before refreshing
+            // Show success message
+            if (typeof showToast === 'function') {
+                showToast(
+                    isEdit ? 'Transaction Updated' : 'Transaction Created',
+                    isEdit ? 'Your transaction was updated successfully!' : 'Your transaction was created successfully!',
+                    'success'
+                );
+            }
+            
+            // Refresh the transaction list
+            if (typeof loadTransactions === 'function') {
                 setTimeout(() => {
-                    try {
-                        const urlParams = new URLSearchParams(window.location.search);
-                        loadTransactionsForMonth(urlParams.toString());
-                        
-                        // Show success toast
-                        const message = isEdit 
-                            ? 'Transaction updated successfully!' 
-                            : 'Transaction created successfully!';
-                        showToast('Success', data.message || message, 'success');
-                    } catch (err) {
-                        console.error('Error refreshing transaction list:', err);
-                        // As a last resort, reload the page
-                        window.location.reload();
-                    }
-                }, 100);
+                    loadTransactions();
+                }, 500);
             } else {
-                // Fallback to page reload if AJAX function isn't available
+                // If loadTransactions isn't available, reload the page
                 window.location.reload();
             }
         } else {
-            // Restore the button if there was an error
-            saveBtn.textContent = originalText;
-            saveBtn.disabled = false;
+            // Handle validation errors from the server
+            console.error('Server validation errors:', data.errors);
             
-            console.error('Error from server:', data.error);
-            showToast('Error', data.error || 'Unknown error', 'danger');
+            if (data.errors) {
+                // Show the first error in a toast
+                if (typeof showToast === 'function') {
+                    const errorMessage = typeof data.errors === 'string' 
+                        ? data.errors 
+                        : Object.values(data.errors)[0];
+                    showToast('Error', errorMessage, 'danger');
+                }
+                
+                // If specific field errors are provided, mark the fields as invalid
+                if (typeof data.errors === 'object') {
+                    for (const field in data.errors) {
+                        const inputField = document.getElementById(`transaction-${field}`);
+                        if (inputField) {
+                            inputField.classList.add('is-invalid');
+                            inputField.classList.remove('is-valid');
+                            
+                            // Get feedback element
+                            const feedbackElement = inputField.parentNode.querySelector('.invalid-feedback');
+                            if (feedbackElement) {
+                                feedbackElement.textContent = data.errors[field];
+                                feedbackElement.classList.add('d-block');
+                            }
+                            
+                            // Focus the first invalid field
+                            if (field === Object.keys(data.errors)[0]) {
+                                inputField.focus();
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (typeof showToast === 'function') {
+                    showToast('Error', 'There was a problem saving your transaction. Please try again.', 'danger');
+                }
+            }
         }
     })
     .catch(error => {
-        // Restore the button if there was an error
-        saveBtn.textContent = originalText;
-        saveBtn.disabled = false;
-        
         console.error('Error saving transaction:', error);
-        showToast('Error', error.message, 'danger');
+        
+        if (typeof showToast === 'function') {
+            showToast('Error', 'Failed to save transaction: ' + error.message, 'danger');
+        }
+    })
+    .finally(() => {
+        // Re-enable the save button
+        saveButton.disabled = false;
+        saveButton.innerHTML = 'Save';
     });
 }
 
@@ -413,14 +545,17 @@ function showToast(title, message, type = 'info') {
     if (!toastContainer) {
         toastContainer = document.createElement('div');
         toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '1070';
         document.body.appendChild(toastContainer);
     }
     
     // Create toast element
     const toastId = 'toast-' + Date.now();
     const toastHTML = `
-        <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
-            <div class="toast-header bg-${type} text-white">
+        <div class="toast bg-${type === 'danger' ? 'danger' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'primary'} text-white" 
+             role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
+            <div class="toast-header bg-${type === 'danger' ? 'danger' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'primary'} text-white">
+                <i class="bi bi-${type === 'danger' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
                 <strong class="me-auto">${title}</strong>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
@@ -433,15 +568,79 @@ function showToast(title, message, type = 'info') {
     // Add toast to container
     toastContainer.insertAdjacentHTML('beforeend', toastHTML);
     
-    // Initialize and show the toast
+    // Get the toast element
     const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 5000 });
-    toast.show();
+    
+    // Apply initial styling
+    toastElement.style.opacity = '0';
+    toastElement.style.transform = 'translateY(20px)';
+    toastElement.style.transition = 'all 0.3s ease';
+    
+    // Initialize the toast with Bootstrap if available
+    let toast;
+    try {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+            toast = new bootstrap.Toast(toastElement, { 
+                autohide: true, 
+                delay: 5000 
+            });
+            toast.show();
+        } else {
+            // Fallback to manual handling
+            showToastManually(toastElement);
+        }
+    } catch (error) {
+        console.error('Error showing toast with Bootstrap:', error);
+        // Fallback to manual handling
+        showToastManually(toastElement);
+    }
+    
+    // Animate in
+    setTimeout(() => {
+        toastElement.style.opacity = '1';
+        toastElement.style.transform = 'translateY(0)';
+    }, 10);
     
     // Remove toast after it's hidden
     toastElement.addEventListener('hidden.bs.toast', function() {
         toastElement.remove();
     });
+    
+    // Also set a manual timeout as a fallback
+    setTimeout(() => {
+        // Check if the toast is still in the DOM
+        if (document.getElementById(toastId)) {
+            toastElement.style.opacity = '0';
+            toastElement.style.transform = 'translateY(20px)';
+            
+            // Remove after fade out
+            setTimeout(() => {
+                if (document.getElementById(toastId)) {
+                    toastElement.remove();
+                }
+            }, 300);
+        }
+    }, 5300);
+    
+    return toastElement;
+}
+
+// Function to manually show a toast if Bootstrap is not available
+function showToastManually(toastElement) {
+    // Show the toast
+    toastElement.classList.add('show');
+    
+    // Set a timeout to hide the toast
+    setTimeout(() => {
+        // Fade out
+        toastElement.style.opacity = '0';
+        toastElement.style.transform = 'translateY(20px)';
+        
+        // Remove after fade out
+        setTimeout(() => {
+            toastElement.remove();
+        }, 300);
+    }, 5000);
 }
 
 function filterAccountsByTransactionType(type) {

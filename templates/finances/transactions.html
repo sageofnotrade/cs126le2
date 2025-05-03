@@ -139,7 +139,7 @@
         font-weight: bold;
         cursor: pointer;
         display: none; /* Hidden by default */
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
     
     /* Show the button when body has modal-open class for more than 10 seconds */
@@ -167,6 +167,142 @@
     
     .btn-outline-secondary.active {
         box-shadow: 0 0 0 0.15rem rgba(108, 117, 125, 0.15);
+    }
+    
+    /* Dropdown toggle button styling */
+    .dropdown-toggle::after {
+        display: inline-block !important;
+        margin-left: 0.255em;
+        vertical-align: 0.255em;
+        content: "" !important;
+        border-top: 0.3em solid;
+        border-right: 0.3em solid transparent;
+        border-bottom: 0;
+        border-left: 0.3em solid transparent;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+    
+    /* Ensure dropdown buttons have minimum dimensions and proper styling */
+    .btn.btn-sm.btn-light.dropdown-toggle {
+        min-width: 30px;
+        min-height: 30px;
+        padding: 0.25rem 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Transaction indicator styling */
+    .transaction-indicator {
+        border-radius: 0 0.375rem 0.375rem 0;
+    }
+    
+    /* Form validation styling */
+    .form-control.is-valid, .form-select.is-valid {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        padding-right: calc(1.5em + 0.75rem) !important;
+    }
+    
+    .form-control.is-invalid, .form-select.is-invalid {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        padding-right: calc(1.5em + 0.75rem) !important;
+    }
+    
+    /* Ensure validation icons are visible on selects */
+    .form-select.is-valid, .form-select.is-invalid {
+        background-position: right 1.75rem center, center right 2.75rem;
+    }
+    
+    /* Highlight fields with validation styling */
+    .form-control:focus.is-valid, .form-select:focus.is-valid {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+    
+    .form-control:focus.is-invalid, .form-select:focus.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+    }
+    
+    /* Better error message display */
+    .invalid-feedback {
+        display: none;
+        width: 100%;
+        margin-top: 0.25rem;
+        font-size: 0.875em;
+        color: #dc3545;
+    }
+    
+    .invalid-feedback.d-block {
+        display: block !important;
+    }
+    
+    /* Toast notification styling */
+    .toast-container {
+        z-index: 1080 !important;
+    }
+    
+    .toast {
+        border: none;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        margin-bottom: 0.75rem;
+        width: 350px;
+        max-width: 90vw;
+    }
+    
+    .toast-header {
+        border-bottom: none;
+        padding: 0.75rem 1rem;
+    }
+    
+    .toast-body {
+        padding: 0.75rem 1rem;
+        opacity: 0.9;
+    }
+    
+    .bg-success {
+        background-color: #198754 !important;
+    }
+    
+    .bg-danger {
+        background-color: #dc3545 !important;
+    }
+    
+    .bg-warning {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+    
+    .bg-primary {
+        background-color: #0d6efd !important;
+    }
+    
+    /* Toast animation */
+    @keyframes toastFadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes toastFadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(20px); }
+    }
+    
+    .toast.show {
+        animation: toastFadeIn 0.3s ease forwards;
+    }
+    
+    .toast.hide {
+        animation: toastFadeOut 0.3s ease forwards;
     }
 </style>
 {% endblock %}
@@ -322,7 +458,7 @@
                                 <small class="text-muted">{{ transaction.date|date:"m/d/Y" }}</small>
                             </div>
                             <!-- Transaction Actions -->
-                            <div class="dropdown">
+                            <div class="dropdown ms-3">
                                 <button class="btn btn-sm btn-light dropdown-toggle" type="button" id="dropdownMenuButton-{{ transaction.id }}" data-bs-toggle="dropdown" aria-expanded="false">
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton-{{ transaction.id }}">
@@ -356,7 +492,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="transaction-form">
+                <form id="transaction-form" class="needs-validation" novalidate>
                     {% csrf_token %}
                     <input type="hidden" id="transaction-id" name="transaction_id" value="">
                     <input type="hidden" id="transaction-type" name="type" value="expense">
@@ -364,14 +500,20 @@
                     <div class="mb-3">
                         <label for="transaction-title" class="form-label">Title</label>
                         <input type="text" class="form-control" id="transaction-title" name="title" required>
+                        <div class="invalid-feedback">
+                            Please provide a title for this transaction.
+                        </div>
                     </div>
                     
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <label for="transaction-amount" class="form-label">Amount</label>
-                            <div class="input-group">
+                            <div class="input-group has-validation">
                                 <span class="input-group-text" id="currency-symbol">₱</span>
                                 <input type="number" class="form-control" id="transaction-amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required>
+                                <div class="invalid-feedback">
+                                    Please enter a valid amount greater than 0.
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -380,17 +522,23 @@
                         <div class="col-md-6">
                             <label for="transaction-date" class="form-label">Date</label>
                             <input type="date" class="form-control" id="transaction-date" name="date" required>
+                            <div class="invalid-feedback">
+                                Please select a valid date.
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label for="transaction-time" class="form-label">Time</label>
                             <input type="time" class="form-control" id="transaction-time" name="time" required>
+                            <div class="invalid-feedback">
+                                Please select a valid time.
+                            </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
                         <label for="transaction-account" class="form-label">Account</label>
-                        <div class="input-group">
-                            <select class="form-select account-select w-100" id="transaction-account" name="transaction_account" style="height: 46px;">
+                        <div class="input-group has-validation">
+                            <select class="form-select account-select w-100" id="transaction-account" name="transaction_account" style="height: 46px;" required>
                                 <option value="" data-icon="bi-bank">Choose your account</option>
                                 {% for account in accounts %}
                                 <option value="{{ account.id }}" data-account-type="{{ account.get_account_type }}" 
@@ -399,13 +547,16 @@
                                 </option>
                                 {% endfor %}
                             </select>
+                            <div class="invalid-feedback">
+                                Please select an account.
+                            </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
                         <label for="transaction-category" class="form-label">Category</label>
-                        <div class="input-group">
-                            <select class="form-select category-select w-100" id="transaction-category" name="category" style="height: 46px;">
+                        <div class="input-group has-validation">
+                            <select class="form-select category-select w-100" id="transaction-category" name="category" style="height: 46px;" required>
                                 <option value="" data-icon="bi-bookmark">Choose a category</option>
                                 {% for category in categories %}
                                 <option value="{{ category.id }}" data-icon="{{ category.icon }}" data-type="{{ category.type }}" data-is-category="true">{{ category.name }}</option>
@@ -414,6 +565,9 @@
                                     {% endfor %}
                                 {% endfor %}
                             </select>
+                            <div class="invalid-feedback">
+                                Please select a category.
+                            </div>
                         </div>
                     </div>
                     
@@ -702,12 +856,43 @@
         // Run initial dropdown initialization
         initializeDropdowns();
         
-        // Execute initialization after transaction list is updated
+        // Force immediate styling fix on all dropdowns
+        function fixDropdownButtons() {
+            document.querySelectorAll('.btn.btn-sm.btn-light.dropdown-toggle').forEach(function(button) {
+                // Ensure button has correct styling
+                button.style.minWidth = '30px';
+                button.style.minHeight = '30px';
+                button.style.padding = '0.25rem 0.5rem';
+                button.style.display = 'inline-flex';
+                button.style.alignItems = 'center';
+                button.style.justifyContent = 'center';
+                
+                // Force the caret to be visible
+                if (!button.querySelector('.caret') && !button.innerHTML.trim()) {
+                    const caret = document.createElement('span');
+                    caret.className = 'caret';
+                    button.appendChild(caret);
+                }
+            });
+        }
+        
+        // Run the fix immediately
+        fixDropdownButtons();
+        
+        // Re-run after any transactions list updates
         const transactionListElement = document.querySelector('.list-group-flush');
         if (transactionListElement) {
+            transactionListElement.addEventListener('DOMNodeInserted', function(event) {
+                // Wait a tiny bit to ensure the DOM is fully updated
+                setTimeout(fixDropdownButtons, 10);
+            });
+            
+            // Set up mutation observer for dropdown initialization
             const observer = new MutationObserver(function(mutations) {
-                console.log('Transaction list changed, initializing dropdowns');
-                initializeDropdowns();
+                setTimeout(function() {
+                    initializeDropdowns();
+                    fixDropdownButtons();
+                }, 10);
             });
             
             observer.observe(transactionListElement, { childList: true });
@@ -718,7 +903,10 @@
         if (originalUpdateTransactionList) {
             window.updateTransactionList = function(...args) {
                 const result = originalUpdateTransactionList.apply(this, args);
-                setTimeout(initializeDropdowns, 10);
+                setTimeout(function() {
+                    initializeDropdowns();
+                    fixDropdownButtons();
+                }, 10);
                 return result;
             };
         }

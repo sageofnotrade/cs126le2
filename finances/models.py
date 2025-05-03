@@ -152,6 +152,7 @@ class ScheduledTransaction(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, null=True, blank=True)
     transaction_type = models.CharField(max_length=7, choices=TRANSACTION_TYPES)
     account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -295,6 +296,7 @@ class ScheduledTransaction(models.Model):
             user=self.user,
             name=self.name,
             category=self.category,
+            subcategory=self.subcategory,
             transaction_type=self.transaction_type,
             account=self.account,
             amount=self.amount,

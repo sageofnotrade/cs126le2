@@ -45,7 +45,7 @@ class TransactionForm(forms.ModelForm):
 class ScheduledTransactionForm(forms.ModelForm):
     class Meta:
         model = ScheduledTransaction
-        fields = ['name', 'category', 'transaction_type', 'account', 'amount', 'date_scheduled', 'repeat_type', 'repeats', 'note']
+        fields = ['name', 'category', 'subcategory', 'transaction_type', 'account', 'amount', 'date_scheduled', 'repeat_type', 'repeats', 'note']
         widgets = {
             'date_scheduled': forms.DateTimeInput(attrs={'type': 'datetime-local', 'min': timezone.now().strftime('%Y-%m-%dT%H:%M')}),
             'note': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),

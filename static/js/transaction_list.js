@@ -585,11 +585,11 @@ function updateTransactionList(data) {
                         </div>
                         <small class="text-muted">${formattedDate}</small>
                     </div>
-                    <!-- Transaction Actions -->
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" id="dropdownMenuButton-${transaction.id}" data-bs-toggle="dropdown" aria-expanded="false">
+                    <!-- Updated dropdown markup to match scheduled transactions styling -->
+                    <div class="dropdown ms-3">
+                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton-${transaction.id}" style="position: absolute; inset: 0px 0px auto auto; margin: 0px; transform: translate(-8px, 40px);">
+                        <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item edit-transaction" href="#" data-id="${transaction.id}">Edit</a></li>
                             <li><a class="dropdown-item duplicate-transaction" href="#" data-id="${transaction.id}">Duplicate</a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -598,7 +598,7 @@ function updateTransactionList(data) {
                     </div>
                 </div>
                 <!-- Color indicator bar -->
-                <div class="position-absolute top-0 bottom-0 end-0 transaction-indicator bg-${transaction.type === 'income' ? 'success' : 'danger'}" style="width: 4px;"></div>
+                <div class="position-absolute top-0 bottom-0 end-0 transaction-indicator ${transaction.type === 'income' ? 'bg-success' : 'bg-danger'}" style="width: 4px;"></div>
             </div>
         `;
     });
@@ -621,7 +621,8 @@ function updateTransactionSummary(data) {
     // Update total balance
     const transactionTotalElement = document.getElementById('transaction-total');
     if (transactionTotalElement) {
-        const totalBalance = data.total_balance || 0;
+        // Use the correct property from API response - 'total' instead of 'total_balance'
+        const totalBalance = data.total || 0;
         const formattedBalance = parseFloat(totalBalance).toFixed(2);
         
         // Format with the appropriate color and sign

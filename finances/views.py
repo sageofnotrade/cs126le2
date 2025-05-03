@@ -141,13 +141,19 @@ def scheduled_transactions(request):
     # Calculate net sum
     net_sum = expected_income - expected_expense
     
+    # Get categories and accounts for the modal form
+    categories = Category.objects.filter(user=request.user)
+    accounts = Account.objects.filter(user=request.user)
+    
     context = {
         'selected_month': selected_month,
         'search_query': search_query,
         'monthly_transactions': monthly_transactions,
         'income_sum': expected_income,
         'expense_sum': expected_expense,
-        'net_sum': net_sum
+        'net_sum': net_sum,
+        'categories': categories,
+        'accounts': accounts
     }
     
     return render(request, 'finances/scheduled_transactions.html', context)
@@ -161,14 +167,42 @@ def create_scheduled_transaction(request):
             scheduled_transaction.user = request.user
             scheduled_transaction.is_recurring = scheduled_transaction.repeats == 0
             scheduled_transaction.save()
+            
+            # Check if it's an AJAX request
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Scheduled transaction created successfully.',
+                    'id': scheduled_transaction.id
+                })
+            
             messages.success(request, 'Scheduled transaction created successfully.')
             return redirect('scheduled_transactions')
         else:
+            # For AJAX requests, return errors as JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = [str(error) for error in error_list]
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors
+                })
+            
             return render(request, 'finances/scheduled_transaction_form.html', {
                 'form': form,
                 'title': 'Create Scheduled Transaction'
             })
     else:
+        # For AJAX requests asking for the form, return needed data
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'categories': [{'id': c.id, 'name': c.name, 'type': c.type} for c in Category.objects.filter(user=request.user)],
+                'accounts': [{'id': a.id, 'name': a.name, 'type': getattr(a, 'get_account_type', lambda: 'unknown')()} 
+                             for a in Account.objects.filter(user=request.user)]
+            })
+        
         form = ScheduledTransactionForm(user=request.user)
         return render(request, 'finances/scheduled_transaction_form.html', {
             'form': form,
@@ -185,11 +219,47 @@ def edit_scheduled_transaction(request, pk):
             updated_transaction = form.save(commit=False)
             updated_transaction.is_recurring = updated_transaction.repeats == 0
             updated_transaction.save()
+            
+            # Check if it's an AJAX request
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Scheduled transaction updated successfully.',
+                    'id': updated_transaction.id
+                })
+            
             messages.success(request, 'Scheduled transaction updated successfully!')
             return redirect('scheduled_transactions')
         else:
+            # For AJAX requests, return errors as JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = [str(error) for error in error_list]
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors
+                })
+            
             messages.error(request, 'There was an error with your input.')
     else:
+        # For AJAX requests asking for the edit form
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'id': scheduled_transaction.id,
+                'name': scheduled_transaction.name,
+                'amount': float(scheduled_transaction.amount),
+                'transaction_type': scheduled_transaction.transaction_type,
+                'date_scheduled': scheduled_transaction.date_scheduled.isoformat(),
+                'repeat_type': scheduled_transaction.repeat_type,
+                'repeats': scheduled_transaction.repeats,
+                'note': scheduled_transaction.note or '',
+                'category': scheduled_transaction.category_id if scheduled_transaction.category else None,
+                'subcategory': scheduled_transaction.subcategory_id if hasattr(scheduled_transaction, 'subcategory') and scheduled_transaction.subcategory else None,
+                'account': scheduled_transaction.account_id if scheduled_transaction.account else None
+            })
+        
         form = ScheduledTransactionForm(instance=scheduled_transaction, user=request.user)
 
     return render(request, 'finances/scheduled_transaction_form.html', {
