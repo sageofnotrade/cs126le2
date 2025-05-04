@@ -60,7 +60,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "https://kayako-687p.onrender.com",
     "http://localhost:3000",
-    "cs126le2.vercel.app",
+    "https://cs126le2-iprvtk9hc-cjs-projects-8e408a8e.vercel.app",
 ]
 
 ROOT_URLCONF = 'budget_tracker.urls'
